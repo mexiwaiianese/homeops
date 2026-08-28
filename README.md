@@ -158,4 +158,3 @@ This repository uses the standard Next.js structure recognized by Vercel.
 4. Keep `SUPABASE_SERVICE_ROLE_KEY` server-only. Never prefix it with `NEXT_PUBLIC_` or commit it to the repository.
 
 GitHub Pages is not recommended for this beta because authentication, middleware, and API routes require a server-capable Next.js host.
-
