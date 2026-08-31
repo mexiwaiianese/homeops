@@ -148,6 +148,19 @@ This build adds the first client-focused financial MVP for a 25-door portfolio.
 
 QuickBooks remains the accounting system of record; HomeOps is the property-allocation, exception-review, and portfolio-intelligence layer.
 
+## Phase 3: Portfolio intelligence
+
+The Financials workspace now turns mapped QuickBooks transactions into decision-ready analysis:
+
+- Portfolio revenue, operating expenses, NOI, NOI margin, and company overhead
+- Ranked property profitability with individual property P&Ls and transaction detail
+- Expense analysis by service type, including portfolio share, property coverage, and vendor count
+- Vendor concentration, property exposure, category coverage, and average invoice size
+- Monthly revenue, expense, and NOI trends
+- Rules-based alerts for unallocated transactions, property operating losses, missing income, vendor concentration, and uncategorized service costs
+
+All analysis is calculated from the canonical financial transaction model. No additional credentials or database tables are required, and Supabase Row Level Security remains the boundary for live organization data.
+
 ## Deploy to Vercel
 
 This repository uses the standard Next.js structure recognized by Vercel.
