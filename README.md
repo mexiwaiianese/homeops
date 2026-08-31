@@ -158,6 +158,10 @@ The Financials workspace now turns mapped QuickBooks transactions into decision-
 - Vendor concentration, property exposure, category coverage, and average invoice size
 - Monthly revenue, expense, and NOI trends
 - Rules-based alerts for unallocated transactions, property operating losses, missing income, vendor concentration, and uncategorized service costs
+- Analysis-period filters for the latest 3, 6, or 12 months
+- Normalized service categories so inconsistent QuickBooks account labels roll up together
+- Operating-expense versus capital-improvement separation
+- Duplicate-transaction candidates, missing-rent detection, monthly expense spikes, and vendor invoice outliers
 
 All analysis is calculated from the canonical financial transaction model. No additional credentials or database tables are required, and Supabase Row Level Security remains the boundary for live organization data.
 
