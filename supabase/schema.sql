@@ -212,6 +212,13 @@ returns boolean language sql stable security definer set search_path = public as
   );
 $$;
 
+-- These helpers run with elevated database privileges for RLS membership checks.
+-- Keep them unavailable to signed-out callers.
+revoke all on function public.is_org_member(uuid) from public, anon;
+revoke all on function public.can_manage_org(uuid) from public, anon;
+grant execute on function public.is_org_member(uuid) to authenticated;
+grant execute on function public.can_manage_org(uuid) to authenticated;
+
 -- Drop/recreate named policies so this file can be rerun during development.
 do $$
 begin
