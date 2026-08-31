@@ -21,7 +21,7 @@ export async function GET(request: Request) {
 
   let query = supabase
     .from("vendors")
-    .select("*, vendor_contacts(*), vendor_services(*, service_categories(*)), vendor_service_areas(*), vendor_credentials(*), vendor_pricing_items(*), vendor_performance_events(*)")
+    .select("*, vendor_contacts(*), vendor_services(*, service_categories(*)), vendor_service_areas(*), vendor_credentials(*), vendor_documents(*), vendor_pricing_items(*), vendor_owner_preferences(*), vendor_property_preferences(*), vendor_performance_events(*)")
     .eq("organization_id", organizationId)
     .order("name");
 
@@ -36,7 +36,11 @@ export async function GET(request: Request) {
     await supabase.rpc("refresh_vendor_eligibility", { v_id: vendor.id });
   }
 
-  return NextResponse.json({ mode: "live", vendors: data ?? [] });
+  const [{data:categories},{data:owners},{data:homes}]=await Promise.all([
+    supabase.from("service_categories").select("id,name").eq("active",true).order("name"),
+    supabase.from("owners").select("id,full_name").eq("organization_id",organizationId).order("full_name"),
+    supabase.from("homes").select("id,address1").eq("organization_id",organizationId).order("address1")]);
+  return NextResponse.json({ mode: "live", vendors: data ?? [], meta:{categories:categories??[],owners:owners??[],homes:homes??[]} });
 }
 
 export async function POST(request: Request) {

@@ -365,3 +365,10 @@ Next implementation slice:
 5. Eligibility function returning qualified vendors plus explicit exclusion reasons.
 6. Migrate owners.preferred_vendor_name toward structured preferences while retaining backward compatibility.
 7. Add eligible-vendor picker to Maintenance → Dispatch.
+# Implementation status — operations slice (2026-08-31)
+
+The internal network now includes vendor create/edit, structured contacts, services/specialties, postal-code service areas, credentials, owner/property preferences, and private document uploads. Files use the private `vendor-private` bucket, organization-prefixed paths, organization RLS, a 10 MB/type allowlist, and 60-second download URLs. W-9 metadata is explicitly marked sensitive and no public object URL is created.
+
+Maintenance dispatch now queries candidate vendors, evaluates approval state, required credential expiry/rejection, requested service, and blocking owner/property preferences, and returns human-readable exclusion reasons. Assignment continues to write the existing `maintenance_requests.vendor_id`; objective performance fields and subjective ratings remain separate.
+
+Still deferred: public marketplace surfaces, paid placement, automated external credential verification, geographic radius/polygon matching, background expiry scheduling/notifications, document malware scanning, and production Supabase migration/deployment monitoring.

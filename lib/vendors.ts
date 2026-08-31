@@ -45,6 +45,21 @@ export function credentialBlocksApproval(row: { credential_type: string; verific
   return Boolean(row.expires_on && new Date(row.expires_on + "T23:59:59Z").getTime() < Date.now());
 }
 
+export type EligibilityResult={eligible:boolean;reasons:string[];signals:string[]};
+export function explainVendorEligibility(vendor:any,{homeId,serviceCategoryId}:{homeId?:string|null;serviceCategoryId?:string|null}={}):EligibilityResult{
+  const reasons:string[]=[]; const signals:string[]=[];
+  if(["blocked","suspended"].includes(vendor.approval_status))reasons.push("Vendor is blocked or suspended");
+  if(!["preferred","approved","conditional"].includes(vendor.approval_status))reasons.push("Vendor is not approved for dispatch");
+  if((vendor.vendor_credentials??vendor.credentials??[]).some(credentialBlocksApproval))reasons.push("A required credential is expired or rejected");
+  if(serviceCategoryId&&!(vendor.vendor_services??[]).some((s:any)=>s.active!==false&&s.service_category_id===serviceCategoryId))reasons.push("Vendor does not offer the requested service");
+  const prefs=[...(vendor.vendor_property_preferences??[]).filter((p:any)=>!homeId||p.home_id===homeId),...(vendor.vendor_owner_preferences??[])];
+  if(prefs.some((p:any)=>p.preference==="blocked"&&(!p.service_category_id||p.service_category_id===serviceCategoryId)))reasons.push("Vendor is blocked by an owner or property preference");
+  if(vendor.approval_status==="preferred")signals.push("Organization preferred");
+  if(prefs.some((p:any)=>p.preference==="preferred"))signals.push("Owner/property preferred");
+  if(vendor.emergency_available)signals.push("Emergency available");
+  return {eligible:reasons.length===0,reasons,signals};
+}
+
 export function scorecardSummary(events: Array<{
   response_minutes?: number | null;
   completion_minutes?: number | null;

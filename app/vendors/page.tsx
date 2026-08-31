@@ -1,6 +1,6 @@
 "use client";
 
-import { useEffect, useMemo, useState } from "react";
+import { useCallback, useEffect, useMemo, useState } from "react";
 import type { VendorApprovalStatus, VendorWorkflowStage } from "@/lib/vendors";
 
 type VendorRow = {
@@ -13,6 +13,8 @@ type VendorRow = {
   vendor_credentials?:Array<{name:string;verification_status:string;expires_on?:string|null}>;
   performance?:{jobs:number;avgResponse:number;callbackRate:number;managerRating:number|null};
   vendor_performance_events?:Array<any>;
+  vendor_contacts?:Array<any>; vendor_service_areas?:Array<any>; vendor_documents?:Array<any>;
+  vendor_owner_preferences?:Array<any>; vendor_property_preferences?:Array<any>;
 };
 
 const money=(c?:number|null)=>c==null?"—":new Intl.NumberFormat("en-US",{style:"currency",currency:"USD",maximumFractionDigits:0}).format(c/100);
@@ -26,18 +28,19 @@ export default function VendorsPage(){
   const [status,setStatus]=useState("");
   const [selected,setSelected]=useState<string|null>(null);
   const [toast,setToast]=useState("");
+  const [editing,setEditing]=useState<VendorRow|null|undefined>(undefined);
+  const [meta,setMeta]=useState<any>({categories:[],owners:[],homes:[]});
 
-  async function load(){
+  const load=useCallback(async()=>{
     const p=new URLSearchParams();
     if(q)p.set("q",q); if(status)p.set("status",status);
     const r=await fetch("/api/vendors?"+p.toString());
     const body=await r.json();
     if(!r.ok){setMode(r.status===401?"auth":"error");return;}
-    setMode(body.mode); setVendors(body.vendors??[]);
+    setMode(body.mode); setVendors(body.vendors??[]); setMeta(body.meta??{categories:[],owners:[],homes:[]});
     if(!selected && body.vendors?.[0]) setSelected(body.vendors[0].id);
-  }
-  useEffect(()=>{void load();},[status]);
-  useEffect(()=>{const t=setTimeout(()=>void load(),250);return()=>clearTimeout(t);},[q]);
+  },[q,status,selected]);
+  useEffect(()=>{const t=setTimeout(()=>void load(),250);return()=>clearTimeout(t);},[load]);
   useEffect(()=>{if(!toast)return;const t=setTimeout(()=>setToast(""),2500);return()=>clearTimeout(t)},[toast]);
 
   const vendor=vendors.find(v=>v.id===selected)??vendors[0];
@@ -67,7 +70,7 @@ export default function VendorsPage(){
       <div className="portfolio"><small>VENDOR NETWORK</small><strong>{vendors.length} records</strong><span>{stats.approved} approved / preferred</span><span className={"mode "+mode}>{mode==="live"?"● Supabase live":mode==="demo"?"○ Demo mode":"Checking…"}</span></div>
     </aside>
     <section className="vendorContent">
-      <header className="finHeader"><div><p className="eyebrow">APPROVED VENDOR NETWORK</p><h1>Trusted vendors, before marketplace growth.</h1><p>Approve, monitor, and route work using structured vendor records, verified credentials, coverage, owner rules, and operational history.</p></div><a className="primary vendorAdd" href="#directory">+ Candidate vendor</a></header>
+      <header className="finHeader"><div><p className="eyebrow">APPROVED VENDOR NETWORK</p><h1>Trusted vendors, before marketplace growth.</h1><p>Approve, monitor, and route work using structured vendor records, verified credentials, coverage, owner rules, and operational history.</p></div><button className="primary vendorAdd" onClick={()=>setEditing(null)}>+ Candidate vendor</button></header>
       <div className="stats finStats"><Stat label="Approved / preferred" value={stats.approved}/><Stat label="Conditional" value={stats.conditional}/><Stat label="Renewal attention" value={stats.renewal}/><Stat label="Emergency capable" value={stats.emergency}/></div>
 
       <section className="panel">
@@ -84,7 +87,7 @@ export default function VendorsPage(){
 
         <section className="panel vendorDetail">
           {!vendor?<div className="empty">No vendors match these filters.</div>:<>
-            <div className="passportHero"><div><p className="eyebrow">VENDOR RECORD</p><h2>{vendor.name}</h2><p>{vendor.trade||"General vendor"} • {[vendor.city,vendor.state].filter(Boolean).join(", ")}</p></div><span className={"vendorStatus "+vendor.approval_status}>{vendor.approval_status}</span></div>
+            <div className="passportHero"><div><p className="eyebrow">VENDOR RECORD</p><h2>{vendor.name}</h2><p>{vendor.trade||"General vendor"} • {[vendor.city,vendor.state].filter(Boolean).join(", ")}</p></div><div><span className={"vendorStatus "+vendor.approval_status}>{vendor.approval_status}</span> <button className="textBtn" onClick={()=>setEditing(vendor)}>Edit & manage</button></div></div>
             <div className="miniStats vendorMini"><div><span>Workflow</span><strong>{stageLabel(vendor.workflow_stage)}</strong></div><div><span>Emergency</span><strong>{vendor.emergency_available?"Available":"Standard hours"}</strong></div><div><span>Expected response</span><strong>{vendor.expected_response_minutes?vendor.expected_response_minutes+" min":"—"}</strong></div><div><span>Trip / hourly</span><strong>{money(vendor.minimum_trip_charge_cents)} / {money(vendor.hourly_rate_cents)}</strong></div></div>
 
             <div className="sectionTitle"><h3>Services & specialties</h3><span>{services.length} listed</span></div><div className="chipRow">{services.length?services.map(s=><span className="serviceChip" key={s}>{s}</span>):<div className="empty">No services recorded.</div>}</div>
@@ -97,7 +100,19 @@ export default function VendorsPage(){
         </section>
       </div>
     </section>
-  </main>
+    {editing!==undefined&&<VendorEditor vendor={editing} mode={mode} meta={meta} onClose={()=>setEditing(undefined)} onSaved={()=>{setEditing(undefined);void load()}} notify={setToast}/>}</main>
+}
+
+function VendorEditor({vendor,mode,meta,onClose,onSaved,notify}:{vendor:VendorRow|null;mode:string;meta:any;onClose:()=>void;onSaved:()=>void;notify:(s:string)=>void}){
+ const [form,setForm]=useState<any>({name:vendor?.name??"",trade:vendor?.trade??"",email:(vendor as any)?.email??"",phone:(vendor as any)?.phone??"",website:(vendor as any)?.website??"",city:vendor?.city??"",state:vendor?.state??"",postalCode:(vendor as any)?.postal_code??"",emergencyAvailable:vendor?.emergency_available??false,afterHoursAvailable:(vendor as any)?.after_hours_available??false,expectedResponseMinutes:vendor?.expected_response_minutes??"",privateNotes:(vendor as any)?.private_notes??""});
+ const [resource,setResource]=useState("contacts"); const [quick,setQuick]=useState<any>({}); const [file,setFile]=useState<File|null>(null);
+ const change=(k:string)=>(e:React.ChangeEvent<HTMLInputElement|HTMLTextAreaElement|HTMLSelectElement>)=>setForm({...form,[k]:e.target.type==="checkbox"?(e.target as HTMLInputElement).checked:e.target.value});
+ async function save(){if(mode!=="live"){notify("Connect and sign in to persist vendor changes");return;}const r=await fetch(vendor?`/api/vendors/${vendor.id}`:"/api/vendors",{method:vendor?"PATCH":"POST",headers:{"Content-Type":"application/json"},body:JSON.stringify(form)});const b=await r.json();if(!r.ok){notify(b.error||"Could not save vendor");return;}notify(vendor?"Vendor updated":"Candidate vendor created");onSaved();}
+ async function add(){if(!vendor||mode!=="live")return;let fields:any={};if(resource==="contacts")fields={full_name:quick.name,contact_type:quick.type||"contact",email:quick.email||null,phone:quick.phone||null};if(resource==="services")fields={service_category_id:quick.category,specialty:quick.specialty||null,active:true};if(resource==="areas")fields={area_type:"postal_code",postal_code:quick.postalCode};if(resource==="credentials")fields={credential_type:quick.type||"other",name:quick.name,expires_on:quick.expires||null,verification_status:"pending"};if(resource==="ownerPreferences")fields={owner_id:quick.owner,preference:quick.preference||"preferred",priority:0};if(resource==="propertyPreferences")fields={home_id:quick.home,preference:quick.preference||"preferred",priority:0};const r=await fetch(`/api/vendors/${vendor.id}/resources`,{method:"POST",headers:{"Content-Type":"application/json"},body:JSON.stringify({resource,...fields})});const b=await r.json();if(!r.ok){notify(b.error||"Could not add item");return;}setQuick({});notify("Vendor detail added");onSaved();}
+ async function upload(){if(!vendor||!file)return;const fd=new FormData();fd.set("file",file);fd.set("documentType",quick.documentType||"other");const r=await fetch(`/api/vendors/${vendor.id}/documents`,{method:"POST",body:fd});const b=await r.json();if(!r.ok){notify(b.error||"Upload failed");return;}notify("Private document uploaded");onSaved();}
+ return <div className="modalShade" onMouseDown={onClose}><section className="modal vendorEditor" onMouseDown={e=>e.stopPropagation()}><div className="modalHead"><div><p className="eyebrow">{vendor?"VENDOR PASSPORT":"NEW CANDIDATE"}</p><h2>{vendor?.name||"Create vendor"}</h2></div><button className="closeBtn" onClick={onClose}>×</button></div><div className="formGrid"><label className="span2">Vendor name<input value={form.name} onChange={change("name")}/></label><label>Trade<input value={form.trade} onChange={change("trade")}/></label><label>Email<input type="email" value={form.email} onChange={change("email")}/></label><label>Phone<input value={form.phone} onChange={change("phone")}/></label><label>Website<input value={form.website} onChange={change("website")}/></label><label>City<input value={form.city} onChange={change("city")}/></label><label>State<input value={form.state} onChange={change("state")}/></label><label>ZIP<input value={form.postalCode} onChange={change("postalCode")}/></label><label>Response minutes<input type="number" value={form.expectedResponseMinutes} onChange={change("expectedResponseMinutes")}/></label><label><input type="checkbox" checked={form.emergencyAvailable} onChange={change("emergencyAvailable")}/> Emergency available</label><label><input type="checkbox" checked={form.afterHoursAvailable} onChange={change("afterHoursAvailable")}/> After-hours available</label><label className="span2">Private organization notes<textarea value={form.privateNotes} onChange={change("privateNotes")}/></label></div>
+ {vendor&&<><div className="sectionTitle"><h3>Structured details</h3><span>Contacts, coverage, credentials & preferences</span></div><div className="formGrid"><label>Detail type<select value={resource} onChange={e=>{setResource(e.target.value);setQuick({})}}><option value="contacts">Contact</option><option value="services">Service / specialty</option><option value="areas">Service area</option><option value="credentials">Credential</option><option value="ownerPreferences">Owner preference</option><option value="propertyPreferences">Property preference</option></select></label>{resource==="contacts"&&<><label>Name<input value={quick.name||""} onChange={e=>setQuick({...quick,name:e.target.value})}/></label><label>Email<input value={quick.email||""} onChange={e=>setQuick({...quick,email:e.target.value})}/></label><label>Phone<input value={quick.phone||""} onChange={e=>setQuick({...quick,phone:e.target.value})}/></label></>}{resource==="services"&&<><label>Category<select value={quick.category||""} onChange={e=>setQuick({...quick,category:e.target.value})}><option value="">Select</option>{meta.categories.map((x:any)=><option key={x.id} value={x.id}>{x.name}</option>)}</select></label><label>Specialty<input value={quick.specialty||""} onChange={e=>setQuick({...quick,specialty:e.target.value})}/></label></>}{resource==="areas"&&<label>Postal code<input value={quick.postalCode||""} onChange={e=>setQuick({...quick,postalCode:e.target.value})}/></label>}{resource==="credentials"&&<><label>Credential name<input value={quick.name||""} onChange={e=>setQuick({...quick,name:e.target.value})}/></label><label>Type<select value={quick.type||"other"} onChange={e=>setQuick({...quick,type:e.target.value})}><option value="license">License</option><option value="insurance_general_liability">General liability</option><option value="insurance_workers_comp">Workers comp</option><option value="certification">Certification</option><option value="other">Other</option></select></label><label>Expires<input type="date" value={quick.expires||""} onChange={e=>setQuick({...quick,expires:e.target.value})}/></label></>}{resource==="ownerPreferences"&&<label>Owner<select value={quick.owner||""} onChange={e=>setQuick({...quick,owner:e.target.value})}><option value="">Select</option>{meta.owners.map((x:any)=><option key={x.id} value={x.id}>{x.full_name}</option>)}</select></label>}{resource==="propertyPreferences"&&<label>Property<select value={quick.home||""} onChange={e=>setQuick({...quick,home:e.target.value})}><option value="">Select</option>{meta.homes.map((x:any)=><option key={x.id} value={x.id}>{x.address1}</option>)}</select></label>}{resource.includes("Preferences")&&<label>Preference<select value={quick.preference||"preferred"} onChange={e=>setQuick({...quick,preference:e.target.value})}><option>preferred</option><option>allowed</option><option>avoid</option><option>blocked</option></select></label>}<button className="secondaryBtn" onClick={()=>void add()}>Add detail</button></div><div className="sectionTitle"><h3>Private documents</h3><span>Private bucket • 60-second downloads</span></div><div className="formGrid"><label>Document type<select value={quick.documentType||"other"} onChange={e=>setQuick({...quick,documentType:e.target.value})}><option value="w9">W-9 (sensitive)</option><option value="insurance">Insurance</option><option value="license">License</option><option value="certification">Certification</option><option value="contract">Contract</option><option value="other">Other</option></select></label><label className="span2">File<input type="file" accept=".pdf,image/jpeg,image/png,image/webp" onChange={e=>setFile(e.target.files?.[0]||null)}/></label><button className="secondaryBtn" disabled={!file} onClick={()=>void upload()}>Upload privately</button></div></>}
+ <div className="modalActions"><button className="secondaryBtn" onClick={onClose}>Cancel</button><button className="primary" disabled={!form.name} onClick={()=>void save()}>Save vendor</button></div></section></div>
 }
 
 function Stat({label,value}:{label:string;value:number}){return <div className="stat"><span>{label}</span><div className="statValue">{value}</div><small>Current filtered directory</small></div>}
