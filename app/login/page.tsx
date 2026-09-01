@@ -7,12 +7,13 @@ export default function LoginPage() {
   const [email, setEmail] = useState("");
   const [message, setMessage] = useState("");
   const publishableKey = process.env.NEXT_PUBLIC_SUPABASE_PUBLISHABLE_KEY || process.env.NEXT_PUBLIC_SUPABASE_ANON_KEY;
-  const configured = Boolean(process.env.NEXT_PUBLIC_SUPABASE_URL && publishableKey);
+  const projectUrl = process.env.NEXT_PUBLIC_SUPABASE_PROJECT_URL || process.env.NEXT_PUBLIC_SUPABASE_URL;
+  const configured = Boolean(projectUrl && publishableKey);
 
   async function signIn(e: React.FormEvent) {
     e.preventDefault();
     if (!configured) { setMessage("Add Supabase environment variables first. Demo mode is still available at /. "); return; }
-    const supabase = createBrowserClient(process.env.NEXT_PUBLIC_SUPABASE_URL!, publishableKey!);
+    const supabase = createBrowserClient(projectUrl!, publishableKey!);
     const redirectTo = `${window.location.origin}/auth/callback`;
     const { error } = await supabase.auth.signInWithOtp({ email, options: { emailRedirectTo: redirectTo } });
     setMessage(error ? error.message : "Check your email for the HomeOps sign-in link.");
