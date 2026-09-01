@@ -371,4 +371,6 @@ The internal network now includes vendor create/edit, structured contacts, servi
 
 Maintenance dispatch now queries candidate vendors, evaluates approval state, required credential expiry/rejection, requested service, and blocking owner/property preferences, and returns human-readable exclusion reasons. Assignment continues to write the existing `maintenance_requests.vendor_id`; objective performance fields and subjective ratings remain separate.
 
-Still deferred: public marketplace surfaces, paid placement, automated external credential verification, geographic radius/polygon matching, background expiry scheduling/notifications, document malware scanning, and production Supabase migration/deployment monitoring.
+The follow-up punch list now includes deployable external credential-verification jobs and Edge Function integration, PostGIS radius/polygon coverage, a daily credential-expiry Cron job, and quarantined document scanning that blocks downloads until a clean result. Fresh local Supabase environments apply the complete migration chain and database regression assertions cover radius, polygon, and expiry behavior.
+
+Deployment configuration still required: link the production Supabase project, apply the pending migrations, deploy both Edge Functions, and set the selected credential-verification and malware-scanner endpoint secrets. Public marketplace surfaces and paid placement remain intentionally deferred.

@@ -12,6 +12,8 @@ export async function POST(request: Request) {
     city: body.city,
     state: body.state ?? "UT",
     postal_code: body.postalCode ?? null,
+    latitude: body.latitude ? Number(body.latitude) : null,
+    longitude: body.longitude ? Number(body.longitude) : null,
     monthly_rent_cents: Math.round(Number(body.monthlyRent ?? 0) * 100),
     reserve_balance_cents: Math.round(Number(body.reserveBalance ?? 0) * 100),
     health_status: body.healthStatus ?? "good",
