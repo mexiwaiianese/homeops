@@ -5,6 +5,7 @@ declare
   h uuid := gen_random_uuid();
   v uuid := gen_random_uuid();
   a uuid := gen_random_uuid();
+  mr uuid := gen_random_uuid();
 begin
   select id into o from organizations where slug='homeops-demo-management';
   insert into owners(id,organization_id,full_name) values(ow,o,'Eligibility Test Owner');
@@ -18,6 +19,17 @@ begin
   insert into vendor_credentials(organization_id,vendor_id,credential_type,name,expires_on,verification_status) values(o,v,'license','Expired test',current_date-1,'verified');
   perform refresh_vendor_eligibility(v);
   if not exists(select 1 from vendors where id=v and approval_status='suspended' and workflow_stage='renewal_required') then raise exception 'expiry refresh failed'; end if;
+  insert into maintenance_requests(id,organization_id,home_id,vendor_id,title,status,estimated_cost_cents)
+    values(mr,o,h,v,'Close-out performance test','documented',18900);
+  insert into vendor_performance_events(organization_id,vendor_id,maintenance_request_id,home_id,response_minutes,quoted_amount_cents,callback_required,manager_rating)
+    values(o,v,mr,h,22,18900,false,4.0);
+  begin
+    insert into vendor_performance_events(organization_id,vendor_id,maintenance_request_id,home_id)
+      values(o,v,mr,h);
+    raise exception 'duplicate performance event was allowed';
+  exception when unique_violation then null;
+  end;
+  delete from maintenance_requests where id=mr;
   delete from vendors where id=v;
   delete from homes where id=h;
   delete from owners where id=ow;

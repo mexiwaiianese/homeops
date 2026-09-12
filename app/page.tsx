@@ -24,6 +24,7 @@ export default function HomeOps() {
   const [addingHome, setAddingHome] = useState(false);
   const [toast, setToast] = useState("");
   const [dispatching,setDispatching]=useState<MaintenanceUI|null>(null);
+  const [closing,setClosing]=useState<MaintenanceUI|null>(null);
 
   useEffect(() => {
     fetch("/api/bootstrap")
@@ -58,6 +59,7 @@ export default function HomeOps() {
         const mappedMaintenance: MaintenanceUI[] = (body.maintenance ?? []).map((m: any) => ({
           id: m.id, homeId: m.home_id, title: m.title, tenant: m.tenants?.full_name ?? "Tenant", priority: capitalize(m.priority) as MaintenanceUI["priority"], status: capitalize(m.status) as MaintenanceStatus,
           estimate: (m.estimated_cost_cents ?? 0) / 100, note: m.description || m.diagnosis?.summary || "Awaiting triage notes.",
+          vendorId: m.vendor_id ?? null, vendorName: m.vendors?.name ?? null,
         }));
         if (mappedOwners.length) setOwners(mappedOwners);
         if (mappedHomes.length) { setHomes(mappedHomes); setSelectedHome(mappedHomes[0].id); }
@@ -76,9 +78,28 @@ export default function HomeOps() {
   const collected = tenants.filter((t) => t.balance === 0).length;
   const monthlyRent = homes.reduce((s, h) => s + h.rent, 0);
 
+  const flow: MaintenanceStatus[] = ["Diagnose", "Authorize", "Dispatch", "Scheduled", "Repair", "Invoice", "Documented"];
+
+  async function persistStatus(item: MaintenanceUI, status: MaintenanceStatus, performance?: Record<string, unknown>) {
+    if (backendMode === "live") {
+      const r = await fetch(`/api/maintenance/${item.id}/status`, {
+        method: "PATCH",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({ status, performance }),
+      });
+      const body = await r.json();
+      if (!r.ok) { setToast(body.error || "Could not update maintenance status"); return false; }
+    }
+    setMaintenance((rows) => rows.map((m) => m.id === item.id ? { ...m, status } : m));
+    return true;
+  }
+
   const nextStatus = (id: string) => {
-    const flow: MaintenanceStatus[] = ["Diagnose", "Authorize", "Dispatch", "Scheduled", "Repair", "Invoice", "Documented"];
-    setMaintenance((rows) => rows.map((m) => m.id === id ? { ...m, status: flow[Math.min(flow.indexOf(m.status) + 1, flow.length - 1)] } : m));
+    const current = maintenance.find((m) => m.id === id);
+    if (!current || current.status === "Documented") return;
+    const status = flow[Math.min(flow.indexOf(current.status) + 1, flow.length - 1)];
+    if (status === "Documented") { setClosing(current); return; }
+    void persistStatus(current, status);
   };
 
   async function saveOwnerRules(next: OwnerUI) {
@@ -108,6 +129,7 @@ export default function HomeOps() {
         <div className="brand"><div className="brandMark">H</div><div><strong>HomeOps</strong><span>Rental home OS</span></div></div>
         <nav>{nav.map((item) => <button key={item} className={tab === item ? "nav active" : "nav"} onClick={() => setTab(item)}><span className="dot" />{item}{item === "Today" && attention > 0 && <b>{attention}</b>}</button>)}</nav>
         <a className="nav" href="/financials" style={{textDecoration:"none"}}><span className="dot" />Financials</a>
+        <a className="nav" href="/vendors" style={{textDecoration:"none"}}><span className="dot" />Approved Vendors</a>
         <div className="portfolio"><small>PORTFOLIO</small><strong>{homes.length} homes</strong><span>{money(monthlyRent)} monthly rent</span><span className={`mode ${backendMode}`}>{backendMode === "live" ? "● Supabase live" : backendMode === "demo" ? "○ Demo mode" : backendMode === "auth" ? "Sign-in required" : backendMode === "checking" ? "Checking backend…" : "Backend unavailable"}</span></div>
       </aside>
 
@@ -124,7 +146,8 @@ export default function HomeOps() {
       </section>
       {editingOwner && <OwnerRulesModal owner={editingOwner} onClose={() => setEditingOwner(null)} onSave={saveOwnerRules} />}
       {addingHome && <AddHomeModal owners={owners} onClose={() => setAddingHome(false)} onCreate={createHome} live={backendMode === "live"} />}
-      {dispatching&&<DispatchPicker request={dispatching} mode={backendMode} onClose={()=>setDispatching(null)} onAssigned={()=>{setMaintenance(rows=>rows.map(r=>r.id===dispatching.id?{...r,status:"Dispatch"}:r));setDispatching(null);setToast("Eligible vendor assigned")}}/>}
+      {dispatching&&<DispatchPicker request={dispatching} mode={backendMode} onClose={()=>setDispatching(null)} onAssigned={(vendor)=>{setMaintenance(rows=>rows.map(r=>r.id===dispatching.id?{...r,status:"Dispatch",vendorId:vendor.id,vendorName:vendor.name}:r));setDispatching(null);setToast("Eligible vendor assigned")}}/>}
+      {closing&&<CloseWorkOrderModal request={closing} mode={backendMode} onClose={()=>setClosing(null)} onSave={async (performance)=>{const ok=await persistStatus(closing,"Documented",performance);if(ok){setClosing(null);setToast(closing.vendorName||closing.vendorId?"Work order documented with vendor performance":"Work order documented")}}}/>}
     </main>
   );
 }
@@ -158,7 +181,67 @@ function Owners({ owners, onEdit }: { owners: OwnerUI[]; onEdit: (o:OwnerUI)=>vo
 function Tenants({ tenants }: { tenants: TenantUI[] }) { return <section className="panel tablePanel"><div className="panelHead"><div><p className="eyebrow">TENANCY</p><h2>Tenants & leases</h2></div></div><div className="table tenantTable"><div className="tr head"><span>Tenant</span><span>Home</span><span>Phone</span><span>Rent status</span></div>{tenants.map(t => <div className="tr" key={t.id}><span><strong>{t.name}</strong><small>{t.email}</small></span><span>{t.home}</span><span>{t.phone}</span><span><span className={t.balance ? "rent due" : "rent paid"}>{t.balance ? `${money(t.balance)} due` : "Paid"}</span></span></div>)}</div></section>; }
 function Maintenance({ rows, homes, onAdvance,onDispatch }: { rows: MaintenanceUI[]; homes: HomeUI[]; onAdvance: (id: string) => void;onDispatch:(m:MaintenanceUI)=>void }) { const flow = ["Diagnose","Authorize","Dispatch","Scheduled","Repair","Invoice","Documented"]; return <><section className="panel"><div className="panelHead"><div><p className="eyebrow">FLAGSHIP WORKFLOW</p><h2>Maintenance command center</h2></div><span className="pill">Request → Documented</span></div><div className="flow">{flow.map((s,i)=><div key={s}><b>{i+1}</b><span>{s}</span></div>)}</div></section><section className="panel"><div className="taskList">{rows.map(r => <Task key={r.id} item={r} homes={homes} onAdvance={onAdvance} onDispatch={onDispatch}/>)}</div></section></>; }
 
-function DispatchPicker({request,mode,onClose,onAssigned}:{request:MaintenanceUI;mode:BackendMode;onClose:()=>void;onAssigned:()=>void}){const [rows,setRows]=useState<any[]>([]);const [message,setMessage]=useState("Loading eligibility…");useEffect(()=>{fetch(`/api/maintenance/${request.id}/eligible-vendors`).then(async r=>({ok:r.ok,b:await r.json()})).then(({ok,b})=>{if(!ok){setMessage(b.error||"Could not load vendors");return}setRows(b.vendors||[]);setMessage("")}).catch(()=>setMessage("Could not load vendors"))},[request.id]);async function assign(v:any){if(mode!=="live"){setMessage("Demo mode previews eligibility; connect Supabase to assign.");return}const r=await fetch(`/api/maintenance/${request.id}/dispatch`,{method:"PATCH",headers:{"Content-Type":"application/json"},body:JSON.stringify({vendorId:v.id})});const b=await r.json();if(!r.ok){setMessage((b.reasons||[b.error]).join(" • "));return}onAssigned()}return <div className="modalShade" onMouseDown={onClose}><section className="modal" onMouseDown={e=>e.stopPropagation()}><div className="modalHead"><div><p className="eyebrow">EXPLAINABLE DISPATCH</p><h2>Choose an eligible vendor</h2><p>{request.title}</p></div><button className="closeBtn" onClick={onClose}>×</button></div>{message&&<div className="notice">{message}</div>}<div className="credentialList">{rows.map(v=><div className="credential" key={v.id}><div><strong>{v.name}</strong><span>{v.eligibility.eligible?(v.eligibility.signals.join(" • ")||"Meets approval, credential, service and preference rules"):v.eligibility.reasons.join(" • ")}</span></div><button className={v.eligibility.eligible?"primary":"secondaryBtn"} disabled={!v.eligibility.eligible} onClick={()=>void assign(v)}>{v.eligibility.eligible?"Assign":"Ineligible"}</button></div>)}</div></section></div>}
+function DispatchPicker({request,mode,onClose,onAssigned}:{request:MaintenanceUI;mode:BackendMode;onClose:()=>void;onAssigned:(vendor:{id:string;name:string})=>void}){const [rows,setRows]=useState<any[]>([]);const [message,setMessage]=useState("Loading eligibility…");useEffect(()=>{fetch(`/api/maintenance/${request.id}/eligible-vendors`).then(async r=>({ok:r.ok,b:await r.json()})).then(({ok,b})=>{if(!ok){setMessage(b.error||"Could not load vendors");return}setRows(b.vendors||[]);setMessage("")}).catch(()=>setMessage("Could not load vendors"))},[request.id]);async function assign(v:any){if(mode!=="live"){setMessage("Demo mode previews eligibility; connect Supabase to assign.");return}const r=await fetch(`/api/maintenance/${request.id}/dispatch`,{method:"PATCH",headers:{"Content-Type":"application/json"},body:JSON.stringify({vendorId:v.id})});const b=await r.json();if(!r.ok){setMessage((b.reasons||[b.error]).join(" • "));return}onAssigned({id:v.id,name:v.name})}return <div className="modalShade" onMouseDown={onClose}><section className="modal" onMouseDown={e=>e.stopPropagation()}><div className="modalHead"><div><p className="eyebrow">EXPLAINABLE DISPATCH</p><h2>Choose an eligible vendor</h2><p>{request.title}</p></div><button className="closeBtn" onClick={onClose}>×</button></div>{message&&<div className="notice">{message}</div>}<div className="credentialList">{rows.map(v=><div className="credential" key={v.id}><div><strong>{v.name}</strong><span>{v.eligibility.eligible?(v.eligibility.signals.join(" • ")||"Meets approval, credential, service and preference rules"):v.eligibility.reasons.join(" • ")}</span></div><button className={v.eligibility.eligible?"primary":"secondaryBtn"} disabled={!v.eligibility.eligible} onClick={()=>void assign(v)}>{v.eligibility.eligible?"Assign":"Ineligible"}</button></div>)}</div></section></div>}
+
+function CloseWorkOrderModal({ request, mode, onClose, onSave }: { request: MaintenanceUI; mode: BackendMode; onClose: () => void; onSave: (performance: Record<string, unknown>) => Promise<void> }) {
+  const [form, setForm] = useState({
+    responseMinutes: "",
+    completionMinutes: "",
+    quotedAmount: request.estimate ? String(request.estimate) : "",
+    invoicedAmount: "",
+    callbackRequired: false,
+    tenantRating: "",
+    managerRating: "",
+    documentationQuality: "",
+    notes: "",
+  });
+  const [busy, setBusy] = useState(false);
+  const change = (key: keyof typeof form) => (e: React.ChangeEvent<HTMLInputElement | HTMLTextAreaElement>) => {
+    const value = e.target.type === "checkbox" ? (e.target as HTMLInputElement).checked : e.target.value;
+    setForm((current) => ({ ...current, [key]: value }));
+  };
+  return (
+    <div className="modalShade" onMouseDown={onClose}>
+      <section className="modal vendorEditor" onMouseDown={(e) => e.stopPropagation()}>
+        <div className="modalHead">
+          <div>
+            <p className="eyebrow">WORK ORDER CLOSE</p>
+            <h2>{request.title}</h2>
+            <p>{request.vendorName ? `Vendor: ${request.vendorName}` : "No vendor assigned — close without a performance event."}</p>
+          </div>
+          <button className="closeBtn" onClick={onClose}>×</button>
+        </div>
+        {mode !== "live" && <div className="notice">Demo mode records this locally. Connect Supabase to persist vendor performance.</div>}
+        <p className="summary">Objective job metrics stay separate from subjective ratings. Ratings are optional and never change eligibility or organic ranking.</p>
+        <div className="formGrid">
+          <label>Response minutes<input type="number" min="0" value={form.responseMinutes} onChange={change("responseMinutes")} /></label>
+          <label>Completion minutes<input type="number" min="0" value={form.completionMinutes} onChange={change("completionMinutes")} /></label>
+          <label>Quoted amount ($)<input type="number" min="0" step="0.01" value={form.quotedAmount} onChange={change("quotedAmount")} /></label>
+          <label>Invoiced amount ($)<input type="number" min="0" step="0.01" value={form.invoicedAmount} onChange={change("invoicedAmount")} /></label>
+          <label>Callback / rework required<input type="checkbox" checked={form.callbackRequired} onChange={change("callbackRequired")} /></label>
+          <label>Tenant rating (1–5)<input type="number" min="1" max="5" step="0.1" value={form.tenantRating} onChange={change("tenantRating")} /></label>
+          <label>Manager rating (1–5)<input type="number" min="1" max="5" step="0.1" value={form.managerRating} onChange={change("managerRating")} /></label>
+          <label>Documentation quality (1–5)<input type="number" min="1" max="5" step="0.1" value={form.documentationQuality} onChange={change("documentationQuality")} /></label>
+          <label className="span2">Close-out notes<textarea value={form.notes} onChange={change("notes")} placeholder="Facts about the job, not a blended vendor score." /></label>
+        </div>
+        <div className="modalActions">
+          <button className="secondaryBtn" onClick={onClose}>Cancel</button>
+          <button className="primary" disabled={busy} onClick={() => { setBusy(true); void onSave({
+            responseMinutes: form.responseMinutes,
+            completionMinutes: form.completionMinutes,
+            quotedAmount: form.quotedAmount,
+            invoicedAmount: form.invoicedAmount,
+            callbackRequired: form.callbackRequired,
+            tenantRating: form.tenantRating,
+            managerRating: form.managerRating,
+            documentationQuality: form.documentationQuality,
+            notes: form.notes,
+          }).finally(() => setBusy(false)); }}>{busy ? "Saving…" : "Document work order"}</button>
+        </div>
+      </section>
+    </div>
+  );
+}
 
 function OwnerRulesModal({ owner, onClose, onSave }: { owner: OwnerUI; onClose:()=>void; onSave:(o:OwnerUI)=>void }) {
   const [draft, setDraft] = useState(owner);

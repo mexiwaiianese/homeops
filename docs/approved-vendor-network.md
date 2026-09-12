@@ -1,6 +1,6 @@
 # HomeOps Approved Vendor Network
 
-Status: product design plus Increment 1 implementation.
+Status: product design plus internal Approved Vendor Network implementation through work-order performance capture.
 
 Principle: build a trusted internal vendor operating system first. Add shared network intelligence and monetization only after identity, credentials, approvals, and work history are reliable.
 
@@ -332,13 +332,11 @@ Implemented on feature/approved-vendor-network-mvp:
 - vendor styles appended to app/globals.css
 - this document
 
-Immediate follow-up changes:
-1. Apply migration in connected Supabase environments.
-2. Add Approved Vendors to the primary Operations navigation.
-3. Add CRUD UI/APIs for contacts, services, areas, credentials, and preferences.
-4. Configure private Storage policies before document uploads.
-5. Add scheduled credential refresh.
-6. Wire vendor eligibility into Maintenance → Dispatch.
+Immediate follow-up changes completed on this branch:
+1. Vendor create/edit, contacts, services/areas, credentials, preferences, private documents, eligibility, and dispatch picker.
+2. Approved Vendors added to Operations and Financials navigation.
+3. Work-order close captures a job-level vendor performance event without blending objective metrics and subjective ratings.
+4. Production still requires linking the Supabase project, applying migrations, deploying Edge Functions, and choosing scanner/verification providers.
 
 ## 12. Concrete first implementation increment
 
@@ -358,13 +356,11 @@ Acceptance criteria:
 - No shared marketplace or paid ranking exists.
 
 Next implementation slice:
-1. Vendor create/edit UI backed by current API.
-2. Contacts/services/service-area/credential CRUD.
-3. Private document upload and signed viewing.
-4. Owner/property preference editor.
-5. Eligibility function returning qualified vendors plus explicit exclusion reasons.
-6. Migrate owners.preferred_vendor_name toward structured preferences while retaining backward compatibility.
-7. Add eligible-vendor picker to Maintenance → Dispatch.
+1. Coverage-gap reporting and backup vendor selection.
+2. Capacity/dispatch status.
+3. Production Supabase linking, migration apply, Edge Function deploy, and chosen scanner/verification providers.
+4. Financial transaction to vendor identity reconciliation.
+5. Background expiry notifications beyond the daily eligibility refresh.
 # Implementation status — operations slice (2026-08-31)
 
 The internal network now includes vendor create/edit, structured contacts, services/specialties, postal-code service areas, credentials, owner/property preferences, and private document uploads. Files use the private `vendor-private` bucket, organization-prefixed paths, organization RLS, a 10 MB/type allowlist, and 60-second download URLs. W-9 metadata is explicitly marked sensitive and no public object URL is created.
@@ -372,5 +368,7 @@ The internal network now includes vendor create/edit, structured contacts, servi
 Maintenance dispatch now queries candidate vendors, evaluates approval state, required credential expiry/rejection, requested service, and blocking owner/property preferences, and returns human-readable exclusion reasons. Assignment continues to write the existing `maintenance_requests.vendor_id`; objective performance fields and subjective ratings remain separate.
 
 The follow-up punch list now includes deployable external credential-verification jobs and Edge Function integration, PostGIS radius/polygon coverage, a daily credential-expiry Cron job, and quarantined document scanning that blocks downloads until a clean result. Fresh local Supabase environments apply the complete migration chain and database regression assertions cover radius, polygon, and expiry behavior.
+
+Maintenance close-out now writes a job-level `vendor_performance_events` row when a documented work order has `vendor_id`. Objective fields (response, completion, quote vs invoice, callback) stay separate from subjective ratings. Operations and Financials navigation include Approved Vendors.
 
 Deployment configuration still required: link the production Supabase project, apply the pending migrations, deploy both Edge Functions, and set the selected credential-verification and malware-scanner endpoint secrets. Public marketplace surfaces and paid placement remain intentionally deferred.
