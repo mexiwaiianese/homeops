@@ -3,6 +3,10 @@
 create extension if not exists pgcrypto;
 
 -- ---------- Organizations + staff ----------
+create schema if not exists private;
+revoke all on schema private from public, anon;
+grant usage on schema private to authenticated;
+
 create table if not exists organizations (
   id uuid primary key default gen_random_uuid(),
   name text not null,
@@ -180,6 +184,21 @@ create index if not exists idx_leases_home_status on leases(home_id, status);
 create index if not exists idx_maintenance_home_status on maintenance_requests(home_id, status);
 create index if not exists idx_maintenance_org_status on maintenance_requests(organization_id, status);
 create index if not exists idx_activity_home_created on activity_events(home_id, created_at desc);
+create index if not exists idx_activity_org on activity_events(organization_id);
+create index if not exists idx_home_assets_org on home_assets(organization_id);
+create index if not exists idx_homes_owner on homes(owner_id);
+create index if not exists idx_leases_org on leases(organization_id);
+create index if not exists idx_leases_tenant on leases(tenant_id);
+create index if not exists idx_maintenance_tenant on maintenance_requests(tenant_id);
+create index if not exists idx_maintenance_vendor on maintenance_requests(vendor_id);
+create index if not exists idx_intake_home on maintenance_intake_links(home_id);
+create index if not exists idx_intake_org on maintenance_intake_links(organization_id);
+create index if not exists idx_intake_tenant on maintenance_intake_links(tenant_id);
+create index if not exists idx_owner_rules_org on owner_rules(organization_id);
+create index if not exists idx_owner_rules_owner on owner_rules(owner_id);
+create index if not exists idx_owner_rules_home on owner_rules(home_id);
+create index if not exists idx_tenants_org on tenants(organization_id);
+create index if not exists idx_vendors_org on vendors(organization_id);
 
 -- ---------- RLS ----------
 alter table organizations enable row level security;
@@ -195,7 +214,7 @@ alter table maintenance_requests enable row level security;
 alter table maintenance_intake_links enable row level security;
 alter table activity_events enable row level security;
 
-create or replace function public.is_org_member(org_id uuid)
+create or replace function private.is_org_member(org_id uuid)
 returns boolean language sql stable security definer set search_path = public as $$
   select exists (
     select 1 from organization_members m
@@ -203,7 +222,7 @@ returns boolean language sql stable security definer set search_path = public as
   );
 $$;
 
-create or replace function public.can_manage_org(org_id uuid)
+create or replace function private.can_manage_org(org_id uuid)
 returns boolean language sql stable security definer set search_path = public as $$
   select exists (
     select 1 from organization_members m
@@ -211,6 +230,13 @@ returns boolean language sql stable security definer set search_path = public as
       and m.role in ('owner','admin','manager','staff')
   );
 $$;
+
+-- These helpers run with elevated database privileges for RLS membership checks.
+-- Keep them unavailable to signed-out callers.
+revoke all on function private.is_org_member(uuid) from public, anon;
+revoke all on function private.can_manage_org(uuid) from public, anon;
+grant execute on function private.is_org_member(uuid) to authenticated;
+grant execute on function private.can_manage_org(uuid) to authenticated;
 
 -- Drop/recreate named policies so this file can be rerun during development.
 do $$
@@ -239,28 +265,28 @@ begin
   drop policy if exists "managers write activity" on activity_events;
 end $$;
 
-create policy "org members read organization" on organizations for select using (public.is_org_member(id));
-create policy "members read memberships" on organization_members for select using (public.is_org_member(organization_id));
-create policy "members read owners" on owners for select using (public.is_org_member(organization_id));
-create policy "managers write owners" on owners for all using (public.can_manage_org(organization_id)) with check (public.can_manage_org(organization_id));
-create policy "members read homes" on homes for select using (public.is_org_member(organization_id));
-create policy "managers write homes" on homes for all using (public.can_manage_org(organization_id)) with check (public.can_manage_org(organization_id));
-create policy "members read assets" on home_assets for select using (public.is_org_member(organization_id));
-create policy "managers write assets" on home_assets for all using (public.can_manage_org(organization_id)) with check (public.can_manage_org(organization_id));
-create policy "members read owner rules" on owner_rules for select using (public.is_org_member(organization_id));
-create policy "managers write owner rules" on owner_rules for all using (public.can_manage_org(organization_id)) with check (public.can_manage_org(organization_id));
-create policy "members read tenants" on tenants for select using (public.is_org_member(organization_id));
-create policy "managers write tenants" on tenants for all using (public.can_manage_org(organization_id)) with check (public.can_manage_org(organization_id));
-create policy "members read leases" on leases for select using (public.is_org_member(organization_id));
-create policy "managers write leases" on leases for all using (public.can_manage_org(organization_id)) with check (public.can_manage_org(organization_id));
-create policy "members read vendors" on vendors for select using (public.is_org_member(organization_id));
-create policy "managers write vendors" on vendors for all using (public.can_manage_org(organization_id)) with check (public.can_manage_org(organization_id));
-create policy "members read maintenance" on maintenance_requests for select using (public.is_org_member(organization_id));
-create policy "managers write maintenance" on maintenance_requests for all using (public.can_manage_org(organization_id)) with check (public.can_manage_org(organization_id));
-create policy "members read intake links" on maintenance_intake_links for select using (public.is_org_member(organization_id));
-create policy "managers write intake links" on maintenance_intake_links for all using (public.can_manage_org(organization_id)) with check (public.can_manage_org(organization_id));
-create policy "members read activity" on activity_events for select using (public.is_org_member(organization_id));
-create policy "managers write activity" on activity_events for all using (public.can_manage_org(organization_id)) with check (public.can_manage_org(organization_id));
+create policy "org members read organization" on organizations for select to authenticated using ((select private.is_org_member(id)));
+create policy "members read memberships" on organization_members for select to authenticated using ((select private.is_org_member(organization_id)));
+create policy "members read owners" on owners for select to authenticated using ((select private.is_org_member(organization_id)));
+create policy "managers write owners" on owners for all to authenticated using ((select private.can_manage_org(organization_id))) with check ((select private.can_manage_org(organization_id)));
+create policy "members read homes" on homes for select to authenticated using ((select private.is_org_member(organization_id)));
+create policy "managers write homes" on homes for all to authenticated using ((select private.can_manage_org(organization_id))) with check ((select private.can_manage_org(organization_id)));
+create policy "members read assets" on home_assets for select to authenticated using ((select private.is_org_member(organization_id)));
+create policy "managers write assets" on home_assets for all to authenticated using ((select private.can_manage_org(organization_id))) with check ((select private.can_manage_org(organization_id)));
+create policy "members read owner rules" on owner_rules for select to authenticated using ((select private.is_org_member(organization_id)));
+create policy "managers write owner rules" on owner_rules for all to authenticated using ((select private.can_manage_org(organization_id))) with check ((select private.can_manage_org(organization_id)));
+create policy "members read tenants" on tenants for select to authenticated using ((select private.is_org_member(organization_id)));
+create policy "managers write tenants" on tenants for all to authenticated using ((select private.can_manage_org(organization_id))) with check ((select private.can_manage_org(organization_id)));
+create policy "members read leases" on leases for select to authenticated using ((select private.is_org_member(organization_id)));
+create policy "managers write leases" on leases for all to authenticated using ((select private.can_manage_org(organization_id))) with check ((select private.can_manage_org(organization_id)));
+create policy "members read vendors" on vendors for select to authenticated using ((select private.is_org_member(organization_id)));
+create policy "managers write vendors" on vendors for all to authenticated using ((select private.can_manage_org(organization_id))) with check ((select private.can_manage_org(organization_id)));
+create policy "members read maintenance" on maintenance_requests for select to authenticated using ((select private.is_org_member(organization_id)));
+create policy "managers write maintenance" on maintenance_requests for all to authenticated using ((select private.can_manage_org(organization_id))) with check ((select private.can_manage_org(organization_id)));
+create policy "members read intake links" on maintenance_intake_links for select to authenticated using ((select private.is_org_member(organization_id)));
+create policy "managers write intake links" on maintenance_intake_links for all to authenticated using ((select private.can_manage_org(organization_id))) with check ((select private.can_manage_org(organization_id)));
+create policy "members read activity" on activity_events for select to authenticated using ((select private.is_org_member(organization_id)));
+create policy "managers write activity" on activity_events for all to authenticated using ((select private.can_manage_org(organization_id))) with check ((select private.can_manage_org(organization_id)));
 
 -- ---------- Financial onboarding / QuickBooks staging ----------
 alter table homes add column if not exists property_code text;
@@ -345,6 +371,15 @@ create index if not exists idx_fin_tx_org_date on financial_transactions(organiz
 create index if not exists idx_fin_tx_review on financial_transactions(organization_id, allocation_status);
 create index if not exists idx_fin_tx_home on financial_transactions(property_id, tx_date desc);
 create index if not exists idx_fin_import_org on financial_import_batches(organization_id, created_at desc);
+create index if not exists idx_accounting_connections_org on accounting_connections(organization_id);
+create index if not exists idx_fin_import_connection on financial_import_batches(provider_connection_id);
+create index if not exists idx_fin_import_user on financial_import_batches(imported_by);
+create index if not exists idx_fin_tx_batch on financial_transactions(import_batch_id);
+create index if not exists idx_fin_tx_reviewer on financial_transactions(reviewed_by);
+create index if not exists idx_fin_alloc_org on financial_transaction_allocations(organization_id);
+create index if not exists idx_fin_alloc_tx on financial_transaction_allocations(transaction_id);
+create index if not exists idx_fin_alloc_home on financial_transaction_allocations(home_id);
+create index if not exists idx_property_alias_home on property_source_aliases(home_id);
 
 alter table accounting_connections enable row level security;
 alter table property_source_aliases enable row level security;
@@ -366,13 +401,17 @@ begin
   drop policy if exists "managers write financial allocations" on financial_transaction_allocations;
 end $$;
 
-create policy "members read accounting connections" on accounting_connections for select using (public.is_org_member(organization_id));
-create policy "managers write accounting connections" on accounting_connections for all using (public.can_manage_org(organization_id)) with check (public.can_manage_org(organization_id));
-create policy "members read property aliases" on property_source_aliases for select using (public.is_org_member(organization_id));
-create policy "managers write property aliases" on property_source_aliases for all using (public.can_manage_org(organization_id)) with check (public.can_manage_org(organization_id));
-create policy "members read financial imports" on financial_import_batches for select using (public.is_org_member(organization_id));
-create policy "managers write financial imports" on financial_import_batches for all using (public.can_manage_org(organization_id)) with check (public.can_manage_org(organization_id));
-create policy "members read financial transactions" on financial_transactions for select using (public.is_org_member(organization_id));
-create policy "managers write financial transactions" on financial_transactions for all using (public.can_manage_org(organization_id)) with check (public.can_manage_org(organization_id));
-create policy "members read financial allocations" on financial_transaction_allocations for select using (public.is_org_member(organization_id));
-create policy "managers write financial allocations" on financial_transaction_allocations for all using (public.can_manage_org(organization_id)) with check (public.can_manage_org(organization_id));
+create policy "members read accounting connections" on accounting_connections for select to authenticated using ((select private.is_org_member(organization_id)));
+create policy "managers write accounting connections" on accounting_connections for all to authenticated using ((select private.can_manage_org(organization_id))) with check ((select private.can_manage_org(organization_id)));
+create policy "members read property aliases" on property_source_aliases for select to authenticated using ((select private.is_org_member(organization_id)));
+create policy "managers write property aliases" on property_source_aliases for all to authenticated using ((select private.can_manage_org(organization_id))) with check ((select private.can_manage_org(organization_id)));
+create policy "members read financial imports" on financial_import_batches for select to authenticated using ((select private.is_org_member(organization_id)));
+create policy "managers write financial imports" on financial_import_batches for all to authenticated using ((select private.can_manage_org(organization_id))) with check ((select private.can_manage_org(organization_id)));
+create policy "members read financial transactions" on financial_transactions for select to authenticated using ((select private.is_org_member(organization_id)));
+create policy "managers write financial transactions" on financial_transactions for all to authenticated using ((select private.can_manage_org(organization_id))) with check ((select private.can_manage_org(organization_id)));
+create policy "members read financial allocations" on financial_transaction_allocations for select to authenticated using ((select private.is_org_member(organization_id)));
+create policy "managers write financial allocations" on financial_transaction_allocations for all to authenticated using ((select private.can_manage_org(organization_id))) with check ((select private.can_manage_org(organization_id)));
+
+-- Remove legacy exposed helper functions after all policies reference private helpers.
+drop function if exists public.is_org_member(uuid);
+drop function if exists public.can_manage_org(uuid);
