@@ -68,7 +68,7 @@ export const homes: Home[] = [
 ];
 
 export const initialMaintenance = [
-  { id: "m1", homeId: "h1", title: "No heat", tenant: "Demo Tenant One", priority: "Emergency", status: "Scheduled" as MaintenanceStatus, estimate: 189, note: "Thermostat is powered. Furnace attempts ignition but stops. Demo Heating Co. scheduled 10–12." },
-  { id: "m2", homeId: "h3", title: "Water heater leaking", tenant: "Demo Tenant Three", priority: "High", status: "Authorize" as MaintenanceStatus, estimate: 1247, note: "Tank is 13 years old. Replacement recommended; owner approval required above $250." },
-  { id: "m3", homeId: "h2", title: "Garbage disposal humming", tenant: "Demo Tenant Two", priority: "Normal", status: "Diagnose" as MaintenanceStatus, estimate: 0, note: "Automated troubleshooting sent to tenant. Awaiting reset-button result." },
+  { id: "m1", homeId: "h1", title: "No heat", tenant: "Demo Tenant One", priority: "Emergency", status: "Scheduled" as MaintenanceStatus, estimate: 189, note: "Thermostat is powered. Furnace attempts ignition but stops. Demo Heating Co. scheduled 10–12.", vendorId: "v1", vendorName: "Demo Heating Co." },
+  { id: "m2", homeId: "h3", title: "Water heater leaking", tenant: "Demo Tenant Three", priority: "High", status: "Authorize" as MaintenanceStatus, estimate: 1247, note: "Tank is 13 years old. Replacement recommended; owner approval required above $250.", vendorId: null as string | null, vendorName: null as string | null },
+  { id: "m3", homeId: "h2", title: "Garbage disposal humming", tenant: "Demo Tenant Two", priority: "Normal", status: "Diagnose" as MaintenanceStatus, estimate: 0, note: "Automated troubleshooting sent to tenant. Awaiting reset-button result.", vendorId: null as string | null, vendorName: null as string | null },
 ];

@@ -13,6 +13,9 @@ out/
 # Vercel
 .vercel/
 
+# Local Supabase CLI state
+supabase/.temp/
+
 # TypeScript and test artifacts
 *.tsbuildinfo
 coverage/

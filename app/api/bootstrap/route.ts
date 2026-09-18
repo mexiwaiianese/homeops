@@ -11,7 +11,7 @@ export async function GET() {
     supabase.from("owners").select("*").eq("organization_id", organizationId).order("full_name"),
     supabase.from("homes").select("*, home_assets(*)").eq("organization_id", organizationId).order("address1"),
     supabase.from("leases").select("*, tenants(*)").eq("organization_id", organizationId).eq("status", "active"),
-    supabase.from("maintenance_requests").select("*, homes(address1, city, state), tenants(full_name)").eq("organization_id", organizationId).order("opened_at", { ascending: false }),
+    supabase.from("maintenance_requests").select("*, homes(address1, city, state), tenants(full_name), vendors(name)").eq("organization_id", organizationId).order("opened_at", { ascending: false }),
   ]);
 
   const firstError = ownerRows.error || homeRows.error || tenantRows.error || maintenanceRows.error;
