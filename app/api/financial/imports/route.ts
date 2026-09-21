@@ -25,6 +25,8 @@ export async function POST(req: Request) {
       description:mapping.description ? row[mapping.description] : null, memo:mapping.memo ? row[mapping.memo] : null,
       account_name:mapping.account ? row[mapping.account] : null, qb_class:mapping.qbClass ? row[mapping.qbClass] : null,
       qb_location:mapping.qbLocation ? row[mapping.qbLocation] : null, qb_customer_project:mapping.customerProject ? row[mapping.customerProject] : null,
+      source:"quickbooks_csv",
+      kind: amount.flow_type === "income" ? "rent_income" : "repairs",
       amount_cents:amount.amount_cents, flow_type:amount.flow_type, property_id:match.propertyId,
       allocation_status:match.propertyId ? "matched" : "review", match_confidence:match.confidence, match_reason:match.reason, raw_data:row
     };

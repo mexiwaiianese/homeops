@@ -12,6 +12,8 @@ HomeOps is an operating system for scattered single-family rental homes managed 
 - Owners and executable operating rules
 - Tenants and active lease context
 - Maintenance command center with the full request → diagnose → authorize → dispatch → scheduled → repair → invoice → documented lifecycle
+- Rent collection at `/payments` (charges, pay links, cash/check) and tenant `/pay/[token]` (demo pay without Stripe keys)
+- Property-native books at `/financials`: owner statements, door P&L, vendor bills, tenant ledgers. QuickBooks CSV is optional history import only.
 
 ### Phase 1 backend foundation
 - Supabase Auth with passwordless magic-link login
@@ -90,14 +92,14 @@ A submitted request is written to `maintenance_requests` with status `diagnose` 
 
 ## Deliberately deferred
 
-- ACH/rent payment processing
 - applicant screening
-- MLS/listing syndication
 - renters insurance
-- banking
-- full general ledger
+- banking / bank reconciliation
+- full double-entry general ledger
 - eviction/legal services
 - contractor marketplace
+- Stripe Connect owner payouts (charges collect first; payouts later)
+- 1099 e-file and CPA tax export
 
 ## Next recommended increment
 
@@ -112,45 +114,40 @@ A submitted request is written to `maintenance_requests` with status `diagnose` 
 
 ## Phase 2: Financial onboarding + controller workspace
 
-This build adds the first client-focused financial MVP for a 25-door portfolio.
+HomeOps is now the operating books. The original controller import still exists as a **migration on-ramp** under Books → Bring in old books.
 
-### Included
-- `/financials` controller workspace
-- Flexible QuickBooks CSV import mapping (does **not** assume properties are Classes)
+### Native books
+- Owner money, door P&L, vendor bills, and tenant ledgers at `/financials`
+- Rent collection posts into the same ledger when payment succeeds
+- Insights stay on `financial_transactions`, including native rows and optional historical imports
+
+### Optional QuickBooks history import
+- Flexible CSV mapping (does **not** assume properties are Classes)
 - Mapping support for Date, Vendor/Payee, Description, Amount or Debit/Credit, Account, Class, Location, Customer/Project, and Memo
-- Canonical transaction staging model
-- Automatic property matching using property codes/addresses across mapped QuickBooks dimensions
-- Exception queue for unassigned/low-confidence transactions
-- Controller reassignment to a property or company overhead
-- Bulk transaction assignment
-- Property-level revenue, expense, and NOI snapshot
-- Portfolio-level revenue/expense/NOI summary
-- Database architecture for future QuickBooks Online OAuth/API sync
-- `property_source_aliases` table for learning client-specific QuickBooks property identifiers without hard-coding their accounting setup
+- Automatic property matching using property codes/addresses
+- Exception queue for leftover imported rows
+- `property_source_aliases` for client-specific identifiers
 
-### Recommended client onboarding flow
-1. Import the 25 properties and assign a stable `property_code` to each door.
-2. Export a representative QuickBooks transaction report as CSV.
-3. Open `/financials` and choose **Import QuickBooks export**.
-4. Map the client's existing QuickBooks columns to HomeOps fields.
-5. Import. High-confidence rows are assigned automatically; everything else lands in **Needs review**.
-6. The controller corrects exceptions and validates the property P&Ls.
-7. Add aliases for recurring QuickBooks values as the client's source data conventions become clear.
-8. After the workflow is validated, implement live QuickBooks Online OAuth/sync against the existing `accounting_connections` boundary.
+### Recommended migration flow
+1. Operate from native Books (rent, bills, owner cash).
+2. If you need prior-year history, export a QuickBooks transaction CSV.
+3. Open `/financials` → **Bring in old books** and map columns.
+4. High-confidence rows assign to doors; everything else lands in Insights → Review.
+5. Do not re-import new activity. Enter it in HomeOps.
 
 ### Deliberately deferred
 - Full general ledger / double-entry accounting
 - Bank reconciliation
-- Accounts payable workflows
 - QuickBooks Online OAuth and incremental sync
 - Split transaction editing UI (schema support is present)
 - Tax filing / 1099 generation
+- Stripe Connect owner payouts
 
-QuickBooks remains the accounting system of record; HomeOps is the property-allocation, exception-review, and portfolio-intelligence layer.
+HomeOps is the operating books for owners, managers, and tenants. QuickBooks CSV import is an optional way to load history, not the system of record.
 
 ## Phase 3: Portfolio intelligence
 
-The Financials workspace now turns mapped QuickBooks transactions into decision-ready analysis:
+The Books workspace turns HomeOps cash entries (and optional historical imports) into decision-ready analysis:
 
 - Portfolio revenue, operating expenses, NOI, NOI margin, and company overhead
 - Ranked property profitability with individual property P&Ls and transaction detail
@@ -165,13 +162,57 @@ The Financials workspace now turns mapped QuickBooks transactions into decision-
 
 All analysis is calculated from the canonical financial transaction model. No additional credentials or database tables are required, and Supabase Row Level Security remains the boundary for live organization data.
 
-## Deploy to Vercel
+## Rent collection
 
-This repository uses the standard Next.js structure recognized by Vercel.
+HomeOps owns the charge ledger. Stripe only processes the card or ACH. Paid rent posts into Books.
 
-1. Import the GitHub repository into Vercel.
-2. Deploy without environment variables to review the built-in Demo mode.
-3. For a connected environment, add the values documented in `.env.example` to the Vercel project settings.
-4. Keep `SUPABASE_SERVICE_ROLE_KEY` server-only. Never prefix it with `NEXT_PUBLIC_` or commit it to the repository.
+- `/payments` — manager board: generate this month’s rent, copy tenant pay links, record cash/check, add late fees
+- `/pay/[token]` — tenant page with no HomeOps login. Demo pay works without Stripe keys. Real card/ACH uses Stripe Payment Element when `STRIPE_SECRET_KEY` and `NEXT_PUBLIC_STRIPE_PUBLISHABLE_KEY` are set
+- Webhook: `POST /api/rent/webhooks/stripe`
+- Run `supabase/migrations/20260921200000_rent_charges.sql` before collecting live rent
 
-GitHub Pages is not recommended for this beta because authentication, middleware, and API routes require a server-capable Next.js host.
+## Property-native books
+
+`/financials` is the books workspace, not a QuickBooks clone.
+
+- Owner money: period cash in, operating spend, capex, recorded draws, cash due to each owner
+- Doors: cash P&L from HomeOps entries (rent collected + bills paid)
+- Bills: vendor invoices assigned to a door or company overhead; Mark paid posts the expense
+- Tenants: charge/payment ledger from `/payments`
+- Insights: the existing portfolio intelligence, now sourced from native books
+- Bring in old books: optional QBO CSV for history only
+
+Run `supabase/migrations/20260921210000_property_books.sql` for live orgs.
+
+## Deploy on Laravel Forge
+
+Production should run on your Forge server as a Node daemon, not Vercel. See `docs/forge-deploy.md`.
+
+1. Create a second Forge site (new hostname). Do not replace the Laravel document root.
+2. Point the site at this Git repo. Node 20+.
+3. Add a daemon: `node .next/standalone/server.js` with `HOSTNAME=0.0.0.0` and `PORT=3010`.
+4. Proxy nginx to that port using `deploy/nginx-homeops.conf.example`.
+5. Use `deploy/forge-deploy.sh` as the Forge Deploy Script (`npm ci && npm run build`, then restart the daemon).
+6. Set `NEXT_PUBLIC_APP_URL` to the public hostname. Add Stripe keys only when you are ready to take real payments.
+
+`next.config.ts` uses `output: 'standalone'` so Forge runs a single Node process. GitHub Pages cannot host this app.
+
+Do not import this repo into Vercel for production.
+
+## Rental listing syndication
+
+`/listings` is the source of truth for rental ads. Managers draft a listing from a Home Passport, then publish it onto hosted feeds for:
+
+- Zillow Rental Network (Zillow, Trulia, HotPads) — approved XML/MITS feed
+- Apartments.com and Rent.com — CoStar inbound PMS feed (onboard via feeds@apartments.com)
+- Realtor.com — partner feed
+- Zumper / PadMapper — JSON partner feed
+
+These networks do **not** offer a public self-serve “post a listing” API. HomeOps therefore:
+
+1. Stores the listing once.
+2. Hosts a tokenized pull feed per network (`/api/listings/feed/{network}?token=…`).
+3. Optionally POSTs to a partner push URL if you set it in `.env.local` after they issue one.
+
+Enabling a network does not scrape or email the ILS. It prepares the feed you hand them after they approve HomeOps as a feed partner.
+

@@ -42,6 +42,7 @@ export default function HomeOps() {
   const [jobAutoAssign, setJobAutoAssign] = useState<Record<string, boolean>>({});
   const [auctioning, setAuctioning] = useState<MaintenanceUI | null>(null);
   const [openAuctions, setOpenAuctions] = useState<Record<string, boolean>>({});
+  const [rentSummary, setRentSummary] = useState<{ paidCount: number; dueCount: number; paidCents: number; dueCents: number } | null>(null);
 
   useEffect(() => {
     fetch("/api/bootstrap")
@@ -93,6 +94,10 @@ export default function HomeOps() {
         if (mappedMaintenance.length) setMaintenance(mappedMaintenance);
       })
       .catch(() => setBackendMode("error"));
+    fetch("/api/rent/charges")
+      .then((r) => r.json())
+      .then((body) => { if (body.summary) setRentSummary(body.summary); })
+      .catch(() => {});
   }, []);
 
   useEffect(() => { if (!toast) return; const t = setTimeout(() => setToast(""), 3000); return () => clearTimeout(t); }, [toast]);
@@ -240,7 +245,9 @@ export default function HomeOps() {
             </button>
           ))}
         </nav>
-        <a className="nav" href="/financials" style={{textDecoration:"none"}}><BrandIcon name="rent" className="navIcon" />Financials</a>
+        <a className="nav" href="/listings" style={{textDecoration:"none"}}><BrandIcon name="listing" className="navIcon" />Listings</a>
+        <a className="nav" href="/payments" style={{textDecoration:"none"}}><BrandIcon name="rent" className="navIcon" />Payments</a>
+        <a className="nav" href="/financials" style={{textDecoration:"none"}}><BrandIcon name="rent" className="navIcon" />Books</a>
         <a className="nav" href="/vendors" style={{textDecoration:"none"}}><BrandIcon name="applications" className="navIcon" />Approved Vendors</a>
         <div className="portfolio"><small>PORTFOLIO</small><strong>{homes.length} homes</strong><span>{money(monthlyRent)} monthly rent</span><span className={`mode ${backendMode}`}>{backendMode === "live" ? "● Supabase live" : backendMode === "demo" ? "○ Demo mode" : backendMode === "auth" ? "Sign-in required" : backendMode === "checking" ? "Checking backend…" : "Backend unavailable"}</span></div>
       </aside>
@@ -250,7 +257,7 @@ export default function HomeOps() {
 
         {backendMode === "auth" && <div className="backendBanner"><strong>Supabase is connected.</strong> Sign in to load your organization. The seeded UI remains visible underneath for product review.</div>}
         {backendMode === "demo" && <div className="backendBanner subtle"><strong>Demo mode.</strong> Add `.env.local` Supabase credentials to turn on persistence and authentication.</div>}
-        {tab === "Today" && <Today maintenance={maintenance} onAdvance={nextStatus} onDispatch={setDispatching} onAuction={(item) => { if (openAuctions[item.id]) { setAuctioning(item); return; } void startAuction(item); }} onEndAuction={(item) => void endAuction(item)} collected={collected} homes={homes} tenants={tenants} jobAutoAssign={jobAutoAssign} onToggleAutoAssign={(id, value) => setJobAutoAssign((current) => ({ ...current, [id]: value }))} openAuctions={openAuctions} />}
+        {tab === "Today" && <Today maintenance={maintenance} onAdvance={nextStatus} onDispatch={setDispatching} onAuction={(item) => { if (openAuctions[item.id]) { setAuctioning(item); return; } void startAuction(item); }} onEndAuction={(item) => void endAuction(item)} collected={collected} rentSummary={rentSummary} homes={homes} tenants={tenants} jobAutoAssign={jobAutoAssign} onToggleAutoAssign={(id, value) => setJobAutoAssign((current) => ({ ...current, [id]: value }))} openAuctions={openAuctions} />}
         {tab === "Homes" && home && owner && <Homes homes={homes} selectedHome={selectedHome} setSelectedHome={setSelectedHome} home={home} owner={owner} tenant={tenant} onEditOwner={() => setEditingOwner(owner)} />}
         {tab === "Owners" && <Owners owners={owners} onEdit={setEditingOwner} />}
         {tab === "Tenants" && <Tenants tenants={tenants} />}
@@ -266,11 +273,20 @@ export default function HomeOps() {
   );
 }
 
-function Today({ maintenance, onAdvance,onDispatch,onAuction, onEndAuction, collected, homes, tenants, jobAutoAssign, onToggleAutoAssign, openAuctions }: { maintenance: MaintenanceUI[]; onAdvance: (id: string) => void;onDispatch:(m:MaintenanceUI)=>void; onAuction:(m:MaintenanceUI)=>void; onEndAuction:(m:MaintenanceUI)=>void; collected: number; homes: HomeUI[]; tenants: TenantUI[]; jobAutoAssign: Record<string, boolean>; onToggleAutoAssign: (id: string, value: boolean) => void; openAuctions: Record<string, boolean> }) {
+function Today({ maintenance, onAdvance,onDispatch,onAuction, onEndAuction, collected, rentSummary, homes, tenants, jobAutoAssign, onToggleAutoAssign, openAuctions }: { maintenance: MaintenanceUI[]; onAdvance: (id: string) => void;onDispatch:(m:MaintenanceUI)=>void; onAuction:(m:MaintenanceUI)=>void; onEndAuction:(m:MaintenanceUI)=>void; collected: number; rentSummary: { paidCount: number; dueCount: number; paidCents: number; dueCents: number } | null; homes: HomeUI[]; tenants: TenantUI[]; jobAutoAssign: Record<string, boolean>; onToggleAutoAssign: (id: string, value: boolean) => void; openAuctions: Record<string, boolean> }) {
   return <>
     <div className="stats">
       <Stat icon="maintenance" label="Needs attention" value={`${maintenance.filter(m => m.status !== "Documented").length}`} hint="Operational exceptions" tone="warn" />
-      <Stat icon="rent" label="Rent collected" value={`${collected}/${tenants.length}`} hint={`${money(homes.reduce((s,h)=>s+h.rent,0) - tenants.reduce((s,t)=>s+t.balance,0))} received`} tone="good" />
+      <Stat
+        icon="rent"
+        label="Rent collected"
+        value={rentSummary ? `${rentSummary.paidCount}/${rentSummary.paidCount + rentSummary.dueCount}` : `${collected}/${tenants.length}`}
+        hint={rentSummary
+          ? `${money(rentSummary.paidCents / 100)} collected · Open payments`
+          : `${money(homes.reduce((s,h)=>s+h.rent,0) - tenants.reduce((s,t)=>s+t.balance,0))} received · Open payments`}
+        tone="good"
+        href="/payments"
+      />
       <Stat icon="listing" label="Portfolio health" value={`${Math.round((homes.filter(h=>h.health === "good").length / Math.max(homes.length,1))*100)}%`} hint={`${homes.filter(h=>h.health === "urgent").length} urgent • ${homes.filter(h=>h.health === "watch").length} watch`} tone="good" />
       <Stat icon="applications" label="Owner reserves" value={money(homes.reduce((s,h)=>s+h.reserve,0))} hint={`Across ${homes.length} homes`} tone="neutral" />
     </div>
@@ -279,7 +295,10 @@ function Today({ maintenance, onAdvance,onDispatch,onAuction, onEndAuction, coll
   </>;
 }
 
-function Stat({ icon, label, value, hint, tone }: { icon: "listing" | "applications" | "rent" | "maintenance" | "tenants"; label: string; value: string; hint: string; tone: string }) { return <div className="stat"><BrandIcon name={icon} className="statIcon" title={label} /><span>{label}</span><div className={`statValue ${tone}`}>{value}</div><small>{hint}</small></div>; }
+function Stat({ icon, label, value, hint, tone, href }: { icon: "listing" | "applications" | "rent" | "maintenance" | "tenants"; label: string; value: string; hint: string; tone: string; href?: string }) {
+  const inner = <><BrandIcon name={icon} className="statIcon" title={label} /><span>{label}</span><div className={`statValue ${tone}`}>{value}</div><small>{hint}</small></>;
+  return href ? <a className="stat statLink" href={href}>{inner}</a> : <div className="stat">{inner}</div>;
+}
 function Task({ item, homes, onAdvance, onDispatch, onAuction, onEndAuction, autoAssign, onToggleAutoAssign, auctionOpen }: { item: MaintenanceUI; homes: HomeUI[]; onAdvance: (id: string) => void; onDispatch: (m: MaintenanceUI) => void; onAuction: (m: MaintenanceUI) => void; onEndAuction: (m: MaintenanceUI) => void; autoAssign: boolean; onToggleAutoAssign: (id: string, value: boolean) => void; auctionOpen: boolean }) {
   const h = homes.find((x) => x.id === item.homeId);
   const assigned = Boolean(item.vendorId);
@@ -331,7 +350,8 @@ function Homes({ homes, selectedHome, setSelectedHome, home, owner, tenant, onEd
   return <div className="homeLayout"><section className="panel homeList"><div className="panelHead"><div><p className="eyebrow">HOME PASSPORTS</p><h2>{homes.length} homes</h2></div></div>{homes.map((h) => <button key={h.id} className={selectedHome === h.id ? "homeRow selected" : "homeRow"} onClick={() => setSelectedHome(h.id)}><div><strong>{h.address}</strong><span>{h.city}</span></div><i className={`healthDot ${h.health}`} /></button>)}</section>
     <section className="panel passport"><div className="passportHero"><div><p className="eyebrow">HOME PASSPORT</p><h2>{home.address}</h2><p>{home.city}</p></div><span className={`health ${home.health}`}>{home.health}</span></div><div className="miniStats"><div><span>Owner</span><strong>{owner.name}</strong></div><div><span>Tenant</span><strong>{tenant?.name ?? "Vacant / unassigned"}</strong></div><div><span>Rent</span><strong>{money(home.rent)}</strong></div><div><span>Reserve</span><strong>{money(home.reserve)}</strong></div></div>
       <div className="sectionTitle"><h3>Systems & assets</h3><span>{home.systems.length} recorded</span></div>{home.systems.length ? <div className="systems">{home.systems.map((s) => <div className="system" key={`${s.name}-${s.detail}`}><div><strong>{s.name}</strong><p>{s.detail}</p></div><div><span>{s.age}</span><small>{s.next}</small></div></div>)}</div> : <Empty text="No systems recorded yet. Add HVAC, water heater, appliances, roof, and other durable assets here." />}
-      <div className="sectionTitle"><h3>Operating rules</h3><button className="textBtn" onClick={onEditOwner}>Edit rules</button></div><div className="ruleGrid"><Rule k="Manager authority" v={money(owner.auth)} /><Rule k="Emergency authority" v={money(owner.emergency)} /><Rule k="Minimum reserve" v={money(owner.reserve)} /><Rule k="Preferred vendor" v={owner.preferred} /></div><h3>Access & knowledge</h3>{home.access.length ? <ul className="access">{home.access.map((a) => <li key={a}>{a}</li>)}</ul> : <Empty text="No access notes recorded." />}</section></div>;
+      <div className="sectionTitle"><h3>Operating rules</h3><button className="textBtn" onClick={onEditOwner}>Edit rules</button></div><div className="ruleGrid"><Rule k="Manager authority" v={money(owner.auth)} /><Rule k="Emergency authority" v={money(owner.emergency)} /><Rule k="Minimum reserve" v={money(owner.reserve)} /><Rule k="Preferred vendor" v={owner.preferred} /></div>
+      <div className="sectionTitle"><h3>Rental listing</h3><a className="textBtn" href="/listings">Manage syndication</a></div><p className="summary">Draft the listing in HomeOps, then publish it to Zillow, Apartments.com, Rent.com, and other ILS feeds from the listings desk.</p><h3>Access & knowledge</h3>{home.access.length ? <ul className="access">{home.access.map((a) => <li key={a}>{a}</li>)}</ul> : <Empty text="No access notes recorded." />}</section></div>;
 }
 
 function Rule({ k, v }: { k: string; v: string }) { return <div className="rule"><span>{k}</span><strong>{v}</strong></div>; }

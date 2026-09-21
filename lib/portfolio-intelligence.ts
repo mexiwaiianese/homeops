@@ -100,19 +100,19 @@ export function buildPortfolioIntelligence(homes: IntelligenceHome[], transactio
     duplicateGroups.set(key, [...(duplicateGroups.get(key) || []), row]);
   });
   const duplicateCandidates = [...duplicateGroups.values()].filter(rows => rows.length > 1);
-  if (review.length) insights.push({ severity: "critical", title: `${review.length} transaction${review.length === 1 ? "" : "s"} are not allocated`, detail: "Portfolio and property results are provisional until the controller clears the review queue." });
-  properties.filter(item => item.revenue > 0 && item.noi < 0).forEach(item => insights.push({ severity: "critical", title: `${item.home.address1} is operating at a loss`, detail: `Expenses are ${Math.round(item.expenses / item.revenue * 100)}% of revenue for the imported period.` }));
-  properties.filter(item => item.revenue === 0 && item.expenses > 0).forEach(item => insights.push({ severity: "watch", title: `${item.home.address1} has expenses but no income`, detail: "Check vacancy, missing rent transactions, or property mapping." }));
+  if (review.length) insights.push({ severity: "critical", title: `${review.length} transaction${review.length === 1 ? "" : "s"} are not allocated`, detail: "Door results are provisional until every bill and imported row is assigned to a home or marked overhead." });
+  properties.filter(item => item.revenue > 0 && item.noi < 0).forEach(item => insights.push({ severity: "critical", title: `${item.home.address1} is operating at a loss`, detail: `Expenses are ${Math.round(item.expenses / item.revenue * 100)}% of revenue for this period.` }));
+  properties.filter(item => item.revenue === 0 && item.expenses > 0).forEach(item => insights.push({ severity: "watch", title: `${item.home.address1} has expenses but no income`, detail: "Check vacancy, unpaid rent, or a bill assigned to the wrong door." }));
   const topVendor = vendors[0];
-  if (topVendor && topVendor.share >= .3) insights.push({ severity: "watch", title: `Vendor concentration: ${topVendor.name}`, detail: `${Math.round(topVendor.share * 100)}% of imported expenses are with one vendor. Compare pricing and confirm backup coverage.` });
+  if (topVendor && topVendor.share >= .3) insights.push({ severity: "watch", title: `Vendor concentration: ${topVendor.name}`, detail: `${Math.round(topVendor.share * 100)}% of expenses are with one vendor. Compare pricing and confirm backup coverage.` });
   const uncategorized = categories.find(category => category.name === "Uncategorized");
   if (uncategorized) insights.push({ severity: "watch", title: `${uncategorized.transactions} expense${uncategorized.transactions === 1 ? "" : "s"} lack a service type`, detail: "Categorize these transactions before evaluating vendor performance by trade." });
   duplicateCandidates.forEach(rows => insights.push({ severity: "watch", title: "Possible duplicate transaction", detail: `${rows.length} entries match ${rows[0].vendor_name || "the same vendor"}, date, amount, and flow. Verify before reporting.` }));
-  if (latestMonth && priorMonth && latestMonth.expenses > priorMonth.expenses * 1.5 && latestMonth.expenses - priorMonth.expenses > 50000) insights.push({ severity: "watch", title: "Monthly expense spike", detail: `Expenses increased ${Math.round((latestMonth.expenses / Math.max(priorMonth.expenses, 1) - 1) * 100)}% from the prior imported month.` });
+  if (latestMonth && priorMonth && latestMonth.expenses > priorMonth.expenses * 1.5 && latestMonth.expenses - priorMonth.expenses > 50000) insights.push({ severity: "watch", title: "Monthly expense spike", detail: `Expenses increased ${Math.round((latestMonth.expenses / Math.max(priorMonth.expenses, 1) - 1) * 100)}% from the prior month.` });
   const importedMonths = months.map(month => month.month);
   properties.forEach(item => importedMonths.forEach(month => {
     const hasIncome = item.rows.some(row => row.flow_type === "income" && row.tx_date.startsWith(month));
-    if (!hasIncome && item.rows.some(row => row.tx_date.startsWith(month))) insights.push({ severity: "watch", title: `Missing income: ${item.home.address1}`, detail: `No income is mapped for ${month}, although the property has expense activity. Check vacancy or import mapping.` });
+    if (!hasIncome && item.rows.some(row => row.tx_date.startsWith(month))) insights.push({ severity: "watch", title: `Missing income: ${item.home.address1}`, detail: `No rent or other income is on the books for ${month}, although the door has expenses. Check vacancy or an unpaid charge.` });
   }));
   categories.forEach(category => {
     const categoryVendors = vendors.filter(vendor => vendor.categories.includes(category.name) && vendor.transactions >= 2);
@@ -121,7 +121,7 @@ export function buildPortfolioIntelligence(homes: IntelligenceHome[], transactio
       categoryVendors.filter(vendor => vendor.average > baseline * 1.5).forEach(vendor => insights.push({ severity: "watch", title: `High average invoice: ${vendor.name}`, detail: `${moneyText(vendor.average)} average for ${category.name}, more than 50% above the portfolio vendor average.` }));
     }
   });
-  if (!insights.length) insights.push({ severity: "good", title: "No material exceptions detected", detail: "All imported transactions are allocated and no property-level loss or vendor concentration threshold was triggered." });
+  if (!insights.length) insights.push({ severity: "good", title: "No material exceptions detected", detail: "Charges, bills, and door results are allocated and no property-level loss or vendor concentration threshold was triggered." });
 
   return { revenue, expenses, noi, margin: margin(revenue, noi), overhead, operatingExpenses, capitalExpenses, operatingNoi, review: review.length, properties, categories, vendors, months, latestMonth, priorMonth, duplicateCandidates: duplicateCandidates.length, insights };
 }

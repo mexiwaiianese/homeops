@@ -190,9 +190,17 @@ export default function VendorsPage() {
             <BrandIcon name="listing" className="navIcon" />
             Operations
           </a>
+          <a className="finNav" href="/listings">
+            <BrandIcon name="listing" className="navIcon" />
+            Listings
+          </a>
+          <a className="finNav" href="/payments">
+            <BrandIcon name="rent" className="navIcon" />
+            Payments
+          </a>
           <a className="finNav" href="/financials">
             <BrandIcon name="rent" className="navIcon" />
-            Financials
+            Books
           </a>
           <a className="finNav active" href="/vendors">
             <BrandIcon name="applications" className="navIcon" />
