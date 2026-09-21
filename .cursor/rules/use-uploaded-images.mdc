@@ -1,0 +1,13 @@
+---
+description: Use uploaded logos, icons, and artwork as-is; do not recreate them as vectors
+alwaysApply: true
+---
+
+# Use uploaded images, not vectors
+
+When the user uploads logos, icons, photos, or other artwork, put those files in the product and display them.
+
+- Copy the files into the repo (usually `public/brand/`) and reference them with `<img>` or Next Image.
+- Do not trace, redraw, or "clean up" uploaded images as SVG, icon fonts, CSS drawings, or generated marks unless the user explicitly asks.
+- Do not substitute a vector recreation for a logo, app icon, or UI icon the user provided.
+- Prefer the uploaded lockup/wordmark files on light surfaces. If a file has a baked-in light background, use the uploaded app-icon/mark file on dark chrome rather than redrawing the mark.

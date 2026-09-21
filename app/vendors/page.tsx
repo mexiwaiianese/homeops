@@ -2,6 +2,11 @@
 
 import { useCallback, useEffect, useMemo, useState } from "react";
 import type { VendorApprovalStatus, VendorWorkflowStage } from "@/lib/vendors";
+import { isNetworkAdmin, managerVisibleStatuses } from "@/lib/vendors";
+import BrandLockup from "@/components/brand-lockup";
+import BrandIcon from "@/components/brand-icon";
+import RecruitmentBoard from "./recruitment-board";
+import VendorBiddingPanel from "@/components/vendor-bidding-panel";
 
 type VendorRow = {
   id: string;
@@ -26,6 +31,8 @@ type VendorRow = {
     verification_status: string;
     expires_on?: string | null;
   }>;
+  email?: string | null;
+  phone?: string | null;
   performance?: {
     jobs: number;
     avgResponse: number;
@@ -71,11 +78,13 @@ export default function VendorsPage() {
   const [editing, setEditing] = useState<VendorRow | null | undefined>(
     undefined,
   );
+  const [role, setRole] = useState<string | null>(null);
   const [meta, setMeta] = useState<any>({
     categories: [],
     owners: [],
     homes: [],
   });
+  const networkAdmin = isNetworkAdmin(role);
 
   const load = useCallback(async () => {
     const p = new URLSearchParams();
@@ -88,9 +97,13 @@ export default function VendorsPage() {
       return;
     }
     setMode(body.mode);
-    setVendors(body.vendors ?? []);
+    setRole(body.role ?? (body.mode === "demo" ? "manager" : null));
+    const rows = (body.vendors ?? []) as VendorRow[];
+    const admin = isNetworkAdmin(body.role ?? (body.mode === "demo" ? "manager" : null));
+    const visible = admin ? rows : rows.filter((v) => managerVisibleStatuses.includes(v.approval_status));
+    setVendors(visible);
     setMeta(body.meta ?? { categories: [], owners: [], homes: [] });
-    if (!selected && body.vendors?.[0]) setSelected(body.vendors[0].id);
+    if (!selected && visible[0]) setSelected(visible[0].id);
   }, [q, status, selected]);
   useEffect(() => {
     const t = setTimeout(() => void load(), 250);
@@ -171,21 +184,18 @@ export default function VendorsPage() {
     <main className="vendorShell">
       {toast && <div className="toast">{toast}</div>}
       <aside className="finSide">
-        <a className="brand finBrand" href="/">
-          <div className="brandMark">H</div>
-          <div>
-            <strong>HomeOps</strong>
-            <span>Rental home OS</span>
-          </div>
-        </a>
+        <BrandLockup href="/" className="finBrand" />
         <nav>
           <a className="finNav" href="/">
+            <BrandIcon name="listing" className="navIcon" />
             Operations
           </a>
           <a className="finNav" href="/financials">
+            <BrandIcon name="rent" className="navIcon" />
             Financials
           </a>
           <a className="finNav active" href="/vendors">
+            <BrandIcon name="applications" className="navIcon" />
             Approved Vendors
           </a>
         </nav>
@@ -205,28 +215,39 @@ export default function VendorsPage() {
       <section className="vendorContent">
         <header className="finHeader">
           <div>
-            <p className="eyebrow">APPROVED VENDOR NETWORK</p>
-            <h1>Trusted vendors, before marketplace growth.</h1>
+            <p className="eyebrow">{networkAdmin ? "APPROVED VENDOR NETWORK" : "APPROVED VENDORS"}</p>
+            <h1>{networkAdmin ? "Trusted vendors, before marketplace growth." : "Who can take the work."}</h1>
             <p>
-              Approve, monitor, and route work using structured vendor records,
-              verified credentials, coverage, owner rules, and operational
-              history.
+              {networkAdmin
+                ? "Approve, monitor, and route work using structured vendor records, verified credentials, coverage, owner rules, and operational history."
+                : "Dispatch-ready shops with coverage, credentials, rates, and job history. Network approval and vendor autobid setup stay with the network admin."}
             </p>
           </div>
-          <button
-            className="primary vendorAdd"
-            onClick={() => setEditing(null)}
-          >
-            + Candidate vendor
-          </button>
+          {networkAdmin && (
+            <button
+              className="primary vendorAdd"
+              onClick={() => setEditing(null)}
+            >
+              + Candidate vendor
+            </button>
+          )}
         </header>
         <div className="stats finStats">
           <Stat label="Approved / preferred" value={stats.approved} />
-          <Stat label="Conditional" value={stats.conditional} />
-          <Stat label="Renewal attention" value={stats.renewal} />
+          {networkAdmin ? (
+            <>
+              <Stat label="Conditional" value={stats.conditional} />
+              <Stat label="Renewal attention" value={stats.renewal} />
+            </>
+          ) : (
+            <Stat label="On this list" value={vendors.length} />
+          )}
           <Stat label="Emergency capable" value={stats.emergency} />
         </div>
 
+        {networkAdmin && <RecruitmentBoard />}
+
+        {networkAdmin && (
         <section className="panel">
           <div className="panelHead">
             <div>
@@ -249,6 +270,7 @@ export default function VendorsPage() {
             ))}
           </div>
         </section>
+        )}
 
         <div className="vendorLayout" id="directory">
           <section className="panel vendorListPanel">
@@ -272,8 +294,8 @@ export default function VendorsPage() {
                 <option value="preferred">Preferred</option>
                 <option value="approved">Approved</option>
                 <option value="conditional">Conditional</option>
-                <option value="suspended">Suspended</option>
-                <option value="blocked">Blocked</option>
+                {networkAdmin && <option value="suspended">Suspended</option>}
+                {networkAdmin && <option value="blocked">Blocked</option>}
               </select>
             </div>
             {vendors.map((v) => (
@@ -317,19 +339,28 @@ export default function VendorsPage() {
                     <span className={"vendorStatus " + vendor.approval_status}>
                       {vendor.approval_status}
                     </span>{" "}
-                    <button
-                      className="textBtn"
-                      onClick={() => setEditing(vendor)}
-                    >
-                      Edit & manage
-                    </button>
+                    {networkAdmin && (
+                      <button
+                        className="textBtn"
+                        onClick={() => setEditing(vendor)}
+                      >
+                        Edit & manage
+                      </button>
+                    )}
                   </div>
                 </div>
                 <div className="miniStats vendorMini">
-                  <div>
-                    <span>Workflow</span>
-                    <strong>{stageLabel(vendor.workflow_stage)}</strong>
-                  </div>
+                  {networkAdmin ? (
+                    <div>
+                      <span>Workflow</span>
+                      <strong>{stageLabel(vendor.workflow_stage)}</strong>
+                    </div>
+                  ) : (
+                    <div>
+                      <span>Contact</span>
+                      <strong>{vendor.phone || vendor.email || vendor.vendor_contacts?.[0]?.phone || vendor.vendor_contacts?.[0]?.email || "On file in dispatch"}</strong>
+                    </div>
+                  )}
                   <div>
                     <span>Emergency</span>
                     <strong>
@@ -391,8 +422,9 @@ export default function VendorsPage() {
                     ))
                   ) : (
                     <div className="empty">
-                      No credentials recorded. Approval should remain
-                      conditional until required documents are reviewed.
+                      {networkAdmin
+                        ? "No credentials recorded. Approval should remain conditional until required documents are reviewed."
+                        : "No credentials recorded for this vendor."}
                     </div>
                   )}
                 </div>
@@ -401,18 +433,21 @@ export default function VendorsPage() {
                   <span>Objective ≠ subjective</span>
                 </div>
                 <Scorecard vendor={vendor} />
+                {networkAdmin && <VendorBiddingPanel vendorId={vendor.id} />}
+                {networkAdmin && (
                 <div className="notice">
                   <strong>Ranking integrity:</strong> performance cannot be
                   purchased. Future sponsored placement must remain visually
                   separate and never change this scorecard or organic
                   qualification.
                 </div>
+                )}
               </>
             )}
           </section>
         </div>
       </section>
-      {editing !== undefined && (
+      {networkAdmin && editing !== undefined && (
         <VendorEditor
           vendor={editing}
           mode={mode}

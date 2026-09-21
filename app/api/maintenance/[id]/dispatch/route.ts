@@ -1,5 +1,7 @@
 import { NextResponse } from "next/server";
 import { getAuthedContext } from "@/lib/backend";
+import { ensureLiveJobSite } from "@/lib/vendor-job-live";
+import { jobFieldPath } from "@/lib/vendor-job";
 export async function PATCH(
   request: Request,
   { params }: { params: Promise<{ id: string }> },
@@ -40,12 +42,16 @@ export async function PATCH(
     );
   const { data, error } = await supabase
     .from("maintenance_requests")
-    .update({ vendor_id: vendorId, status: "dispatch" })
+    .update({ vendor_id: vendorId, status: "dispatch", assignment_method: "manual", updated_at: new Date().toISOString() })
     .eq("id", id)
     .eq("organization_id", organizationId)
     .select()
     .single();
-  return error
-    ? NextResponse.json({ error: error.message }, { status: 400 })
-    : NextResponse.json({ maintenance: data, eligibility });
+  if (error) return NextResponse.json({ error: error.message }, { status: 400 });
+  const jobSite = await ensureLiveJobSite({ supabase, organizationId, jobId: id, vendorId });
+  return NextResponse.json({
+    maintenance: data,
+    eligibility,
+    fieldUrl: `${new URL(request.url).origin}${jobFieldPath(jobSite.token)}`,
+  });
 }

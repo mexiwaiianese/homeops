@@ -1,12 +1,13 @@
 import { NextResponse } from "next/server";
 import { getAuthedContext } from "@/lib/backend";
-import { vendorStageOrder, type VendorApprovalStatus, type VendorWorkflowStage } from "@/lib/vendors";
+import { vendorStageOrder, isNetworkAdmin, type VendorApprovalStatus, type VendorWorkflowStage } from "@/lib/vendors";
 
 const allowedStatuses: VendorApprovalStatus[] = ["preferred","approved","conditional","suspended","blocked"];
 
 export async function PATCH(request: Request, { params }: { params: Promise<{ id: string }> }) {
-  const { supabase, user, organizationId } = await getAuthedContext();
+  const { supabase, user, organizationId, role } = await getAuthedContext();
   if (!supabase || !user || !organizationId) return NextResponse.json({ error: "Authentication required" }, { status: 401 });
+  if (!isNetworkAdmin(role)) return NextResponse.json({ error: "Network admin required" }, { status: 403 });
   const { id } = await params;
   const body = await request.json();
 

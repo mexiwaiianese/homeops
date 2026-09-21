@@ -53,13 +53,14 @@ Owner/Admin:
 - Approval/status changes
 - Credential verification
 - Owner/property preferences
+- Recruitment, autobid, and calendar setup
 - Sharing/consent settings in future network phase
 
 Manager:
-- Vendor CRUD
-- Approval/status changes
-- Credential review
-- Preferences and operational settings
+- View dispatch-ready vendors (preferred, approved, conditional)
+- Contact, coverage, rates, credentials status, and performance
+- Assign work and run/award reverse auctions
+- Do not see network approval workflow, recruitment, or vendor autobid/calendar setup
 
 Staff:
 - View vendors
@@ -70,7 +71,7 @@ Staff:
 Viewer:
 - Read-only vendor directory and scorecards
 
-Future vendor users must be separate from organization membership. They may manage only their claimed company/application and must never see private organization notes, internal preference rules, or other vendors.
+Future vendor users must be separate from organization membership. They may manage only their claimed company/application and must never see private organization notes, internal preference rules, or other vendors. Vendor desk login is this persona: awarded jobs and crew links only.
 
 ## 3. Core workflows
 
@@ -106,9 +107,15 @@ Only then apply explainable ranking factors.
 - Every transition is audited.
 
 ### Performance capture
-At work-order close:
-- Response time
-- Completion time
+Response and completion are calculated from system timestamps, not typed in at close:
+- Response: invite/opportunity sent → first vendor view or bid
+- Completion: award/assign → crew departure, or work-order close if they never marked leave
+
+Crews record the visit on a tokenized job link (no login): arrive, confirm the address, photos/video/audio/notes, and leave. That evidence is what close-out uses.
+
+The vendor desk (`/vendors/login`) is a separate persona from organization members. Signing in lists awarded jobs. The crew job link stays public-token so field employees do not need accounts. W-9s, insurance, and tax files stay off this page.
+
+At work-order close, managers still enter:
 - Quote vs invoice
 - Callback/rework
 - Tenant feedback
@@ -133,6 +140,9 @@ New tables:
 - vendor_property_preferences
 - vendor_status_history
 - vendor_performance_events
+- vendor_job_sites
+- vendor_job_logs
+- vendor_users
 
 Future network layer should use a separate canonical identity:
 - network_vendor_entities
@@ -307,7 +317,6 @@ Increment 1 includes:
 Explicitly deferred:
 - Public marketplace
 - Cross-customer sharing
-- Vendor self-service portal
 - Portable reputation
 - Paid leads/bookings
 - Sponsored listings
@@ -353,19 +362,39 @@ Acceptance criteria:
 - No public document exposure is introduced.
 - Status changes are audited.
 - Scorecard distinguishes objective from subjective metrics and exposes sample sufficiency.
-- No shared marketplace or paid ranking exists.
+- Org-scoped reverse auction among eligible approved vendors is available; there is still no public marketplace or paid ranking.
 
 Next implementation slice:
 1. Coverage-gap reporting and backup vendor selection.
-2. Capacity/dispatch status.
+2. Live vendor capacity/dispatch status beyond connected calendar busy blocks.
 3. Production Supabase linking, migration apply, Edge Function deploy, and chosen scanner/verification providers.
 4. Financial transaction to vendor identity reconciliation.
 5. Background expiry notifications beyond the daily eligibility refresh.
+6. Google Calendar OAuth once `GOOGLE_CALENDAR_CLIENT_ID` is configured.
+
+# Implementation status — recruitment slice (2026-09-18)
+
+The internal network can now locate local home-service providers from Google Places when `GOOGLE_PLACES_API_KEY` is configured, or from a demo catalog otherwise. Listings are grouped into the existing service categories. Recruitment ranking prefers owner-operators: scaled/franchise names are skipped, and the independent-fit curve peaks around 25–90 public reviews (auto-invite defaults: rating 4.4+, 8–250 reviews). A volume-based public-review score is still stored on `vendor_prospects` only. Neither score is written to `vendor_performance_events`, and neither changes dispatch eligibility.
+
+Managers can run discovery or a combined find-and-invite pass. Invitations go out by email and/or SMS when Resend/Twilio are configured; otherwise a private registration link is generated. The vendor opens `/vendors/join/[token]`, submits company and contact details (no W-9 or insurance uploads), and receives an on-page confirmation that registration was recorded. When email or SMS is configured, a confirmation is also sent to the contact they submitted. The vendor shell moves to `application_submitted` and still requires credential review before approval.
+
+Deployment configuration still required: link the production Supabase project, apply the pending migrations, deploy both Edge Functions, choose malware-scanner and credential-verification providers, and optionally set Places/Resend/Twilio keys. Public marketplace surfaces and paid placement remain intentionally deferred.
+
 # Implementation status — operations slice (2026-08-31)
 
 The internal network now includes vendor create/edit, structured contacts, services/specialties, postal-code service areas, credentials, owner/property preferences, and private document uploads. Files use the private `vendor-private` bucket, organization-prefixed paths, organization RLS, a 10 MB/type allowlist, and 60-second download URLs. W-9 metadata is explicitly marked sensitive and no public object URL is created.
 
-Maintenance dispatch now queries candidate vendors, evaluates approval state, required credential expiry/rejection, requested service, and blocking owner/property preferences, and returns human-readable exclusion reasons. Assignment continues to write the existing `maintenance_requests.vendor_id`; objective performance fields and subjective ratings remain separate.
+Maintenance dispatch now queries candidate vendors, evaluates approval state, required credential expiry/rejection, requested service, geographic coverage, and blocking owner/property preferences, and returns human-readable exclusion reasons. Assignment continues to write the existing `maintenance_requests.vendor_id`; objective performance fields and subjective ratings remain separate.
+
+Managers can still pick a vendor by hand or auto-assign after approving a job budget. The default path is an org-scoped reverse auction: eligible approved vendors receive a private email/SMS link, can bid or autobid, and the manager awards a bid. Autobid is blocked until a service calendar is connected and has an open slot for the manager’s needed-by time. Public-review recruitment scores and paid placement never enter this pick. This is not a public marketplace listing.
+
+# Implementation status — reverse auction (2026-09-21)
+
+When a manager approves a job (with or without a budget), HomeOps opens a private reverse auction among currently eligible approved vendors. Each invite is a unique tokenized page at `/vendors/bid/[token]`. Email is attempted first, then SMS, when Resend/Twilio are configured; otherwise the bid link is generated for the manager to copy. The public bid page shows the leading amount, not competitor names, and never accepts W-9s or insurance uploads.
+
+Vendors can bid manually or enable autobid with a floor, ceiling, undercut, and notice window. Autobid is refused until a service calendar is connected and has an open slot covering the manager’s needed-by time. Google Calendar OAuth is not invented when `GOOGLE_CALENDAR_CLIENT_ID` is unset; the demo connect button stores a connected calendar with empty busy blocks. Always-on auto-assign in Settings still skips the auction. Award writes `maintenance_requests.vendor_id` with `assignment_method = auction` and moves the job to dispatch. The manager may award any active bid, not only the lowest.
+
+Deployment configuration still required: link the production Supabase project, apply the pending auction migration, and optionally set Resend/Twilio. Public marketplace listings and paid ranking remain deferred.
 
 The follow-up punch list now includes deployable external credential-verification jobs and Edge Function integration, PostGIS radius/polygon coverage, a daily credential-expiry Cron job, and quarantined document scanning that blocks downloads until a clean result. Fresh local Supabase environments apply the complete migration chain and database regression assertions cover radius, polygon, and expiry behavior.
 

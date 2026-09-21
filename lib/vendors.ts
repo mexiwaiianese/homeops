@@ -10,6 +10,12 @@ export type VendorWorkflowStage =
 
 export type VendorApprovalStatus = "preferred" | "approved" | "conditional" | "suspended" | "blocked";
 
+export const managerVisibleStatuses: VendorApprovalStatus[] = ["preferred", "approved", "conditional"];
+
+export function isNetworkAdmin(role?: string | null) {
+  return role === "owner" || role === "admin";
+}
+
 export const vendorStageOrder: VendorWorkflowStage[] = [
   "candidate",
   "invited",

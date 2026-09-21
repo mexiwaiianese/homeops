@@ -1,10 +1,22 @@
 "use client";
 
 import { useEffect, useState } from "react";
+import BrandLockup from "@/components/brand-lockup";
+import BrandIcon from "@/components/brand-icon";
 import { homes as seedHomes, initialMaintenance, owners as seedOwners, tenants as seedTenants, type MaintenanceStatus } from "@/lib/data";
+import { parseOrgSettings } from "@/lib/org-settings";
+import SettingsModal from "@/components/settings-modal";
+import AuctionBoard from "@/components/auction-board";
 
 const money = (v: number) => new Intl.NumberFormat("en-US", { style: "currency", currency: "USD", maximumFractionDigits: 0 }).format(v);
 const nav = ["Today", "Homes", "Owners", "Tenants", "Maintenance"] as const;
+const navIcons = {
+  Today: "applications",
+  Homes: "listing",
+  Owners: "applications",
+  Tenants: "tenants",
+  Maintenance: "maintenance",
+} as const;
 type Tab = (typeof nav)[number];
 type OwnerUI = (typeof seedOwners)[number];
 type HomeUI = (typeof seedHomes)[number];
@@ -25,6 +37,11 @@ export default function HomeOps() {
   const [toast, setToast] = useState("");
   const [dispatching,setDispatching]=useState<MaintenanceUI|null>(null);
   const [closing,setClosing]=useState<MaintenanceUI|null>(null);
+  const [settingsOpen, setSettingsOpen] = useState(false);
+  const [autoAssignAlwaysOn, setAutoAssignAlwaysOn] = useState(false);
+  const [jobAutoAssign, setJobAutoAssign] = useState<Record<string, boolean>>({});
+  const [auctioning, setAuctioning] = useState<MaintenanceUI | null>(null);
+  const [openAuctions, setOpenAuctions] = useState<Record<string, boolean>>({});
 
   useEffect(() => {
     fetch("/api/bootstrap")
@@ -32,8 +49,15 @@ export default function HomeOps() {
       .then(({ ok, status, body }) => {
         if (status === 401) { setBackendMode("auth"); return; }
         if (!ok) { setBackendMode("error"); return; }
-        if (body.mode === "demo") { setBackendMode("demo"); return; }
+        if (body.mode === "demo") {
+          const demoSettings = parseOrgSettings(body.settings);
+          setBackendMode("demo");
+          setAutoAssignAlwaysOn(demoSettings.autoAssignAlwaysOn);
+          setJobAutoAssign(Object.fromEntries(initialMaintenance.map((row) => [row.id, demoSettings.autoAssignAlwaysOn])));
+          return;
+        }
         setBackendMode("live");
+        const liveSettings = parseOrgSettings(body.settings);
         const mappedOwners: OwnerUI[] = (body.owners ?? []).map((o: any) => ({
           id: o.id, name: o.full_name, email: o.email ?? "", homes: (body.homes ?? []).filter((h: any) => h.owner_id === o.id).length,
           auth: (o.maintenance_authority_cents ?? 0) / 100, emergency: (o.emergency_authority_cents ?? 0) / 100,
@@ -61,6 +85,8 @@ export default function HomeOps() {
           estimate: (m.estimated_cost_cents ?? 0) / 100, note: m.description || m.diagnosis?.summary || "Awaiting triage notes.",
           vendorId: m.vendor_id ?? null, vendorName: m.vendors?.name ?? null,
         }));
+        setAutoAssignAlwaysOn(liveSettings.autoAssignAlwaysOn);
+        setJobAutoAssign(Object.fromEntries(mappedMaintenance.map((row: MaintenanceUI) => [row.id, Boolean(row.vendorId) ? false : liveSettings.autoAssignAlwaysOn])));
         if (mappedOwners.length) setOwners(mappedOwners);
         if (mappedHomes.length) { setHomes(mappedHomes); setSelectedHome(mappedHomes[0].id); }
         if (mappedTenants.length) setTenants(mappedTenants);
@@ -81,7 +107,7 @@ export default function HomeOps() {
   const flow: MaintenanceStatus[] = ["Diagnose", "Authorize", "Dispatch", "Scheduled", "Repair", "Invoice", "Documented"];
 
   async function persistStatus(item: MaintenanceUI, status: MaintenanceStatus, performance?: Record<string, unknown>) {
-    if (backendMode === "live") {
+    if (backendMode === "live" || backendMode === "demo") {
       const r = await fetch(`/api/maintenance/${item.id}/status`, {
         method: "PATCH",
         headers: { "Content-Type": "application/json" },
@@ -99,8 +125,87 @@ export default function HomeOps() {
     if (!current || current.status === "Documented") return;
     const status = flow[Math.min(flow.indexOf(current.status) + 1, flow.length - 1)];
     if (status === "Documented") { setClosing(current); return; }
+    if (current.status === "Authorize" && jobAutoAssign[current.id] && !current.vendorId) {
+      void autoAssign(current);
+      return;
+    }
+    if (current.status === "Authorize" && !current.vendorId) {
+      if (openAuctions[current.id]) {
+        void endAuction(current);
+        return;
+      }
+      void startAuction(current);
+      return;
+    }
     void persistStatus(current, status);
   };
+
+  async function startAuction(item: MaintenanceUI) {
+    const response = await fetch(`/api/maintenance/${item.id}/auction`, {
+      method: "POST",
+      headers: { "Content-Type": "application/json" },
+      body: JSON.stringify({
+        budgetCents: item.estimate ? Math.round(item.estimate * 100) : null,
+      }),
+    });
+    const body = await response.json();
+    if (!response.ok) { setToast(body.error || "Could not open auction"); return; }
+    setOpenAuctions((current) => ({ ...current, [item.id]: true }));
+    setAuctioning(item);
+    setToast(body.message || `Auction opened for ${body.invited ?? "eligible"} vendors`);
+  }
+
+  async function endAuction(item: MaintenanceUI) {
+    const response = await fetch(`/api/maintenance/${item.id}/auction`, { method: "DELETE" });
+    const body = await response.json();
+    if (!response.ok) { setToast(body.error || "Could not end auction"); return; }
+    setOpenAuctions((current) => ({ ...current, [item.id]: false }));
+    if (auctioning?.id === item.id) setAuctioning(null);
+    setToast("Auction ended without an award");
+  }
+
+  async function autoAssign(item: MaintenanceUI) {
+    const response = await fetch(`/api/maintenance/${item.id}/auto-assign`, {
+      method: "POST",
+      headers: { "Content-Type": "application/json" },
+      body: JSON.stringify({ budgetCents: Math.round((item.estimate || 0) * 100) }),
+    });
+    const body = await response.json();
+    if (!response.ok) {
+      setToast(body.error || "Could not auto-assign a vendor");
+      setDispatching(item);
+      return;
+    }
+    setMaintenance((rows) => rows.map((row) => row.id === item.id ? {
+      ...row,
+      status: "Dispatch",
+      vendorId: body.vendor?.id ?? row.vendorId,
+      vendorName: body.vendor?.name ?? row.vendorName,
+    } : row));
+    setToast(body.vendor?.name ? `Auto-assigned ${body.vendor.name}` : "Vendor auto-assigned");
+  }
+
+  async function saveSettings(next: { autoAssignAlwaysOn: boolean }) {
+    const response = await fetch("/api/settings", {
+      method: "PATCH",
+      headers: { "Content-Type": "application/json" },
+      body: JSON.stringify(next),
+    });
+    const body = await response.json();
+    if (!response.ok) throw new Error(body.error || "Could not save settings");
+    const settings = parseOrgSettings(body.settings);
+    setAutoAssignAlwaysOn(settings.autoAssignAlwaysOn);
+    setJobAutoAssign((current) => {
+      const nextMap = { ...current };
+      for (const row of maintenance) {
+        if (!row.vendorId && (row.status === "Diagnose" || row.status === "Authorize")) {
+          nextMap[row.id] = settings.autoAssignAlwaysOn;
+        }
+      }
+      return nextMap;
+    });
+    setToast(settings.autoAssignAlwaysOn ? "Auto-assign is always on" : "Auto-assign is opt-in per job");
+  }
 
   async function saveOwnerRules(next: OwnerUI) {
     if (backendMode === "live") {
@@ -126,47 +231,100 @@ export default function HomeOps() {
     <main className="shell">
       {toast && <div className="toast">{toast}</div>}
       <aside className="sidebar">
-        <div className="brand"><div className="brandMark">H</div><div><strong>HomeOps</strong><span>Rental home OS</span></div></div>
-        <nav>{nav.map((item) => <button key={item} className={tab === item ? "nav active" : "nav"} onClick={() => setTab(item)}><span className="dot" />{item}{item === "Today" && attention > 0 && <b>{attention}</b>}</button>)}</nav>
-        <a className="nav" href="/financials" style={{textDecoration:"none"}}><span className="dot" />Financials</a>
-        <a className="nav" href="/vendors" style={{textDecoration:"none"}}><span className="dot" />Approved Vendors</a>
+        <BrandLockup />
+        <nav>
+          {nav.map((item) => (
+            <button key={item} className={tab === item ? "nav active" : "nav"} onClick={() => setTab(item)}>
+              <BrandIcon name={navIcons[item]} className="navIcon" />
+              {item}{item === "Today" && attention > 0 && <b>{attention}</b>}
+            </button>
+          ))}
+        </nav>
+        <a className="nav" href="/financials" style={{textDecoration:"none"}}><BrandIcon name="rent" className="navIcon" />Financials</a>
+        <a className="nav" href="/vendors" style={{textDecoration:"none"}}><BrandIcon name="applications" className="navIcon" />Approved Vendors</a>
         <div className="portfolio"><small>PORTFOLIO</small><strong>{homes.length} homes</strong><span>{money(monthlyRent)} monthly rent</span><span className={`mode ${backendMode}`}>{backendMode === "live" ? "● Supabase live" : backendMode === "demo" ? "○ Demo mode" : backendMode === "auth" ? "Sign-in required" : backendMode === "checking" ? "Checking backend…" : "Backend unavailable"}</span></div>
       </aside>
 
       <section className="content">
-        <header><div><p className="eyebrow">HOME OPERATIONS</p><h1>{tab === "Today" ? "Good evening." : tab}</h1></div><div className="headerActions">{backendMode === "auth" && <a className="secondaryBtn" href="/login">Sign in</a>}<button className="primary" onClick={() => setAddingHome(true)}>+ Add home</button></div></header>
+        <header><div><p className="eyebrow">HOME OPERATIONS</p><h1>{tab === "Today" ? "Good evening." : tab}</h1></div><div className="headerActions">{backendMode === "auth" && <a className="secondaryBtn" href="/login">Sign in</a>}<button className="secondaryBtn" onClick={() => setSettingsOpen(true)}>Settings</button><button className="primary" onClick={() => setAddingHome(true)}>+ Add home</button></div></header>
 
         {backendMode === "auth" && <div className="backendBanner"><strong>Supabase is connected.</strong> Sign in to load your organization. The seeded UI remains visible underneath for product review.</div>}
         {backendMode === "demo" && <div className="backendBanner subtle"><strong>Demo mode.</strong> Add `.env.local` Supabase credentials to turn on persistence and authentication.</div>}
-        {tab === "Today" && <Today maintenance={maintenance} onAdvance={nextStatus} onDispatch={setDispatching} collected={collected} homes={homes} tenants={tenants} />}
+        {tab === "Today" && <Today maintenance={maintenance} onAdvance={nextStatus} onDispatch={setDispatching} onAuction={(item) => { if (openAuctions[item.id]) { setAuctioning(item); return; } void startAuction(item); }} onEndAuction={(item) => void endAuction(item)} collected={collected} homes={homes} tenants={tenants} jobAutoAssign={jobAutoAssign} onToggleAutoAssign={(id, value) => setJobAutoAssign((current) => ({ ...current, [id]: value }))} openAuctions={openAuctions} />}
         {tab === "Homes" && home && owner && <Homes homes={homes} selectedHome={selectedHome} setSelectedHome={setSelectedHome} home={home} owner={owner} tenant={tenant} onEditOwner={() => setEditingOwner(owner)} />}
         {tab === "Owners" && <Owners owners={owners} onEdit={setEditingOwner} />}
         {tab === "Tenants" && <Tenants tenants={tenants} />}
-        {tab === "Maintenance" && <Maintenance rows={maintenance} homes={homes} onAdvance={nextStatus} onDispatch={setDispatching} />}
+        {tab === "Maintenance" && <Maintenance rows={maintenance} homes={homes} onAdvance={nextStatus} onDispatch={setDispatching} onAuction={(item) => { if (openAuctions[item.id]) { setAuctioning(item); return; } void startAuction(item); }} onEndAuction={(item) => void endAuction(item)} jobAutoAssign={jobAutoAssign} onToggleAutoAssign={(id, value) => setJobAutoAssign((current) => ({ ...current, [id]: value }))} openAuctions={openAuctions} />}
       </section>
+      {settingsOpen && <SettingsModal alwaysOn={autoAssignAlwaysOn} onClose={() => setSettingsOpen(false)} onSave={saveSettings} />}
       {editingOwner && <OwnerRulesModal owner={editingOwner} onClose={() => setEditingOwner(null)} onSave={saveOwnerRules} />}
       {addingHome && <AddHomeModal owners={owners} onClose={() => setAddingHome(false)} onCreate={createHome} live={backendMode === "live"} />}
+      {auctioning && <AuctionBoard requestId={auctioning.id} title={auctioning.title} onClose={() => setAuctioning(null)} onAwarded={(vendor) => { setMaintenance((rows) => rows.map((row) => row.id === auctioning.id ? { ...row, status: "Dispatch", vendorId: vendor.id, vendorName: vendor.name } : row)); setOpenAuctions((current) => ({ ...current, [auctioning.id]: false })); setAuctioning(null); setToast(`Awarded to ${vendor.name}`); }} />}
       {dispatching&&<DispatchPicker request={dispatching} mode={backendMode} onClose={()=>setDispatching(null)} onAssigned={(vendor)=>{setMaintenance(rows=>rows.map(r=>r.id===dispatching.id?{...r,status:"Dispatch",vendorId:vendor.id,vendorName:vendor.name}:r));setDispatching(null);setToast("Eligible vendor assigned")}}/>}
       {closing&&<CloseWorkOrderModal request={closing} mode={backendMode} onClose={()=>setClosing(null)} onSave={async (performance)=>{const ok=await persistStatus(closing,"Documented",performance);if(ok){setClosing(null);setToast(closing.vendorName||closing.vendorId?"Work order documented with vendor performance":"Work order documented")}}}/>}
     </main>
   );
 }
 
-function Today({ maintenance, onAdvance,onDispatch, collected, homes, tenants }: { maintenance: MaintenanceUI[]; onAdvance: (id: string) => void;onDispatch:(m:MaintenanceUI)=>void; collected: number; homes: HomeUI[]; tenants: TenantUI[] }) {
+function Today({ maintenance, onAdvance,onDispatch,onAuction, onEndAuction, collected, homes, tenants, jobAutoAssign, onToggleAutoAssign, openAuctions }: { maintenance: MaintenanceUI[]; onAdvance: (id: string) => void;onDispatch:(m:MaintenanceUI)=>void; onAuction:(m:MaintenanceUI)=>void; onEndAuction:(m:MaintenanceUI)=>void; collected: number; homes: HomeUI[]; tenants: TenantUI[]; jobAutoAssign: Record<string, boolean>; onToggleAutoAssign: (id: string, value: boolean) => void; openAuctions: Record<string, boolean> }) {
   return <>
     <div className="stats">
-      <Stat label="Needs attention" value={`${maintenance.filter(m => m.status !== "Documented").length}`} hint="Operational exceptions" tone="warn" />
-      <Stat label="Rent collected" value={`${collected}/${tenants.length}`} hint={`${money(homes.reduce((s,h)=>s+h.rent,0) - tenants.reduce((s,t)=>s+t.balance,0))} received`} tone="good" />
-      <Stat label="Portfolio health" value={`${Math.round((homes.filter(h=>h.health === "good").length / Math.max(homes.length,1))*100)}%`} hint={`${homes.filter(h=>h.health === "urgent").length} urgent • ${homes.filter(h=>h.health === "watch").length} watch`} tone="good" />
-      <Stat label="Owner reserves" value={money(homes.reduce((s,h)=>s+h.reserve,0))} hint={`Across ${homes.length} homes`} tone="neutral" />
+      <Stat icon="maintenance" label="Needs attention" value={`${maintenance.filter(m => m.status !== "Documented").length}`} hint="Operational exceptions" tone="warn" />
+      <Stat icon="rent" label="Rent collected" value={`${collected}/${tenants.length}`} hint={`${money(homes.reduce((s,h)=>s+h.rent,0) - tenants.reduce((s,t)=>s+t.balance,0))} received`} tone="good" />
+      <Stat icon="listing" label="Portfolio health" value={`${Math.round((homes.filter(h=>h.health === "good").length / Math.max(homes.length,1))*100)}%`} hint={`${homes.filter(h=>h.health === "urgent").length} urgent • ${homes.filter(h=>h.health === "watch").length} watch`} tone="good" />
+      <Stat icon="applications" label="Owner reserves" value={money(homes.reduce((s,h)=>s+h.reserve,0))} hint={`Across ${homes.length} homes`} tone="neutral" />
     </div>
-    <section className="panel"><div className="panelHead"><div><p className="eyebrow">OPERATIONS INBOX</p><h2>What needs you</h2></div><span className="pill">Manage by exception</span></div><div className="taskList">{maintenance.length ? maintenance.map((m) => <Task key={m.id} item={m} homes={homes} onAdvance={onAdvance} onDispatch={onDispatch}/>) : <Empty text="No open maintenance requests." />}</div></section>
+    <section className="panel"><div className="panelHead"><div><p className="eyebrow">OPERATIONS INBOX</p><h2>What needs you</h2></div><span className="pill">Manage by exception</span></div><div className="taskList">{maintenance.length ? maintenance.map((m) => <Task key={m.id} item={m} homes={homes} onAdvance={onAdvance} onDispatch={onDispatch} onAuction={onAuction} onEndAuction={onEndAuction} autoAssign={Boolean(jobAutoAssign[m.id])} onToggleAutoAssign={onToggleAutoAssign} auctionOpen={Boolean(openAuctions[m.id])}/>) : <Empty text="No open maintenance requests." />}</div></section>
     <div className="twoCol"><section className="panel"><div className="panelHead"><div><p className="eyebrow">UPCOMING</p><h2>Next 90 days</h2></div></div><Timeline date="SEP 12" title="HVAC service" sub="487 Canyon View • Lennox ML180" /><Timeline date="OCT 18" title="Lease renewal" sub="487 Canyon View • Suggested rent $2,310" /><Timeline date="OCT 28" title="Sprinkler winterization" sub="3 homes due" /></section><section className="panel ownerDigest"><div className="panelHead"><div><p className="eyebrow">OWNER DIGEST</p><h2>Property health summary</h2></div><span className="health urgent">Exception</span></div><div className="ownerNumbers"><div><span>Open requests</span><strong>{maintenance.filter(m=>m.status!=="Documented").length}</strong></div><div><span>Urgent homes</span><strong>{homes.filter(h=>h.health==="urgent").length}</strong></div><div><span>Portfolio reserves</span><strong>{money(homes.reduce((s,h)=>s+h.reserve,0))}</strong></div></div><p className="summary">HomeOps converts each operational event into a permanent property record so owners see what happened, why it happened, and what required approval.</p></section></div>
   </>;
 }
 
-function Stat({ label, value, hint, tone }: { label: string; value: string; hint: string; tone: string }) { return <div className="stat"><span>{label}</span><div className={`statValue ${tone}`}>{value}</div><small>{hint}</small></div>; }
-function Task({ item, homes, onAdvance,onDispatch }: { item: MaintenanceUI; homes: HomeUI[]; onAdvance: (id: string) => void;onDispatch:(m:MaintenanceUI)=>void }) { const h = homes.find((x) => x.id === item.homeId); return <div className="task"><div className={`severity ${item.priority.toLowerCase()}`} /><div className="taskMain"><div className="taskTitle"><strong>{item.title}</strong><span className={`tag ${item.priority.toLowerCase()}`}>{item.priority}</span></div><p>{h?.address ?? "Home"} • {item.tenant}</p><small>{item.note}</small></div><div className="taskAction"><span>{item.status}</span>{item.estimate > 0 && <strong>{money(item.estimate)}</strong>}{["Authorize","Dispatch"].includes(item.status)&&<button onClick={()=>onDispatch(item)}>Choose vendor</button>}<button onClick={() => onAdvance(item.id)} disabled={item.status === "Documented"}>{item.status === "Authorize" ? "Approve & continue" : item.status === "Documented" ? "Complete" : "Advance"}</button></div></div>; }
+function Stat({ icon, label, value, hint, tone }: { icon: "listing" | "applications" | "rent" | "maintenance" | "tenants"; label: string; value: string; hint: string; tone: string }) { return <div className="stat"><BrandIcon name={icon} className="statIcon" title={label} /><span>{label}</span><div className={`statValue ${tone}`}>{value}</div><small>{hint}</small></div>; }
+function Task({ item, homes, onAdvance, onDispatch, onAuction, onEndAuction, autoAssign, onToggleAutoAssign, auctionOpen }: { item: MaintenanceUI; homes: HomeUI[]; onAdvance: (id: string) => void; onDispatch: (m: MaintenanceUI) => void; onAuction: (m: MaintenanceUI) => void; onEndAuction: (m: MaintenanceUI) => void; autoAssign: boolean; onToggleAutoAssign: (id: string, value: boolean) => void; auctionOpen: boolean }) {
+  const h = homes.find((x) => x.id === item.homeId);
+  const assigned = Boolean(item.vendorId);
+  const bidding = auctionOpen && !assigned && item.status === "Authorize";
+  const statusLabel = bidding ? "Auction open" : assigned ? `${item.status} · ${item.vendorName}` : item.status;
+  const primaryLabel = item.status === "Documented"
+    ? "Complete"
+    : bidding
+      ? "End auction"
+      : item.status === "Authorize"
+        ? (autoAssign ? "Approve & auto-assign" : "Approve & start auction")
+        : "Advance";
+  return (
+    <div className="task">
+      <div className={`severity ${item.priority.toLowerCase()}`} />
+      <div className="taskMain">
+        <div className="taskTitle"><strong>{item.title}</strong><span className={`tag ${item.priority.toLowerCase()}`}>{item.priority}</span></div>
+        <p>{h?.address ?? "Home"} • {item.tenant}</p>
+        <small>{item.note}</small>
+        {item.status === "Authorize" && !assigned && !bidding && (
+          <label className="miniCheck">
+            <input type="checkbox" checked={autoAssign} onChange={(e) => onToggleAutoAssign(item.id, e.target.checked)} />
+            <span>Skip auction and auto-assign at this budget</span>
+          </label>
+        )}
+      </div>
+      <div className="taskAction">
+        <span>{statusLabel}</span>
+        {item.estimate > 0 && <strong>{money(item.estimate)}</strong>}
+        {item.status === "Authorize" && !assigned && (
+          <button onClick={() => onAuction(item)}>{bidding ? "View auction" : "Open auction"}</button>
+        )}
+        {item.status === "Dispatch" && !assigned && (
+          <button onClick={() => onDispatch(item)}>Choose vendor</button>
+        )}
+        <button
+          onClick={() => bidding ? onEndAuction(item) : onAdvance(item.id)}
+          disabled={item.status === "Documented"}
+        >
+          {primaryLabel}
+        </button>
+      </div>
+    </div>
+  );
+}
 function Timeline({ date, title, sub }: { date: string; title: string; sub: string }) { return <div className="timeline"><div className="dateBox">{date}</div><div><strong>{title}</strong><p>{sub}</p></div></div>; }
 
 function Homes({ homes, selectedHome, setSelectedHome, home, owner, tenant, onEditOwner }: { homes: HomeUI[]; selectedHome: string; setSelectedHome: (id:string)=>void; home: HomeUI; owner: OwnerUI; tenant?: TenantUI; onEditOwner: ()=>void }) {
@@ -179,14 +337,25 @@ function Homes({ homes, selectedHome, setSelectedHome, home, owner, tenant, onEd
 function Rule({ k, v }: { k: string; v: string }) { return <div className="rule"><span>{k}</span><strong>{v}</strong></div>; }
 function Owners({ owners, onEdit }: { owners: OwnerUI[]; onEdit: (o:OwnerUI)=>void }) { return <section className="panel tablePanel"><div className="panelHead"><div><p className="eyebrow">CLIENTS + EXECUTABLE RULES</p><h2>Owners</h2></div></div><div className="table"><div className="tr head ownerTr"><span>Owner</span><span>Homes</span><span>Auth</span><span>Reserve</span><span>Preferred vendor</span><span>Action</span></div>{owners.map(o => <div className="tr ownerTr" key={o.id}><span><strong>{o.name}</strong><small>{o.email}</small></span><span>{o.homes}</span><span>{money(o.auth)}</span><span>{money(o.reserve)}</span><span>{o.preferred}</span><span><button className="textBtn" onClick={()=>onEdit(o)}>Edit rules</button></span></div>)}</div></section>; }
 function Tenants({ tenants }: { tenants: TenantUI[] }) { return <section className="panel tablePanel"><div className="panelHead"><div><p className="eyebrow">TENANCY</p><h2>Tenants & leases</h2></div></div><div className="table tenantTable"><div className="tr head"><span>Tenant</span><span>Home</span><span>Phone</span><span>Rent status</span></div>{tenants.map(t => <div className="tr" key={t.id}><span><strong>{t.name}</strong><small>{t.email}</small></span><span>{t.home}</span><span>{t.phone}</span><span><span className={t.balance ? "rent due" : "rent paid"}>{t.balance ? `${money(t.balance)} due` : "Paid"}</span></span></div>)}</div></section>; }
-function Maintenance({ rows, homes, onAdvance,onDispatch }: { rows: MaintenanceUI[]; homes: HomeUI[]; onAdvance: (id: string) => void;onDispatch:(m:MaintenanceUI)=>void }) { const flow = ["Diagnose","Authorize","Dispatch","Scheduled","Repair","Invoice","Documented"]; return <><section className="panel"><div className="panelHead"><div><p className="eyebrow">FLAGSHIP WORKFLOW</p><h2>Maintenance command center</h2></div><span className="pill">Request → Documented</span></div><div className="flow">{flow.map((s,i)=><div key={s}><b>{i+1}</b><span>{s}</span></div>)}</div></section><section className="panel"><div className="taskList">{rows.map(r => <Task key={r.id} item={r} homes={homes} onAdvance={onAdvance} onDispatch={onDispatch}/>)}</div></section></>; }
+function Maintenance({ rows, homes, onAdvance, onDispatch, onAuction, onEndAuction, jobAutoAssign, onToggleAutoAssign, openAuctions }: { rows: MaintenanceUI[]; homes: HomeUI[]; onAdvance: (id: string) => void; onDispatch: (m: MaintenanceUI) => void; onAuction: (m: MaintenanceUI) => void; onEndAuction: (m: MaintenanceUI) => void; jobAutoAssign: Record<string, boolean>; onToggleAutoAssign: (id: string, value: boolean) => void; openAuctions: Record<string, boolean> }) {
+  const flow = ["Diagnose", "Authorize", "Dispatch", "Scheduled", "Repair", "Invoice", "Documented"];
+  return (
+    <>
+      <section className="panel">
+        <div className="panelHead"><div><p className="eyebrow">FLAGSHIP WORKFLOW</p><h2>Maintenance command center</h2></div><span className="pill">Request → Documented</span></div>
+        <div className="flow">{flow.map((s, i) => <div key={s}><b>{i + 1}</b><span>{s}</span></div>)}</div>
+      </section>
+      <section className="panel">
+        <div className="taskList">{rows.map((r) => <Task key={r.id} item={r} homes={homes} onAdvance={onAdvance} onDispatch={onDispatch} onAuction={onAuction} onEndAuction={onEndAuction} autoAssign={Boolean(jobAutoAssign[r.id])} onToggleAutoAssign={onToggleAutoAssign} auctionOpen={Boolean(openAuctions[r.id])} />)}</div>
+      </section>
+    </>
+  );
+}
 
 function DispatchPicker({request,mode,onClose,onAssigned}:{request:MaintenanceUI;mode:BackendMode;onClose:()=>void;onAssigned:(vendor:{id:string;name:string})=>void}){const [rows,setRows]=useState<any[]>([]);const [message,setMessage]=useState("Loading eligibility…");useEffect(()=>{fetch(`/api/maintenance/${request.id}/eligible-vendors`).then(async r=>({ok:r.ok,b:await r.json()})).then(({ok,b})=>{if(!ok){setMessage(b.error||"Could not load vendors");return}setRows(b.vendors||[]);setMessage("")}).catch(()=>setMessage("Could not load vendors"))},[request.id]);async function assign(v:any){if(mode!=="live"){setMessage("Demo mode previews eligibility; connect Supabase to assign.");return}const r=await fetch(`/api/maintenance/${request.id}/dispatch`,{method:"PATCH",headers:{"Content-Type":"application/json"},body:JSON.stringify({vendorId:v.id})});const b=await r.json();if(!r.ok){setMessage((b.reasons||[b.error]).join(" • "));return}onAssigned({id:v.id,name:v.name})}return <div className="modalShade" onMouseDown={onClose}><section className="modal" onMouseDown={e=>e.stopPropagation()}><div className="modalHead"><div><p className="eyebrow">EXPLAINABLE DISPATCH</p><h2>Choose an eligible vendor</h2><p>{request.title}</p></div><button className="closeBtn" onClick={onClose}>×</button></div>{message&&<div className="notice">{message}</div>}<div className="credentialList">{rows.map(v=><div className="credential" key={v.id}><div><strong>{v.name}</strong><span>{v.eligibility.eligible?(v.eligibility.signals.join(" • ")||"Meets approval, credential, service and preference rules"):v.eligibility.reasons.join(" • ")}</span></div><button className={v.eligibility.eligible?"primary":"secondaryBtn"} disabled={!v.eligibility.eligible} onClick={()=>void assign(v)}>{v.eligibility.eligible?"Assign":"Ineligible"}</button></div>)}</div></section></div>}
 
 function CloseWorkOrderModal({ request, mode, onClose, onSave }: { request: MaintenanceUI; mode: BackendMode; onClose: () => void; onSave: (performance: Record<string, unknown>) => Promise<void> }) {
   const [form, setForm] = useState({
-    responseMinutes: "",
-    completionMinutes: "",
     quotedAmount: request.estimate ? String(request.estimate) : "",
     invoicedAmount: "",
     callbackRequired: false,
@@ -196,10 +365,18 @@ function CloseWorkOrderModal({ request, mode, onClose, onSave }: { request: Main
     notes: "",
   });
   const [busy, setBusy] = useState(false);
+  const [job, setJob] = useState<any>(null);
   const change = (key: keyof typeof form) => (e: React.ChangeEvent<HTMLInputElement | HTMLTextAreaElement>) => {
     const value = e.target.type === "checkbox" ? (e.target as HTMLInputElement).checked : e.target.value;
     setForm((current) => ({ ...current, [key]: value }));
   };
+  useEffect(() => {
+    fetch(`/api/maintenance/${request.id}/job`)
+      .then(async (r) => r.json())
+      .then((body) => setJob(body.job || null))
+      .catch(() => setJob(null));
+  }, [request.id]);
+  const timing = job?.timing;
   return (
     <div className="modalShade" onMouseDown={onClose}>
       <section className="modal vendorEditor" onMouseDown={(e) => e.stopPropagation()}>
@@ -212,10 +389,27 @@ function CloseWorkOrderModal({ request, mode, onClose, onSave }: { request: Main
           <button className="closeBtn" onClick={onClose}>×</button>
         </div>
         {mode !== "live" && <div className="notice">Demo mode records this locally. Connect Supabase to persist vendor performance.</div>}
-        <p className="summary">Objective job metrics stay separate from subjective ratings. Ratings are optional and never change eligibility or organic ranking.</p>
+        <p className="summary">Response and completion are calculated from system timestamps. Ratings stay optional and never change eligibility or organic ranking.</p>
+        <div className="miniStats vendorMini">
+          <div><span>Response</span><strong>{timing?.responseLabel || "Not recorded yet"}</strong></div>
+          <div><span>Completion</span><strong>{timing?.completionLabel || "Not recorded yet"}</strong></div>
+          <div><span>Arrived</span><strong>{job?.arrivedAt ? new Date(job.arrivedAt).toLocaleString() : "—"}</strong></div>
+          <div><span>Left</span><strong>{job?.departedAt ? new Date(job.departedAt).toLocaleString() : timing?.onSite ? "On site" : "—"}</strong></div>
+        </div>
+        {timing && <p className="summary">{timing.responseDetail} {timing.completionDetail}</p>}
+        {job?.fieldUrl && <p className="summary">Crew job link: <a href={job.fieldUrl} target="_blank" rel="noreferrer">{job.fieldUrl}</a></p>}
+        {!!job?.logs?.length && (
+          <div className="jobLogList">
+            {job.logs.map((log: { id: string; kind: string; body?: string; createdAt: string }) => (
+              <div key={log.id} className="jobLogRow">
+                <strong>{log.kind}</strong>
+                <span>{log.body || ""}</span>
+                <small>{new Date(log.createdAt).toLocaleString()}</small>
+              </div>
+            ))}
+          </div>
+        )}
         <div className="formGrid">
-          <label>Response minutes<input type="number" min="0" value={form.responseMinutes} onChange={change("responseMinutes")} /></label>
-          <label>Completion minutes<input type="number" min="0" value={form.completionMinutes} onChange={change("completionMinutes")} /></label>
           <label>Quoted amount ($)<input type="number" min="0" step="0.01" value={form.quotedAmount} onChange={change("quotedAmount")} /></label>
           <label>Invoiced amount ($)<input type="number" min="0" step="0.01" value={form.invoicedAmount} onChange={change("invoicedAmount")} /></label>
           <label>Callback / rework required<input type="checkbox" checked={form.callbackRequired} onChange={change("callbackRequired")} /></label>
@@ -227,8 +421,6 @@ function CloseWorkOrderModal({ request, mode, onClose, onSave }: { request: Main
         <div className="modalActions">
           <button className="secondaryBtn" onClick={onClose}>Cancel</button>
           <button className="primary" disabled={busy} onClick={() => { setBusy(true); void onSave({
-            responseMinutes: form.responseMinutes,
-            completionMinutes: form.completionMinutes,
             quotedAmount: form.quotedAmount,
             invoicedAmount: form.invoicedAmount,
             callbackRequired: form.callbackRequired,

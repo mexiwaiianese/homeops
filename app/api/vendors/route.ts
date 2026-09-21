@@ -1,10 +1,10 @@
 import { NextResponse } from "next/server";
 import { getAuthedContext } from "@/lib/backend";
-import { buildVendorFingerprint, normalizeVendorName } from "@/lib/vendors";
+import { buildVendorFingerprint, isNetworkAdmin, normalizeVendorName } from "@/lib/vendors";
 import { vendors as demoVendors } from "@/lib/vendor-demo";
 
 export async function GET(request: Request) {
-  const { supabase, user, organizationId } = await getAuthedContext();
+  const { supabase, user, organizationId, role } = await getAuthedContext();
   const { searchParams } = new URL(request.url);
   const q = (searchParams.get("q") ?? "").trim().toLowerCase();
   const status = searchParams.get("status");
@@ -15,7 +15,7 @@ export async function GET(request: Request) {
     if (q) rows = rows.filter(v => [v.name, v.trade, v.city, v.state, ...v.services].join(" ").toLowerCase().includes(q));
     if (status) rows = rows.filter(v => v.approval_status === status);
     if (stage) rows = rows.filter(v => v.workflow_stage === stage);
-    return NextResponse.json({ mode: "demo", vendors: rows });
+    return NextResponse.json({ mode: "demo", vendors: rows, role: "manager" });
   }
   if (!user || !organizationId) return NextResponse.json({ error: "Authentication required" }, { status: 401 });
 
@@ -40,12 +40,13 @@ export async function GET(request: Request) {
     supabase.from("service_categories").select("id,name").eq("active",true).order("name"),
     supabase.from("owners").select("id,full_name").eq("organization_id",organizationId).order("full_name"),
     supabase.from("homes").select("id,address1").eq("organization_id",organizationId).order("address1")]);
-  return NextResponse.json({ mode: "live", vendors: data ?? [], meta:{categories:categories??[],owners:owners??[],homes:homes??[]} });
+  return NextResponse.json({ mode: "live", role, vendors: data ?? [], meta:{categories:categories??[],owners:owners??[],homes:homes??[]} });
 }
 
 export async function POST(request: Request) {
-  const { supabase, user, organizationId } = await getAuthedContext();
+  const { supabase, user, organizationId, role } = await getAuthedContext();
   if (!supabase || !user || !organizationId) return NextResponse.json({ error: "Authentication required" }, { status: 401 });
+  if (!isNetworkAdmin(role)) return NextResponse.json({ error: "Network admin required" }, { status: 403 });
   const body = await request.json();
   const name = String(body.name ?? "").trim();
   if (!name) return NextResponse.json({ error: "Vendor name is required" }, { status: 400 });

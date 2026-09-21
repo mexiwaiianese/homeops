@@ -33,4 +33,16 @@ begin
   delete from vendors where id=v;
   delete from homes where id=h;
   delete from owners where id=ow;
+  if exists (select 1 from information_schema.columns where table_schema='public' and table_name='vendors' and column_name='public_rank_score') then
+    raise exception 'public recruitment rank must not live on vendors';
+  end if;
+  if exists (select 1 from information_schema.columns where table_schema='public' and table_name='vendor_performance_events' and column_name='public_rank_score') then
+    raise exception 'public recruitment rank must not live on performance events';
+  end if;
+  if not exists (select 1 from information_schema.tables where table_schema='public' and table_name='vendor_bid_opportunities') then
+    raise exception 'vendor reverse auction tables missing';
+  end if;
+  if exists (select 1 from information_schema.columns where table_schema='public' and table_name='vendor_bid_opportunities' and column_name='public_rank_score') then
+    raise exception 'auction must not store public rank';
+  end if;
 end $$;
