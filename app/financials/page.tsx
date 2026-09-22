@@ -4,10 +4,12 @@ import { FormEvent, useEffect, useMemo, useState } from "react";
 import BrandLockup from "@/components/brand-lockup";
 import BrandIcon from "@/components/brand-icon";
 import { BILL_KINDS, BOOK_KINDS, buildOwnerStatements, buildTenantLedgers, type BookEntry, type BooksHome, type BooksOwner, type VendorBill } from "@/lib/books";
+import { buildYearReport } from "@/lib/books-reports";
 import { moneyCents } from "@/lib/rent";
 import { buildPortfolioIntelligence, type IntelligenceHome as Home, type IntelligenceTransaction as Tx } from "@/lib/portfolio-intelligence";
+import BooksReportView from "@/components/books-report-view";
 
-type View = "owners" | "doors" | "bills" | "tenants" | "insights" | "migrate";
+type View = "owners" | "doors" | "bills" | "tenants" | "insights" | "reports" | "migrate";
 type InsightView = "overview" | "properties" | "services" | "trends" | "review";
 type Charge = {
   id: string;
@@ -74,6 +76,7 @@ export default function BooksPage() {
   const [charges, setCharges] = useState<Charge[]>([]);
   const [tx, setTx] = useState<Tx[]>([]);
   const [period, setPeriod] = useState(currentMonth());
+  const [reportYear, setReportYear] = useState(() => Number(currentMonth().slice(0, 4)));
   const [view, setView] = useState<View>("owners");
   const [insightView, setInsightView] = useState<InsightView>("overview");
   const [selectedHome, setSelectedHome] = useState("");
@@ -120,6 +123,10 @@ export default function BooksPage() {
   const tenantLedgers = useMemo(
     () => buildTenantLedgers({ charges, entries }),
     [charges, entries],
+  );
+  const yearReport = useMemo(
+    () => buildYearReport({ year: reportYear, homes, owners, entries }),
+    [reportYear, homes, owners, entries],
   );
   const intelHomes: Home[] = homes.map((home) => ({ id: home.id, address1: home.address1, city: home.city, state: home.state, property_code: home.property_code }));
   const periodTx = useMemo(() => tx.filter((row) => row.tx_date >= range.start && row.tx_date <= range.end), [tx, range]);
@@ -229,6 +236,7 @@ export default function BooksPage() {
     { id: "bills", label: `Bills${openBills.length ? ` (${openBills.length})` : ""}` },
     { id: "tenants", label: "Tenants" },
     { id: "insights", label: "Insights" },
+    { id: "reports", label: "Reports" },
     { id: "migrate", label: "Bring in old books" },
   ];
 
@@ -512,6 +520,10 @@ export default function BooksPage() {
               </div>
             )}
           </>
+        )}
+
+        {view === "reports" && (
+          <BooksReportView report={yearReport} variant="app" year={reportYear} onYear={setReportYear} />
         )}
 
         {view === "migrate" && (

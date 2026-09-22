@@ -13,7 +13,7 @@ HomeOps is an operating system for scattered single-family rental homes managed 
 - Tenants and active lease context
 - Maintenance command center with the full request → diagnose → authorize → dispatch → scheduled → repair → invoice → documented lifecycle
 - Rent collection at `/payments` (charges, pay links, cash/check) and tenant `/pay/[token]` (demo pay without Stripe keys)
-- Property-native books at `/financials`: owner statements, door P&L, vendor bills, tenant ledgers. QuickBooks CSV is optional history import only.
+- Property-native books at `/financials`: owner statements, door P&L, vendor bills, tenant ledgers, year-end reports. QuickBooks CSV is optional history import only.
 
 ### Phase 1 backend foundation
 - Supabase Auth with passwordless magic-link login
@@ -99,7 +99,7 @@ A submitted request is written to `maintenance_requests` with status `diagnose` 
 - eviction/legal services
 - contractor marketplace
 - Stripe Connect owner payouts (charges collect first; payouts later)
-- 1099 e-file and CPA tax export
+- 1099 e-file (Reports includes a 1099-NEC worksheet; the CPA still files)
 
 ## Next recommended increment
 
@@ -180,9 +180,12 @@ HomeOps owns the charge ledger. Stripe only processes the card or ACH. Paid rent
 - Bills: vendor invoices assigned to a door or company overhead; Mark paid posts the expense
 - Tenants: charge/payment ledger from `/payments`
 - Insights: the existing portfolio intelligence, now sourced from native books
+- Reports: calendar-year owner/door cash, Schedule E worksheet, 1099-NEC worksheet, accountant CSV, print/PDF
 - Bring in old books: optional QBO CSV for history only
 
 Run `supabase/migrations/20260921210000_property_books.sql` for live orgs.
+
+Print/PDF: Books → Reports → Open print / PDF, then the browser Save as PDF. Direct URL: `/financials/print?year=2026`. CSV downloads: accountant ledger, Schedule E worksheet, 1099-NEC worksheet. These are cash-basis packets for the CPA, not filed returns.
 
 ## Deploy on Laravel Forge
 
