@@ -1,5 +1,6 @@
 import type { SupabaseClient } from "@supabase/supabase-js";
 import { listLiveEntries } from "@/lib/books-live";
+import { DEMO_ORG_SLUG, seedDemoOperatingHistory } from "@/lib/demo-ledger";
 import { depositsHeldByHome } from "@/lib/owner-portal-demo";
 import {
   isPropertyType,
@@ -62,7 +63,23 @@ export async function buildLiveOwnerPortal(
     db.from("owner_custom_metrics").select("*").eq("owner_id", ownerId).order("created_at"),
     listLiveEntries(db, organizationId),
   ]);
-  const entries = allEntries.filter((row) => row.ownerId === ownerId || (row.homeId && homeIds.includes(row.homeId)));
+  let entries = allEntries.filter((row) => row.ownerId === ownerId || (row.homeId && homeIds.includes(row.homeId)));
+  // The demo organization is seeded with homes and leases only. Fill its operating
+  // history once so the owner portal is not a set of zeroed money metrics.
+  if (!entries.length && homeIds.length) {
+    const org = await db.from("organizations").select("slug").eq("id", organizationId).maybeSingle();
+    if (org.data?.slug === DEMO_ORG_SLUG) {
+      try {
+        const inserted = await seedDemoOperatingHistory(db, organizationId);
+        if (inserted) {
+          const refreshed = await listLiveEntries(db, organizationId);
+          entries = refreshed.filter((row) => row.ownerId === ownerId || (row.homeId && homeIds.includes(row.homeId)));
+        }
+      } catch {
+        // A ledger that predates the books columns still loads; it just stays empty.
+      }
+    }
+  }
   const held = depositsHeldByHome(entries);
 
   const homes: OwnerHome[] = (homeRows.data ?? []).map((row) => {

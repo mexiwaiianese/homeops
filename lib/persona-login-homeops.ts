@@ -34,6 +34,7 @@ import { getTenantContext, revokeTenantSession, tenantSessionCookie, tenantSessi
 import { consumeDemoLoginToken, issueDemoLoginToken, SESSION_TTL_MS } from "@/lib/tenant-demo";
 import { vendors as demoVendors } from "@/lib/vendor-demo";
 import { demoVendorSessionCookie } from "@/lib/vendor-job-demo";
+import { DEMO_ORG_SLUG, seedDemoOperatingHistory } from "@/lib/demo-ledger";
 
 type Group = "manager" | "owner" | "tenant" | "vendor";
 
@@ -337,8 +338,6 @@ async function liveSignIn(persona: Persona): Promise<PersonaSignInResult> {
 // Live seed: put the demo organization into an empty Supabase project so personas exist.
 // Idempotent — keyed on the org slug and record names, so re-running never duplicates rows.
 
-import { DEMO_ORG_SLUG, seedDemoOperatingHistory } from "@/lib/demo-ledger";
-
 async function seedLiveDemo(): Promise<{ ok: true; summary: string } | { ok: false; error: string; status?: number }> {
   const admin = createSupabaseAdminClient();
   if (!admin) return { ok: false, error: "Seeding needs SUPABASE_SERVICE_ROLE_KEY on the server.", status: 503 };
@@ -350,7 +349,7 @@ async function seedLiveDemo(): Promise<{ ok: true; summary: string } | { ok: fal
     .single();
   if (org.error || !org.data) return { ok: false, error: `organizations: ${org.error?.message || "no row"}` };
   const organizationId = org.data.id as string;
-  const created = { owners: 0, homes: 0, tenants: 0, leases: 0, vendors: 0 };
+  const created = { owners: 0, homes: 0, tenants: 0, leases: 0, vendors: 0, ledger: 0 };
 
   // Owners (by full_name within the org)
   const ownerIds = new Map<string, string>();
@@ -459,6 +458,12 @@ async function seedLiveDemo(): Promise<{ ok: true; summary: string } | { ok: fal
     });
     if (inserted.error) return { ok: false, error: schemaHint(`vendors: ${inserted.error.message}`) };
     created.vendors += 1;
+  }
+
+  try {
+    created.ledger = await seedDemoOperatingHistory(admin, organizationId);
+  } catch (error) {
+    return { ok: false, error: schemaHint(`ledger: ${error instanceof Error ? error.message : "could not seed operating history"}`) };
   }
 
   const parts = Object.entries(created).filter(([, count]) => count > 0).map(([table, count]) => `${count} ${table}`);
