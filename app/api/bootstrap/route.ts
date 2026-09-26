@@ -1,11 +1,12 @@
 import { NextResponse } from "next/server";
 import { getAuthedContext } from "@/lib/backend";
-import { homes, initialMaintenance, owners, tenants } from "@/lib/data";
+import { homes, owners, tenants } from "@/lib/data";
+import { listDemoMaintenance } from "@/lib/maintenance-demo";
 import { getDemoOrgSettings } from "@/lib/org-settings";
 
 export async function GET() {
   const { supabase, user, organizationId, role } = await getAuthedContext();
-  if (!supabase) return NextResponse.json({ mode: "demo", homes, owners, tenants, maintenance: initialMaintenance, settings: getDemoOrgSettings(), role: "manager" });
+  if (!supabase) return NextResponse.json({ mode: "demo", homes, owners, tenants, maintenance: listDemoMaintenance(), settings: getDemoOrgSettings(), role: "manager" });
   if (!user || !organizationId) return NextResponse.json({ mode: "auth", authenticated: false }, { status: 401 });
 
   const [ownerRows, homeRows, tenantRows, maintenanceRows, orgRow] = await Promise.all([

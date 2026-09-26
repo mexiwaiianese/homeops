@@ -3,7 +3,7 @@ import { getAuthedContext } from "@/lib/backend";
 import { pickAutoAssignVendor } from "@/lib/auto-assign";
 import { explainVendorEligibility } from "@/lib/vendors";
 import { vendors as demoVendors } from "@/lib/vendor-demo";
-import { initialMaintenance } from "@/lib/data";
+import { getDemoMaintenance, updateDemoMaintenance } from "@/lib/maintenance-demo";
 import { ensureDemoJobSite } from "@/lib/vendor-job-demo";
 import { ensureLiveJobSite } from "@/lib/vendor-job-live";
 import { jobFieldPath } from "@/lib/vendor-job";
@@ -21,7 +21,7 @@ export async function POST(
   }
 
   if (!supabase) {
-    const job = initialMaintenance.find((row) => row.id === id);
+    const job = getDemoMaintenance(id);
     if (!job) return NextResponse.json({ error: "Request not found" }, { status: 404 });
     const approved = budgetCents ?? Math.round(job.estimate * 100);
     if (!approved) return NextResponse.json({ error: "Approve a budget before auto-assigning" }, { status: 409 });
@@ -45,6 +45,7 @@ export async function POST(
       vendorId: pick.vendor.id,
       quotedAmountCents: approved,
     });
+    updateDemoMaintenance(id, { status: "Dispatch", vendorId: pick.vendor.id, vendorName: pick.vendor.name, estimate: approved / 100 });
     return NextResponse.json({
       mode: "demo",
       assigned: true,

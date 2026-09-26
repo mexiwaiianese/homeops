@@ -1,7 +1,7 @@
 import { NextResponse } from "next/server";
 import { getStripe } from "@/lib/stripe";
 import { createSupabaseAdminClient } from "@/lib/supabase/admin";
-import { recordLivePayment } from "@/lib/rent-live";
+import { livePaymentExists, recordLivePayment } from "@/lib/rent-live";
 import { getDemoCharge, payDemoCharge } from "@/lib/rent-demo";
 
 export const runtime = "nodejs";
@@ -29,7 +29,10 @@ export async function POST(request: Request) {
 
   const demo = getDemoCharge(chargeId);
   if (demo && event.type === "payment_intent.succeeded") {
-    payDemoCharge(demo.payToken, { method: intent.payment_method_types?.includes("us_bank_account") ? "stripe_ach" : "stripe_card" });
+    payDemoCharge(demo.payToken, {
+      method: intent.payment_method_types?.includes("us_bank_account") ? "stripe_ach" : "stripe_card",
+      stripePaymentIntentId: intent.id,
+    });
     return NextResponse.json({ received: true, mode: "demo" });
   }
 
@@ -37,6 +40,8 @@ export async function POST(request: Request) {
   if (!admin) return NextResponse.json({ received: true, stored: false });
   const { data: charge } = await admin.from("rent_charges").select("id, organization_id").eq("id", chargeId).maybeSingle();
   if (!charge) return NextResponse.json({ received: true, unmatched: true });
+  const resultStatus = event.type === "payment_intent.succeeded" ? "succeeded" : "failed";
+  if (await livePaymentExists(admin, intent.id, resultStatus)) return NextResponse.json({ received: true, mode: "live", duplicate: true });
   await recordLivePayment(admin, charge.organization_id, charge.id, {
     amountCents: intent.amount,
     method: intent.payment_method_types?.includes("us_bank_account") ? "stripe_ach" : "stripe_card",

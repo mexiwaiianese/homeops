@@ -36,9 +36,9 @@ export function confirmationCopy(input: {
 
 type SendResult = { sent: boolean; provider: string; error?: string };
 
-export async function sendVendorEmail(input: { to: string; subject: string; text: string }): Promise<SendResult> {
+export async function sendVendorEmail(input: { to: string; subject: string; text: string; from?: string }): Promise<SendResult> {
   const key = process.env.RESEND_API_KEY;
-  const from = process.env.VENDOR_OUTREACH_FROM_EMAIL;
+  const from = input.from || process.env.VENDOR_OUTREACH_FROM_EMAIL;
   if (!key || !from) return { sent: false, provider: "unconfigured", error: "Email provider is not configured" };
   const response = await fetch("https://api.resend.com/emails", {
     method: "POST",

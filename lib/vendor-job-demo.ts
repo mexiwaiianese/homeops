@@ -1,4 +1,5 @@
-import { homes, initialMaintenance } from "@/lib/data";
+import { homes } from "@/lib/data";
+import { getDemoMaintenance } from "@/lib/maintenance-demo";
 import { vendors as demoVendors } from "@/lib/vendor-demo";
 import { getDemoOpportunityByJob } from "@/lib/vendor-auction-demo";
 import {
@@ -21,7 +22,7 @@ function token() {
 
 function seedIfNeeded() {
   if (store.jobs.size) return;
-  const job = initialMaintenance.find((row) => row.id === "m1");
+  const job = getDemoMaintenance("m1");
   const vendor = demoVendors.find((row) => row.id === "v1");
   const home = homes.find((row) => row.id === job?.homeId);
   if (!job || !vendor) return;
@@ -91,7 +92,7 @@ export function ensureDemoJobSite(input: {
     existing.vendorName = demoVendors.find((row) => row.id === input.vendorId)?.name || existing.vendorName;
     return existing;
   }
-  const job = initialMaintenance.find((row) => row.id === input.jobId);
+  const job = getDemoMaintenance(input.jobId);
   const vendor = demoVendors.find((row) => row.id === input.vendorId);
   const home = homes.find((row) => row.id === job?.homeId);
   const stamps = firstResponseFromOpportunity(input.jobId, input.vendorId);

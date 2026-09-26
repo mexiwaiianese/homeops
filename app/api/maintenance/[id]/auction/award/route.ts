@@ -5,6 +5,7 @@ import { vendors as demoVendors } from "@/lib/vendor-demo";
 import { ensureDemoJobSite } from "@/lib/vendor-job-demo";
 import { ensureLiveJobSite } from "@/lib/vendor-job-live";
 import { jobFieldPath } from "@/lib/vendor-job";
+import { updateDemoMaintenance } from "@/lib/maintenance-demo";
 
 export async function POST(request: Request, { params }: { params: Promise<{ id: string }> }) {
   const { supabase, user, organizationId } = await getAuthedContext();
@@ -18,6 +19,7 @@ export async function POST(request: Request, { params }: { params: Promise<{ id:
     if ("error" in result) return NextResponse.json({ error: result.error }, { status: result.status });
     const vendor = demoVendors.find((row) => row.id === vendorId);
     const job = ensureDemoJobSite({ jobId: id, vendorId, quotedAmountCents: result.bid.amountCents });
+    updateDemoMaintenance(id, { status: "Dispatch", vendorId, vendorName: vendor?.name ?? null, estimate: result.bid.amountCents / 100 });
     const origin = new URL(request.url).origin;
     return NextResponse.json({
       mode: "demo",

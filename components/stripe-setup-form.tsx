@@ -4,7 +4,10 @@ import { FormEvent, useMemo, useState } from "react";
 import { loadStripe } from "@stripe/stripe-js";
 import { Elements, PaymentElement, useElements, useStripe } from "@stripe/react-stripe-js";
 
-function InnerForm({ onPaid, buttonLabel }: { onPaid: (paymentIntentId?: string, status?: string) => void; buttonLabel: string }) {
+// Saves a card or US bank account to the tenant's Stripe customer via a SetupIntent.
+// No card data touches HomeOps servers.
+
+function InnerForm({ onSaved, onCancel }: { onSaved: (paymentMethodId?: string) => void; onCancel?: () => void }) {
   const stripe = useStripe();
   const elements = useElements();
   const [message, setMessage] = useState("");
@@ -14,42 +17,44 @@ function InnerForm({ onPaid, buttonLabel }: { onPaid: (paymentIntentId?: string,
     event.preventDefault();
     if (!stripe || !elements) return;
     setBusy(true);
-    const result = await stripe.confirmPayment({
+    const result = await stripe.confirmSetup({
       elements,
       confirmParams: { return_url: window.location.href },
       redirect: "if_required",
     });
     setBusy(false);
-    if (result.error) { setMessage(result.error.message || "Payment could not be completed."); return; }
-    onPaid(result.paymentIntent?.id, result.paymentIntent?.status);
+    if (result.error) { setMessage(result.error.message || "Could not save this payment method."); return; }
+    const pm = result.setupIntent?.payment_method;
+    onSaved(typeof pm === "string" ? pm : pm?.id);
   }
 
   return (
     <form onSubmit={submit}>
       <PaymentElement options={{ layout: "tabs" }} />
-      <button className="primary" type="submit" disabled={!stripe || busy} style={{ marginTop: 16, width: "100%" }}>
-        {busy ? "Processing…" : buttonLabel}
-      </button>
+      <div className="visitActions">
+        <button className="primary" type="submit" disabled={!stripe || busy}>{busy ? "Saving…" : "Save payment method"}</button>
+        {onCancel && <button className="secondaryBtn" type="button" onClick={onCancel} disabled={busy}>Cancel</button>}
+      </div>
       {message && <div className="notice error">{message}</div>}
     </form>
   );
 }
 
-export default function StripePayForm({
+export default function StripeSetupForm({
   publishableKey,
   clientSecret,
-  onPaid,
-  buttonLabel = "Pay rent",
+  onSaved,
+  onCancel,
 }: {
   publishableKey: string;
   clientSecret: string;
-  onPaid: (paymentIntentId?: string, status?: string) => void;
-  buttonLabel?: string;
+  onSaved: (paymentMethodId?: string) => void;
+  onCancel?: () => void;
 }) {
   const stripePromise = useMemo(() => loadStripe(publishableKey), [publishableKey]);
   return (
     <Elements stripe={stripePromise} options={{ clientSecret, appearance: { theme: "stripe" } }}>
-      <InnerForm onPaid={onPaid} buttonLabel={buttonLabel} />
+      <InnerForm onSaved={onSaved} onCancel={onCancel} />
     </Elements>
   );
 }

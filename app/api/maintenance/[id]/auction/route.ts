@@ -3,7 +3,7 @@ import { getAuthedContext } from "@/lib/backend";
 import { getDemoOpportunityByJob, openDemoAuction, cancelDemoAuction } from "@/lib/vendor-auction-demo";
 import { leadingBid } from "@/lib/vendor-auction";
 import { openLiveAuction } from "@/lib/vendor-auction-live";
-import { initialMaintenance } from "@/lib/data";
+import { getDemoMaintenance, updateDemoMaintenance } from "@/lib/maintenance-demo";
 
 export async function GET(_: Request, { params }: { params: Promise<{ id: string }> }) {
   const { supabase, user, organizationId } = await getAuthedContext();
@@ -57,8 +57,9 @@ export async function POST(request: Request, { params }: { params: Promise<{ id:
   const publishedBudget = budgetCents != null && budgetCents > 0 ? budgetCents : null;
 
   if (!supabase) {
-    const job = initialMaintenance.find((row) => row.id === id);
+    const job = getDemoMaintenance(id);
     if (!job) return NextResponse.json({ error: "Request not found" }, { status: 404 });
+    if (publishedBudget != null) updateDemoMaintenance(id, { estimate: publishedBudget / 100 });
     const opened = await openDemoAuction({
       jobId: id,
       budgetCents: publishedBudget ?? (job.estimate ? Math.round(job.estimate * 100) : null),

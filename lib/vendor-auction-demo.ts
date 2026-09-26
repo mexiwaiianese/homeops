@@ -1,4 +1,5 @@
-import { homes, initialMaintenance } from "@/lib/data";
+import { homes } from "@/lib/data";
+import { getDemoMaintenance } from "@/lib/maintenance-demo";
 import { serviceFits } from "@/lib/auto-assign";
 import { explainVendorEligibility } from "@/lib/vendors";
 import { autobidBlockReason, leadingBid, nextAutobidAmount, notifyAuctionInvite, type AuctionBid, type AutobidRule } from "@/lib/vendor-auction";
@@ -149,7 +150,7 @@ export async function openDemoAuction(input: {
 }) {
   const existing = getDemoOpportunityByJob(input.jobId);
   if (existing && existing.status === "open") return { opportunity: existing, created: false };
-  const job = initialMaintenance.find((row) => row.id === input.jobId);
+  const job = getDemoMaintenance(input.jobId);
   if (!job) throw new Error("Request not found");
   const home = homes.find((row) => row.id === job.homeId);
   const neededBy = input.neededBy || new Date(Date.now() + (job.priority === "Emergency" ? 8 : 48) * 60 * 60 * 1000).toISOString();

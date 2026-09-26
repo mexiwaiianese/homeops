@@ -52,9 +52,11 @@ export default function HomeOps() {
         if (!ok) { setBackendMode("error"); return; }
         if (body.mode === "demo") {
           const demoSettings = parseOrgSettings(body.settings);
+          const demoMaintenance: MaintenanceUI[] = Array.isArray(body.maintenance) && body.maintenance.length ? body.maintenance : initialMaintenance;
           setBackendMode("demo");
+          setMaintenance(demoMaintenance);
           setAutoAssignAlwaysOn(demoSettings.autoAssignAlwaysOn);
-          setJobAutoAssign(Object.fromEntries(initialMaintenance.map((row) => [row.id, demoSettings.autoAssignAlwaysOn])));
+          setJobAutoAssign(Object.fromEntries(demoMaintenance.map((row) => [row.id, row.vendorId ? false : demoSettings.autoAssignAlwaysOn])));
           return;
         }
         setBackendMode("live");
@@ -260,7 +262,7 @@ export default function HomeOps() {
         {tab === "Today" && <Today maintenance={maintenance} onAdvance={nextStatus} onDispatch={setDispatching} onAuction={(item) => { if (openAuctions[item.id]) { setAuctioning(item); return; } void startAuction(item); }} onEndAuction={(item) => void endAuction(item)} collected={collected} rentSummary={rentSummary} homes={homes} tenants={tenants} jobAutoAssign={jobAutoAssign} onToggleAutoAssign={(id, value) => setJobAutoAssign((current) => ({ ...current, [id]: value }))} openAuctions={openAuctions} />}
         {tab === "Homes" && home && owner && <Homes homes={homes} selectedHome={selectedHome} setSelectedHome={setSelectedHome} home={home} owner={owner} tenant={tenant} onEditOwner={() => setEditingOwner(owner)} />}
         {tab === "Owners" && <Owners owners={owners} onEdit={setEditingOwner} />}
-        {tab === "Tenants" && <Tenants tenants={tenants} />}
+        {tab === "Tenants" && <Tenants tenants={tenants} onToast={setToast} />}
         {tab === "Maintenance" && <Maintenance rows={maintenance} homes={homes} onAdvance={nextStatus} onDispatch={setDispatching} onAuction={(item) => { if (openAuctions[item.id]) { setAuctioning(item); return; } void startAuction(item); }} onEndAuction={(item) => void endAuction(item)} jobAutoAssign={jobAutoAssign} onToggleAutoAssign={(id, value) => setJobAutoAssign((current) => ({ ...current, [id]: value }))} openAuctions={openAuctions} />}
       </section>
       {settingsOpen && <SettingsModal alwaysOn={autoAssignAlwaysOn} onClose={() => setSettingsOpen(false)} onSave={saveSettings} />}
@@ -356,7 +358,24 @@ function Homes({ homes, selectedHome, setSelectedHome, home, owner, tenant, onEd
 
 function Rule({ k, v }: { k: string; v: string }) { return <div className="rule"><span>{k}</span><strong>{v}</strong></div>; }
 function Owners({ owners, onEdit }: { owners: OwnerUI[]; onEdit: (o:OwnerUI)=>void }) { return <section className="panel tablePanel"><div className="panelHead"><div><p className="eyebrow">CLIENTS + EXECUTABLE RULES</p><h2>Owners</h2></div></div><div className="table"><div className="tr head ownerTr"><span>Owner</span><span>Homes</span><span>Auth</span><span>Reserve</span><span>Preferred vendor</span><span>Action</span></div>{owners.map(o => <div className="tr ownerTr" key={o.id}><span><strong>{o.name}</strong><small>{o.email}</small></span><span>{o.homes}</span><span>{money(o.auth)}</span><span>{money(o.reserve)}</span><span>{o.preferred}</span><span><button className="textBtn" onClick={()=>onEdit(o)}>Edit rules</button> <a className="textBtn" href={`/owners?ownerId=${encodeURIComponent(o.id)}`} target="_blank" rel="noreferrer">Preview portal</a></span></div>)}</div></section>; }
-function Tenants({ tenants }: { tenants: TenantUI[] }) { return <section className="panel tablePanel"><div className="panelHead"><div><p className="eyebrow">TENANCY</p><h2>Tenants & leases</h2></div></div><div className="table tenantTable"><div className="tr head"><span>Tenant</span><span>Home</span><span>Phone</span><span>Rent status</span></div>{tenants.map(t => <div className="tr" key={t.id}><span><strong>{t.name}</strong><small>{t.email}</small></span><span>{t.home}</span><span>{t.phone}</span><span><span className={t.balance ? "rent due" : "rent paid"}>{t.balance ? `${money(t.balance)} due` : "Paid"}</span></span></div>)}</div></section>; }
+function Tenants({ tenants, onToast }: { tenants: TenantUI[]; onToast: (m: string) => void }) {
+  const [busy, setBusy] = useState("");
+  async function sendPortalLink(t: TenantUI, channel: "email" | "sms") {
+    setBusy(`${t.id}:${channel}`);
+    const r = await fetch(`/api/tenants/${t.id}/portal-link`, { method: "POST", headers: { "Content-Type": "application/json" }, body: JSON.stringify({ channel }) });
+    const body = await r.json().catch(() => ({}));
+    setBusy("");
+    if (!r.ok) { onToast(body.error || "Could not send the portal link"); return; }
+    if (body.delivered) { onToast(`Portal link ${channel === "sms" ? "texted" : "emailed"} to ${body.sentTo}`); return; }
+    if (body.url) {
+      try { await navigator.clipboard.writeText(body.url); onToast(`${channel === "sms" ? "SMS" : "Email"} is not configured. Portal link copied to clipboard (valid 15 min).`); }
+      catch { onToast(`Delivery not configured. Link: ${body.url}`); }
+      return;
+    }
+    onToast(body.deliveryError || "Could not deliver the portal link");
+  }
+  return <section className="panel tablePanel"><div className="panelHead"><div><p className="eyebrow">TENANCY</p><h2>Tenants & leases</h2></div><div className="tenantsHeadActions"><span className="pill">Passwordless tenant portal</span><a className="secondaryBtn" href="/tenant/login" target="_blank" rel="noreferrer">Open portal sign-in</a></div></div><div className="table tenantTable"><div className="tr head"><span>Tenant</span><span>Home</span><span>Phone</span><span>Rent status</span><span>Portal</span></div>{tenants.map(t => <div className="tr" key={t.id}><span><strong>{t.name}</strong><small>{t.email}</small></span><span>{t.home}</span><span>{t.phone}</span><span><span className={t.balance ? "rent due" : "rent paid"}>{t.balance ? `${money(t.balance)} due` : "Paid"}</span></span><span className="payActions">{t.phone && <button className="textBtn" disabled={Boolean(busy)} onClick={() => void sendPortalLink(t, "sms")}>{busy === `${t.id}:sms` ? "Sending…" : "Text link"}</button>}{t.email && <button className="textBtn" disabled={Boolean(busy)} onClick={() => void sendPortalLink(t, "email")}>{busy === `${t.id}:email` ? "Sending…" : "Email link"}</button>}</span></div>)}</div></section>;
+}
 function Maintenance({ rows, homes, onAdvance, onDispatch, onAuction, onEndAuction, jobAutoAssign, onToggleAutoAssign, openAuctions }: { rows: MaintenanceUI[]; homes: HomeUI[]; onAdvance: (id: string) => void; onDispatch: (m: MaintenanceUI) => void; onAuction: (m: MaintenanceUI) => void; onEndAuction: (m: MaintenanceUI) => void; jobAutoAssign: Record<string, boolean>; onToggleAutoAssign: (id: string, value: boolean) => void; openAuctions: Record<string, boolean> }) {
   const flow = ["Diagnose", "Authorize", "Dispatch", "Scheduled", "Repair", "Invoice", "Documented"];
   return (

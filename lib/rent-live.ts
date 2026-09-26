@@ -95,6 +95,27 @@ export async function generateLivePeriodCharges(supabase: SupabaseClient, organi
   return created;
 }
 
+export async function listLiveChargesForTenant(supabase: SupabaseClient, tenantId: string) {
+  const { data, error } = await supabase
+    .from("rent_charges")
+    .select("*, tenants(full_name, email), homes(address1, city, state), rent_payments(*)")
+    .eq("tenant_id", tenantId)
+    .order("due_on", { ascending: false });
+  if (error) throw new Error(error.message);
+  return (data ?? []).map(mapCharge);
+}
+
+export async function livePaymentExists(supabase: SupabaseClient, stripePaymentIntentId: string, status: RentPayment["status"] = "succeeded") {
+  const { data } = await supabase
+    .from("rent_payments")
+    .select("id")
+    .eq("stripe_payment_intent_id", stripePaymentIntentId)
+    .eq("status", status)
+    .limit(1)
+    .maybeSingle();
+  return Boolean(data);
+}
+
 export async function recordLivePayment(
   supabase: SupabaseClient,
   organizationId: string,

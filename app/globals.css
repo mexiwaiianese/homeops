@@ -561,7 +561,7 @@ body {
   margin-top: 3px;
 }
 .tenantTable .tr {
-  grid-template-columns: 1.2fr 1.5fr 1fr 0.7fr;
+  grid-template-columns: 1.2fr 1.4fr 1fr 0.7fr 0.9fr;
 }
 .rent {
   font-size: 11px;
@@ -3216,5 +3216,294 @@ a.statLink:hover {
   }
   .opTable {
     min-width: 520px;
+  }
+}
+
+
+
+
+/* ---------- Tenant portal ---------- */
+.tenantShell {
+  min-height: 100vh;
+  padding: 24px 16px 64px;
+  background: linear-gradient(145deg, #e8eef4, #f3f4f6);
+  display: flex;
+  justify-content: center;
+  align-items: flex-start;
+}
+.tenantCard {
+  width: min(720px, 100%);
+  background: #fff;
+  border: 1px solid var(--line);
+  border-radius: 20px;
+  padding: 28px;
+  box-shadow: 0 18px 60px rgba(24, 48, 37, 0.08);
+}
+.tenantCard > .brand,
+.tenantCard .deskHead .brand {
+  padding: 0 0 18px;
+}
+.tenantCard h1 {
+  margin: 4px 0 2px;
+  font-size: 30px;
+  letter-spacing: -0.04em;
+  font-family: var(--font-display), "Plus Jakarta Sans", Inter, sans-serif;
+}
+.tenantAddress {
+  margin: 0 0 18px;
+  color: var(--muted);
+  font-size: 13px;
+}
+.tenantPanel {
+  border-top: 1px solid var(--line);
+  padding: 18px 0 6px;
+}
+.tenantPanel .sectionTitle {
+  margin-top: 0;
+  margin-bottom: 12px;
+}
+.tenantPanel h3 {
+  font-size: 15px;
+}
+.balancePanel {
+  border-top: 0;
+  padding-top: 4px;
+}
+.balanceHead {
+  display: flex;
+  justify-content: space-between;
+  align-items: flex-end;
+  gap: 16px;
+  flex-wrap: wrap;
+  background: #f3f7f8;
+  border-radius: 14px;
+  padding: 18px;
+}
+.balanceHead .eyebrow {
+  margin: 0 0 4px;
+}
+.balanceAmount {
+  display: block;
+  font-size: 38px;
+  font-weight: 800;
+  letter-spacing: -0.04em;
+  color: var(--red);
+  line-height: 1;
+}
+.balanceAmount.clear {
+  color: var(--teal);
+}
+.balanceHead > div > span {
+  display: block;
+  margin-top: 6px;
+  font-size: 12px;
+  color: var(--muted);
+}
+.balanceActions {
+  display: flex;
+  flex-direction: column;
+  align-items: flex-end;
+  gap: 8px;
+}
+.balanceActions .primary {
+  white-space: nowrap;
+}
+.methodChooser {
+  display: grid;
+  gap: 8px;
+  margin: 12px 0 4px;
+}
+.stripeBox {
+  margin: 14px 0 6px;
+  padding: 16px;
+  border: 1px solid var(--line);
+  border-radius: 14px;
+}
+.stripeBox .summary {
+  margin: 0 0 14px;
+}
+.stripeBox .textBtn {
+  margin-top: 10px;
+}
+.chargeList {
+  margin-top: 12px;
+}
+.defaultPill {
+  display: inline-block;
+  margin-left: 8px;
+  font-size: 10px;
+  padding: 3px 7px;
+  border-radius: 20px;
+  background: var(--green2);
+  color: var(--teal);
+  vertical-align: middle;
+}
+.methodActions {
+  display: flex;
+  gap: 14px;
+  align-items: center;
+  flex-shrink: 0;
+}
+.textBtn.danger {
+  color: var(--red);
+}
+.addMethodBtn {
+  margin-top: 12px;
+  width: 100%;
+  min-height: 44px;
+}
+.demoMethodForm,
+.reportForm {
+  display: grid;
+  gap: 12px;
+  margin-top: 12px;
+}
+.demoMethodForm label,
+.reportForm label {
+  font-size: 11px;
+  font-weight: 800;
+  color: #59625c;
+  display: flex;
+  flex-direction: column;
+  gap: 6px;
+}
+.demoMethodForm input,
+.demoMethodForm select,
+.reportForm input,
+.reportForm select,
+.reportForm textarea {
+  width: 100%;
+  border: 1px solid #d9ddd9;
+  background: #fff;
+  padding: 11px 12px;
+  border-radius: 9px;
+  font: inherit;
+  color: var(--ink);
+  outline: none;
+}
+.reportForm textarea {
+  resize: vertical;
+}
+.reportForm input:focus,
+.reportForm select:focus,
+.reportForm textarea:focus,
+.demoMethodForm input:focus,
+.demoMethodForm select:focus {
+  border-color: #7da38c;
+  box-shadow: 0 0 0 3px rgba(79, 125, 96, 0.1);
+}
+.reportForm .checkRow,
+.reportForm .checkRow input {
+  width: auto;
+}
+.reportForm .visitActions,
+.demoMethodForm .visitActions {
+  margin: 4px 0 0;
+}
+.reportPrompt {
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  gap: 16px;
+  flex-wrap: wrap;
+  background: #f3f7f8;
+  border-radius: 14px;
+  padding: 16px 18px;
+}
+.reportPrompt p {
+  margin: 0;
+  font-size: 13px;
+  color: var(--muted);
+  line-height: 1.5;
+  flex: 1 1 280px;
+}
+.requestRow.closed {
+  opacity: 0.65;
+}
+.requestRow strong .tag {
+  margin-left: 8px;
+  vertical-align: middle;
+}
+.statusPill {
+  flex-shrink: 0;
+  font-size: 10px;
+  font-weight: 800;
+  padding: 5px 9px;
+  border-radius: 20px;
+  background: #eef2f5;
+  color: var(--muted);
+  white-space: nowrap;
+}
+.statusPill.s-diagnose,
+.statusPill.s-authorize,
+.statusPill.c-processing,
+.statusPill.p-pending {
+  background: var(--amber2);
+  color: var(--amber);
+}
+.statusPill.s-dispatch,
+.statusPill.s-scheduled,
+.statusPill.s-repair,
+.statusPill.s-invoice {
+  background: #e3ecf7;
+  color: var(--navy);
+}
+.statusPill.s-documented,
+.statusPill.c-paid,
+.statusPill.p-succeeded {
+  background: var(--green2);
+  color: var(--teal);
+}
+.statusPill.c-due,
+.statusPill.c-partial,
+.statusPill.c-failed,
+.statusPill.p-failed {
+  background: var(--red2);
+  color: var(--red);
+}
+.tenantFinePrint {
+  margin: 14px 0 0;
+  font-size: 11px;
+  color: var(--muted);
+  line-height: 1.5;
+}
+.demoLinkBtn {
+  display: block;
+  text-align: center;
+  margin-top: 10px;
+  text-decoration: none;
+}
+.tenantsHeadActions {
+  display: flex;
+  gap: 10px;
+  align-items: center;
+}
+@media (max-width: 640px) {
+  .tenantCard {
+    padding: 20px 16px;
+    border-radius: 16px;
+  }
+  .tenantCard h1 {
+    font-size: 26px;
+  }
+  .balanceHead {
+    align-items: stretch;
+  }
+  .balanceActions {
+    align-items: stretch;
+    width: 100%;
+  }
+  .balanceActions .primary {
+    width: 100%;
+    white-space: normal;
+    min-height: 46px;
+  }
+  .credential {
+    flex-wrap: wrap;
+    gap: 8px;
+  }
+  .methodActions {
+    width: 100%;
+    justify-content: flex-end;
   }
 }

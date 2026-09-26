@@ -64,6 +64,7 @@ export default function VendorLoginPage() {
           ))}
         </div>
         <a href="/login">Property manager sign-in</a>
+        <a href="/tenant/login">Tenant portal sign-in</a>
       </section>
     </main>
   );

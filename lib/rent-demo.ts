@@ -139,10 +139,18 @@ function applyPayment(charge: RentCharge, payment: RentPayment) {
   return charge;
 }
 
-export function payDemoCharge(payToken: string, input?: { method?: RentPayment["method"]; amountCents?: number }) {
+export function demoPaymentExists(stripePaymentIntentId: string) {
+  seedIfNeeded();
+  return [...store.charges.values()].some((charge) => charge.payments.some((row) => row.stripePaymentIntentId === stripePaymentIntentId));
+}
+
+export function payDemoCharge(payToken: string, input?: { method?: RentPayment["method"]; amountCents?: number; stripePaymentIntentId?: string | null }) {
   const charge = getDemoChargeByToken(payToken);
   if (!charge) return { error: "This pay link is not valid.", status: 404 as const };
   if (charge.status === "void") return { error: "This charge was voided.", status: 409 as const };
+  if (input?.stripePaymentIntentId && charge.payments.some((row) => row.stripePaymentIntentId === input.stripePaymentIntentId)) {
+    return { charge, payment: charge.payments.find((row) => row.stripePaymentIntentId === input.stripePaymentIntentId)!, duplicate: true };
+  }
   const remaining = remainingCents(charge);
   if (remaining <= 0) return { error: "This charge is already paid.", status: 409 as const };
   const amount = Math.min(remaining, input?.amountCents || remaining);
@@ -152,6 +160,7 @@ export function payDemoCharge(payToken: string, input?: { method?: RentPayment["
     amountCents: amount,
     method: input?.method || "demo",
     status: "succeeded",
+    stripePaymentIntentId: input?.stripePaymentIntentId || null,
     receivedAt: new Date().toISOString(),
   };
   applyPayment(charge, payment);

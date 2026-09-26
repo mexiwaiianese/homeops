@@ -2,6 +2,8 @@ import { NextResponse } from "next/server";
 import { getAuthedContext } from "@/lib/backend";
 import { closeDemoJob, getDemoJobByRequest } from "@/lib/vendor-job-demo";
 import { computeJobTiming } from "@/lib/vendor-job";
+import { updateDemoMaintenance } from "@/lib/maintenance-demo";
+import type { MaintenanceStatus as DemoMaintenanceStatus } from "@/lib/data";
 
 const STATUSES = ["diagnose", "authorize", "dispatch", "scheduled", "repair", "invoice", "documented"] as const;
 type MaintenanceStatus = (typeof STATUSES)[number];
@@ -36,6 +38,8 @@ export async function PATCH(
   if (!status) return NextResponse.json({ error: "Invalid maintenance status" }, { status: 400 });
 
   if (!supabase) {
+    const demoStatus = (status.charAt(0).toUpperCase() + status.slice(1)) as DemoMaintenanceStatus;
+    updateDemoMaintenance(id, { status: demoStatus });
     if (status !== "documented") return NextResponse.json({ mode: "demo", status });
     const job = closeDemoJob(id) || getDemoJobByRequest(id);
     const timing = job ? computeJobTiming(job) : null;
