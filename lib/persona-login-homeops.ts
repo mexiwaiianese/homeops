@@ -297,7 +297,7 @@ async function liveSignIn(persona: Persona): Promise<PersonaSignInResult> {
       user_agent: "persona-login",
       expires_at: new Date(Date.now() + SESSION_TTL_MS).toISOString(),
     });
-    if (error) return { ok: false, error: error.message, status: 500 };
+    if (error) return { ok: false, error: schemaHint(error.message), status: 500 };
     return { ok: true, cookies: [{ name: tenantSessionCookie, value: `live.${sessionToken}`, options: tenantSessionCookieOptions() }] };
   }
 
@@ -317,7 +317,7 @@ async function liveSignIn(persona: Persona): Promise<PersonaSignInResult> {
   } else if (persona.group === "vendor" && meta.vendorId && meta.organizationId) {
     link = await admin.from("vendor_users").upsert({ organization_id: meta.organizationId, vendor_id: meta.vendorId, email: meta.email, role: "dispatcher", ...stamp }, { onConflict: "vendor_id,email" });
   }
-  if (link.error) return { ok: false, error: `Signed in, but could not link the persona: ${link.error.message}`, status: 500 };
+  if (link.error) return { ok: false, error: schemaHint(`Signed in, but could not link the persona: ${link.error.message}`), status: 500 };
   return { ok: true };
 }
 
@@ -445,7 +445,7 @@ async function seedLiveDemo(): Promise<{ ok: true; summary: string } | { ok: fal
       minimum_trip_charge_cents: vendor.minimum_trip_charge_cents,
       hourly_rate_cents: vendor.hourly_rate_cents,
     });
-    if (inserted.error) return { ok: false, error: `vendors: ${inserted.error.message}` };
+    if (inserted.error) return { ok: false, error: schemaHint(`vendors: ${inserted.error.message}`) };
     created.vendors += 1;
   }
 
@@ -494,8 +494,66 @@ export const homeopsPersonaLogin: PersonaLoginAdapter = {
       return warnings;
     }
     const probe = await admin.from("organizations").select("id", { count: "exact", head: true });
-    if (probe.error) warnings.push(`Database check failed: ${probe.error.message}`);
-    else if ((probe.count ?? 0) === 0) warnings.push("The database has no organizations yet. Use “Create demo data” to add the demo organization.");
+    if (probe.error) {
+      warnings.push(`Database check failed: ${probe.error.message}`);
+      return warnings;
+    }
+    if ((probe.count ?? 0) === 0) warnings.push("The database has no organizations yet. Use “Create demo data” to add the demo organization.");
+    const missing = await missingMigrations(admin);
+    if (missing.length) {
+      warnings.push(
+        `Database schema is behind the app. In the Supabase dashboard open SQL Editor and run these files from supabase/migrations, in this order: ${missing.join(", ")}. Then refresh this page.`,
+      );
+    }
     return warnings;
   },
 };
+
+// ---------------------------------------------------------------------------------------------
+// Schema drift check. One marker (table + column it introduces) per migration; if the marker is
+// absent, that migration has not been applied. Index-only migrations have no marker and are
+// assumed missing whenever the migration before them is missing.
+
+/** Appends a pointer to the migration list when a Supabase error is really a missing table/column. */
+function schemaHint(message: string): string {
+  return /schema cache|does not exist/i.test(message)
+    ? `${message}. The database is missing a migration — open /dev/personas for the list of SQL files to run.`
+    : message;
+}
+
+type SchemaMarker = { migration: string; table?: string; column?: string };
+
+const SCHEMA_MARKERS: SchemaMarker[] = [
+  { migration: "20260829_base_schema.sql", table: "organizations", column: "slug" },
+  { migration: "20260830_approved_vendor_network.sql", table: "vendors", column: "approval_status" },
+  { migration: "20260831134025_vendor_network_operations_slice.sql", table: "maintenance_requests", column: "service_category_id" },
+  { migration: "20260831152442_vendor_network_automation_and_security.sql", table: "homes", column: "latitude" },
+  { migration: "20260912180000_vendor_work_order_performance.sql" },
+  { migration: "20260918214500_vendor_recruitment_pipeline.sql", table: "vendor_prospects", column: "id" },
+  { migration: "20260921140000_auto_assign_settings.sql", table: "organizations", column: "settings" },
+  { migration: "20260921153000_vendor_reverse_auction.sql", table: "vendor_bid_opportunities", column: "id" },
+  { migration: "20260921180000_vendor_job_field_work.sql", table: "vendor_users", column: "id" },
+  { migration: "20260921190000_rental_listing_syndication.sql", table: "rental_listings", column: "id" },
+  { migration: "20260921200000_rent_charges.sql", table: "rent_charges", column: "id" },
+  { migration: "20260921210000_property_books.sql", table: "financial_transactions", column: "source" },
+  { migration: "20260926090000_owner_portal.sql", table: "owner_users", column: "id" },
+  { migration: "20260926093000_tenant_portal.sql", table: "tenant_sessions", column: "id" },
+];
+
+async function missingMigrations(admin: NonNullable<ReturnType<typeof createSupabaseAdminClient>>): Promise<string[]> {
+  const checks = await Promise.all(
+    SCHEMA_MARKERS.map(async (marker) => {
+      if (!marker.table || !marker.column) return null; // decided from the previous marker below
+      const { error } = await admin.from(marker.table).select(marker.column, { head: true }).limit(0);
+      return !error;
+    }),
+  );
+  const missing: string[] = [];
+  let previousPresent = true;
+  checks.forEach((present, index) => {
+    const resolved = present === null ? previousPresent : present;
+    if (!resolved) missing.push(SCHEMA_MARKERS[index].migration);
+    previousPresent = resolved;
+  });
+  return missing;
+}
