@@ -1,8 +1,10 @@
 "use client";
 
 // Compact "Open as…" picker for one persona group, meant to sit under a real sign-in form
-// (e.g. the owner login page shows only owner personas). Same API and gating as the full panel:
-// hidden when the feature is off, asks for the beta access code when locked, lists personas when open.
+// (e.g. the owner login page shows only owner personas). Same API and gating as the full panel,
+// but it never shows beta UI to the public: it renders nothing (or the fallback children) unless
+// the feature is on AND the visitor is already unlocked. The beta access code is entered on the
+// full switcher page (/dev/personas), not on the sign-in pages.
 // Portable: talks only to the persona-login API. Styles come from persona-login.css.
 
 import { useCallback, useEffect, useState } from "react";
@@ -20,7 +22,7 @@ export type PersonaQuickLoginProps = {
   apiBase?: string;
   /** Link to the full switcher page. Set to null to hide. */
   allPersonasHref?: string | null;
-  /** Rendered instead of the picker when the feature is unavailable (404). */
+  /** Rendered instead of the picker when the feature is unavailable (404) or the visitor is not unlocked. */
   children?: React.ReactNode;
 };
 
@@ -31,7 +33,6 @@ async function readJson<T>(response: Response): Promise<T & { error?: string; ne
 export default function PersonaQuickLogin({ group, title = "Open as a test persona", apiBase = "/api/persona-login", allPersonasHref = "/dev/personas", children }: PersonaQuickLoginProps) {
   const [data, setData] = useState<ListResponse | null>(null);
   const [unavailable, setUnavailable] = useState(false);
-  const [code, setCode] = useState("");
   const [busy, setBusy] = useState("");
   const [message, setMessage] = useState<{ tone: "info" | "error"; text: string } | null>(null);
 
@@ -42,18 +43,6 @@ export default function PersonaQuickLogin({ group, title = "Open as a test perso
   }, [apiBase]);
 
   useEffect(() => { void load(); }, [load]);
-
-  async function unlock(event: React.FormEvent) {
-    event.preventDefault();
-    setBusy("unlock");
-    setMessage(null);
-    const response = await fetch(`${apiBase}/unlock`, { method: "POST", headers: { "Content-Type": "application/json" }, body: JSON.stringify({ code }) });
-    const body = await readJson<{ ok?: boolean }>(response);
-    setBusy("");
-    if (!response.ok) { setMessage({ tone: "error", text: body.error || "Could not unlock." }); return; }
-    setCode("");
-    await load();
-  }
 
   async function become(persona: PublicPersona) {
     setBusy(persona.id);
@@ -79,8 +68,10 @@ export default function PersonaQuickLogin({ group, title = "Open as a test perso
     await load();
   }
 
+  // Feature off, still loading, or visitor not unlocked: show the caller's fallback (if any) and no beta UI.
   if (unavailable) return <>{children ?? null}</>;
   if (!data) return null;
+  if (!data.status.unlocked) return <>{children ?? null}</>;
 
   const { status, active } = data;
   const personas = group ? data.personas.filter((row) => row.group === group) : data.personas;
@@ -92,20 +83,10 @@ export default function PersonaQuickLogin({ group, title = "Open as a test perso
         <h3>
           {title} <span className={`plTag plTag-${envTag}`}>{envTag}</span>
         </h3>
-        <span>{status.unlocked ? "No password" : "Beta testers"}</span>
+        <span>No password</span>
       </div>
 
-      {!status.unlocked ? (
-        <div className="plGate plGate-compact">
-          <p className="plGateReason">{status.reason}</p>
-          {status.codeAvailable && (
-            <form className="plUnlock plUnlock-row" onSubmit={unlock}>
-              <input type="password" autoComplete="one-time-code" aria-label="Beta access code" value={code} onChange={(event) => setCode(event.target.value)} placeholder="Beta access code" required />
-              <button className="plPrimary" type="submit" disabled={!code || busy === "unlock"}>{busy === "unlock" ? "…" : "Unlock"}</button>
-            </form>
-          )}
-        </div>
-      ) : personas.length === 0 ? (
+      {personas.length === 0 ? (
         <div className="plEmpty">
           {status.warnings?.map((warning) => <p key={warning}>{warning}</p>)}
           {!status.warnings?.length && <p>No {group ? `${group} ` : ""}personas are available on this server yet.</p>}

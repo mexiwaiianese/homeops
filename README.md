@@ -208,7 +208,7 @@ Live setup:
 
 ## Persona login (dev and beta testers)
 
-Open HomeOps as any persona in one click. Every sign-in page has an "Open as…" picker for its own group (`/login` managers, `/owners/login` owners, `/tenant/login` tenants, `/vendors/login` vendors), and `/dev/personas` lists all of them together. Meant for local development and authorized beta testers only.
+Open HomeOps as any persona in one click. `/dev/personas` is the tester entry point: it asks for the beta access code and lists every persona. Once unlocked, every sign-in page also shows a compact "Open as…" picker for its own group (`/login` managers, `/owners/login` owners, `/tenant/login` tenants, `/vendors/login` vendors). Visitors who have not unlocked see the normal sign-in forms with no beta UI. Meant for local development and authorized beta testers only.
 
 - Local dev: on by default with no env. Set `PERSONA_LOGIN_ACCESS_CODE` if the machine is shared.
 - Production: off unless `PERSONA_LOGIN_ENABLED=true` **and** either `PERSONA_LOGIN_ACCESS_CODE` (≥ 12 chars) or `PERSONA_LOGIN_ALLOWED_EMAILS` is set. Otherwise the pickers hide and the page and API return 404.
@@ -223,7 +223,7 @@ Open HomeOps as any persona in one click. Every sign-in page has an "Open as…"
 - CLI: `npx vercel env add PERSONA_LOGIN_ACCESS_CODE production --value "your-new-code" --no-sensitive --force` then `npx vercel redeploy <current-production-url> --target production`.
 - Local: add `PERSONA_LOGIN_ACCESS_CODE=...` to `.env.local` and restart `npm run dev`.
 
-Testers enter the code once on any sign-in page; the unlock lasts `PERSONA_LOGIN_UNLOCK_DAYS` (14) on that browser.
+Testers enter the code once at `/dev/personas`; the unlock lasts `PERSONA_LOGIN_UNLOCK_DAYS` (14) on that browser, and the sign-in page pickers appear for as long as it holds.
 
 The core (`lib/persona-login/`, `components/persona-login/`) has no HomeOps imports. To reuse it in another app, copy those folders and write an adapter like `lib/persona-login-homeops.ts`. See `lib/persona-login/README.md`.
 
