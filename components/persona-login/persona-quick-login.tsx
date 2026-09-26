@@ -9,7 +9,7 @@ import { useCallback, useEffect, useState } from "react";
 import "./persona-login.css";
 
 type PublicPersona = { id: string; label: string; description?: string; group: string; groupLabel?: string; landingPath: string; badge?: string };
-type Status = { enabled: boolean; unlocked: boolean; codeAvailable: boolean; allowlistAvailable: boolean; via: string | null; environment: string; reason?: string };
+type Status = { enabled: boolean; unlocked: boolean; codeAvailable: boolean; allowlistAvailable: boolean; via: string | null; environment: string; canSeed?: boolean; reason?: string };
 type ListResponse = { status: Status; personas: PublicPersona[]; active: string | null };
 
 export type PersonaQuickLoginProps = {
@@ -69,6 +69,16 @@ export default function PersonaQuickLogin({ group, title = "Open as a test perso
     window.location.assign(body.redirectTo || persona.landingPath);
   }
 
+  async function seed() {
+    setBusy("seed");
+    setMessage(null);
+    const response = await fetch(`${apiBase}/seed`, { method: "POST" });
+    const body = await readJson<{ ok?: boolean; summary?: string }>(response);
+    setBusy("");
+    setMessage(response.ok ? { tone: "info", text: body.summary || "Demo data created." } : { tone: "error", text: body.error || "Could not create demo data." });
+    await load();
+  }
+
   if (unavailable) return <>{children ?? null}</>;
   if (!data) return null;
 
@@ -96,7 +106,14 @@ export default function PersonaQuickLogin({ group, title = "Open as a test perso
           )}
         </div>
       ) : personas.length === 0 ? (
-        <div className="plEmpty">No {group ? `${group} ` : ""}personas are available on this server yet.</div>
+        <div className="plEmpty">
+          <p>No {group ? `${group} ` : ""}personas are available on this server yet.</p>
+          {status.canSeed && (
+            <button className="plPrimary" type="button" disabled={Boolean(busy)} onClick={() => void seed()}>
+              {busy === "seed" ? "Creating…" : "Create demo data"}
+            </button>
+          )}
+        </div>
       ) : (
         <div className="plList">
           {personas.map((persona) => {

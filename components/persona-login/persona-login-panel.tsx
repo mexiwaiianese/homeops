@@ -23,6 +23,7 @@ type Status = {
   allowlistAvailable: boolean;
   via: "open" | "code" | "allowlist" | null;
   environment: "development" | "production" | "test";
+  canSeed?: boolean;
   reason?: string;
 };
 
@@ -110,6 +111,16 @@ export default function PersonaLoginPanel({ apiBase = "/api/persona-login", appN
     await load();
   }
 
+  async function seed() {
+    setBusy("seed");
+    setMessage(null);
+    const response = await fetch(`${apiBase}/seed`, { method: "POST" });
+    const body = await readJson<{ ok?: boolean; summary?: string }>(response);
+    setBusy("");
+    setMessage(response.ok ? { tone: "info", text: body.summary || "Demo data created." } : { tone: "error", text: body.error || "Could not create demo data." });
+    await load();
+  }
+
   async function forgetUnlock() {
     setBusy("lock");
     await fetch(apiBase, { method: "DELETE" }).catch(() => undefined);
@@ -178,7 +189,12 @@ export default function PersonaLoginPanel({ apiBase = "/api/persona-login", appN
         <>
           {groups.length === 0 && (
             <div className="plEmpty">
-              No personas are available. The database has no organizations, owners, tenants, or vendors yet, or discovery is off (<code>PERSONA_LOGIN_LIVE_DISCOVERY=false</code>) and <code>PERSONA_LOGIN_LIVE_PERSONAS</code> is empty.
+              <p>No personas are available yet. The database has no organizations, owners, tenants, or vendors, or discovery is off (<code>PERSONA_LOGIN_LIVE_DISCOVERY=false</code>) and <code>PERSONA_LOGIN_LIVE_PERSONAS</code> is empty.</p>
+              {status.canSeed && (
+                <button className="plPrimary" type="button" disabled={Boolean(busy)} onClick={() => void seed()}>
+                  {busy === "seed" ? "Creating…" : "Create demo data"}
+                </button>
+              )}
             </div>
           )}
           {groups.map((group) => (

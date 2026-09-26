@@ -214,6 +214,7 @@ Open HomeOps as any persona in one click. Every sign-in page has an "Open as…"
 - Production: off unless `PERSONA_LOGIN_ENABLED=true` **and** either `PERSONA_LOGIN_ACCESS_CODE` (≥ 12 chars) or `PERSONA_LOGIN_ALLOWED_EMAILS` is set. Otherwise the pickers hide and the page and API return 404.
 - Demo mode (no Supabase): personas are the seeded manager, owners, tenants, and vendors.
 - Live mode (Supabase configured): personas are discovered from the database — one manager per organization plus every owner, tenant, and vendor (12 per group). Each gets a synthetic `<group>-<id>@persona.example.com` login that is created and linked (`organization_members`, `owner_users`, `vendor_users`) on first use, so no real customer login is ever impersonated. Tenants get a `tenant_sessions` row. `PERSONA_LOGIN_LIVE_DISCOVERY=false` turns discovery off; `PERSONA_LOGIN_LIVE_PERSONAS` adds explicit accounts.
+- Empty live database: an unlocked tester sees **Create demo data**, which inserts the "HomeOps Demo Management" org with its owners, homes, tenants, leases, and vendors (idempotent; same records as `supabase/seed.sql` plus the rest of the demo set).
 - Every switch is logged as `[persona-login]`. Testers see labels only; emails and ids stay server-side.
 
 **Setting or rotating the beta access code.** The code is the `PERSONA_LOGIN_ACCESS_CODE` environment variable (12+ characters). Rotating it signs every tester out of the switcher.

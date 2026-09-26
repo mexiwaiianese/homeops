@@ -322,6 +322,138 @@ async function liveSignIn(persona: Persona): Promise<PersonaSignInResult> {
 }
 
 // ---------------------------------------------------------------------------------------------
+// Live seed: put the demo organization into an empty Supabase project so personas exist.
+// Idempotent — keyed on the org slug and record names, so re-running never duplicates rows.
+
+const DEMO_ORG_SLUG = "homeops-demo-management";
+
+async function seedLiveDemo(): Promise<{ ok: true; summary: string } | { ok: false; error: string; status?: number }> {
+  const admin = createSupabaseAdminClient();
+  if (!admin) return { ok: false, error: "Seeding needs SUPABASE_SERVICE_ROLE_KEY on the server.", status: 503 };
+
+  const org = await admin
+    .from("organizations")
+    .upsert({ name: "HomeOps Demo Management", slug: DEMO_ORG_SLUG }, { onConflict: "slug" })
+    .select("id")
+    .single();
+  if (org.error || !org.data) return { ok: false, error: `organizations: ${org.error?.message || "no row"}` };
+  const organizationId = org.data.id as string;
+  const created = { owners: 0, homes: 0, tenants: 0, leases: 0, vendors: 0 };
+
+  // Owners (by full_name within the org)
+  const ownerIds = new Map<string, string>();
+  for (const owner of demoOwners) {
+    const existing = await admin.from("owners").select("id").eq("organization_id", organizationId).eq("full_name", owner.name).maybeSingle();
+    if (existing.data) { ownerIds.set(owner.id, existing.data.id); continue; }
+    const inserted = await admin
+      .from("owners")
+      .insert({
+        organization_id: organizationId,
+        full_name: owner.name,
+        email: owner.email,
+        maintenance_authority_cents: owner.auth * 100,
+        emergency_authority_cents: owner.emergency * 100,
+        minimum_reserve_cents: owner.reserve * 100,
+        notify_over_cents: owner.notifyOver * 100,
+        preferred_vendor_name: owner.preferred,
+        disbursement_day: owner.disbursement.startsWith("15") ? 15 : 10,
+      })
+      .select("id")
+      .single();
+    if (inserted.error || !inserted.data) return { ok: false, error: `owners: ${inserted.error?.message}` };
+    ownerIds.set(owner.id, inserted.data.id);
+    created.owners += 1;
+  }
+
+  // Tenants (by full_name within the org)
+  const tenantIds = new Map<string, string>();
+  for (const tenant of demoTenants) {
+    const existing = await admin.from("tenants").select("id").eq("organization_id", organizationId).eq("full_name", tenant.name).maybeSingle();
+    if (existing.data) { tenantIds.set(tenant.id, existing.data.id); continue; }
+    const inserted = await admin
+      .from("tenants")
+      .insert({ organization_id: organizationId, full_name: tenant.name, email: tenant.email, phone: tenant.phone })
+      .select("id")
+      .single();
+    if (inserted.error || !inserted.data) return { ok: false, error: `tenants: ${inserted.error?.message}` };
+    tenantIds.set(tenant.id, inserted.data.id);
+    created.tenants += 1;
+  }
+
+  // Homes + active leases (by address within the org)
+  for (const home of homes) {
+    const ownerId = ownerIds.get(home.ownerId);
+    const tenantId = tenantIds.get(home.tenantId);
+    if (!ownerId || !tenantId) continue;
+    const [city, state] = home.city.split(",").map((part) => part.trim());
+    let homeId: string | null = null;
+    const existing = await admin.from("homes").select("id").eq("organization_id", organizationId).eq("address1", home.address).maybeSingle();
+    if (existing.data) homeId = existing.data.id;
+    else {
+      const inserted = await admin
+        .from("homes")
+        .insert({
+          organization_id: organizationId,
+          owner_id: ownerId,
+          address1: home.address,
+          city: city || "Example City",
+          state: state || "UT",
+          monthly_rent_cents: home.rent * 100,
+          reserve_balance_cents: home.reserve * 100,
+          health_status: home.health,
+          access_notes: home.access,
+        })
+        .select("id")
+        .single();
+      if (inserted.error || !inserted.data) return { ok: false, error: `homes: ${inserted.error?.message}` };
+      homeId = inserted.data.id;
+      created.homes += 1;
+    }
+    const lease = await admin.from("leases").select("id").eq("home_id", homeId).eq("tenant_id", tenantId).maybeSingle();
+    if (!lease.data) {
+      const inserted = await admin.from("leases").insert({
+        organization_id: organizationId,
+        home_id: homeId,
+        tenant_id: tenantId,
+        starts_on: "2026-03-01",
+        ends_on: home.leaseEnds,
+        rent_cents: home.rent * 100,
+        deposit_cents: home.rent * 100,
+        status: "active",
+      });
+      if (inserted.error) return { ok: false, error: `leases: ${inserted.error.message}` };
+      created.leases += 1;
+    }
+  }
+
+  // Vendors (by name within the org)
+  for (const vendor of demoVendors) {
+    const existing = await admin.from("vendors").select("id").eq("organization_id", organizationId).eq("name", vendor.name).maybeSingle();
+    if (existing.data) continue;
+    const inserted = await admin.from("vendors").insert({
+      organization_id: organizationId,
+      name: vendor.name,
+      trade: vendor.trade,
+      email: vendor.email,
+      phone: vendor.phone,
+      city: vendor.city,
+      state: vendor.state,
+      workflow_stage: vendor.workflow_stage,
+      approval_status: vendor.approval_status,
+      emergency_available: vendor.emergency_available,
+      expected_response_minutes: vendor.expected_response_minutes,
+      minimum_trip_charge_cents: vendor.minimum_trip_charge_cents,
+      hourly_rate_cents: vendor.hourly_rate_cents,
+    });
+    if (inserted.error) return { ok: false, error: `vendors: ${inserted.error.message}` };
+    created.vendors += 1;
+  }
+
+  const parts = Object.entries(created).filter(([, count]) => count > 0).map(([table, count]) => `${count} ${table}`);
+  return { ok: true, summary: parts.length ? `Created ${parts.join(", ")} in "HomeOps Demo Management".` : "Demo data was already present; nothing new created." };
+}
+
+// ---------------------------------------------------------------------------------------------
 
 export const homeopsPersonaLogin: PersonaLoginAdapter = {
   async listPersonas() {
@@ -346,5 +478,10 @@ export const homeopsPersonaLogin: PersonaLoginAdapter = {
   async currentUserEmail() {
     const { user } = await getAuthedContext();
     return user?.email ?? null;
+  },
+
+  async seed() {
+    if (!isSupabaseConfigured()) return { ok: true, summary: "Demo mode already has its seed data in memory." };
+    return seedLiveDemo();
   },
 };

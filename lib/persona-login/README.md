@@ -69,8 +69,15 @@ export const myAppPersonaLogin: PersonaLoginAdapter = {
     // Optional: lets PERSONA_LOGIN_ALLOWED_EMAILS work.
     return null;
   },
+  async seed() {
+    // Optional, idempotent: create demo records so personas exist on an empty backend.
+    // Shows a "Create demo data" button when the list is empty; served at POST <apiBase>/seed.
+    return { ok: true, summary: "Created 1 organization, 3 customers." };
+  },
 };
 ```
+
+Mount `handlers.seed.POST` at `app/api/persona-login/seed/route.ts` if you implement `seed`.
 
 Mount it:
 

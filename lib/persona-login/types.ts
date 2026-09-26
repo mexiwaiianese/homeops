@@ -60,6 +60,12 @@ export type PersonaLoginAdapter = {
    * PERSONA_LOGIN_ALLOWED_EMAILS so named beta testers never need the shared access code.
    */
   currentUserEmail?(): Promise<string | null>;
+  /**
+   * Optional: create demo records so personas exist on an empty backend. Exposed as
+   * POST <apiBase>/seed and a "Create demo data" button when the persona list is empty.
+   * Must be idempotent; return a short summary for the UI.
+   */
+  seed?(ctx: PersonaSignInContext): Promise<{ ok: true; summary: string } | { ok: false; error: string; status?: number }>;
 };
 
 export type PersonaLoginAccess =
@@ -75,5 +81,7 @@ export type PersonaLoginStatus = {
   allowlistAvailable: boolean;
   via: "open" | "code" | "allowlist" | null;
   environment: "development" | "production" | "test";
+  /** True when the adapter can create demo records (shows "Create demo data" on an empty list). */
+  canSeed?: boolean;
   reason?: string;
 };

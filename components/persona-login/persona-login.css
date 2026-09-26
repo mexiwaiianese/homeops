@@ -183,6 +183,8 @@
   margin-top: 16px;
 }
 .plEmpty code { font-size: 11px; }
+.plEmpty p { margin: 0 0 10px; }
+.plEmpty .plPrimary { width: auto; margin: 0; }
 
 .plNotice {
   margin-top: 14px;

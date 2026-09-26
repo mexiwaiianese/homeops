@@ -9,6 +9,7 @@
 //   DELETE /api/persona-login          clears every persona session
 //   POST   /api/persona-login/unlock   { code } -> sets the unlock cookie
 //   DELETE /api/persona-login/unlock   forgets the unlock cookie
+//   POST   /api/persona-login/seed     creates demo records (only if the adapter implements seed)
 
 import { NextResponse } from "next/server";
 import { getPersonaLoginConfig } from "./config";
@@ -67,9 +68,21 @@ export function createPersonaLoginHandlers(adapter: PersonaLoginAdapter) {
     const config = getPersonaLoginConfig();
     if (!config.enabled) return notFound();
     const status = await personaLoginStatus(adapter);
+    status.canSeed = typeof adapter.seed === "function";
     const personas = status.unlocked ? (await adapter.listPersonas()).map(publicPersona) : [];
     const active = status.unlocked ? await activePersonaId() : null;
     return json({ status, personas, active });
+  }
+
+  async function seedPOST(request: Request) {
+    const config = getPersonaLoginConfig();
+    if (!config.enabled || !adapter.seed) return notFound();
+    const access = await resolvePersonaLoginAccess(adapter);
+    if (!access.allowed) return json({ error: access.reason, needsUnlock: access.needsUnlock }, { status: 403 });
+    const result = await adapter.seed(contextFor(request));
+    log(result.ok ? "seed" : "seed failed", { via: access.via, ip: clientKey(request), ...(result.ok ? { summary: result.summary } : { error: result.error }) });
+    if (!result.ok) return json({ error: result.error }, { status: result.status ?? 500 });
+    return json({ ok: true, summary: result.summary });
   }
 
   async function POST(request: Request) {
@@ -140,5 +153,5 @@ export function createPersonaLoginHandlers(adapter: PersonaLoginAdapter) {
     return json({ ok: true }, { cookies: [clearUnlockCookie(), { name: personaActiveCookie, value: "", options: baseCookieOptions(0) }] });
   }
 
-  return { GET, POST, DELETE, unlock: { POST: unlockPOST, DELETE: unlockDELETE } };
+  return { GET, POST, DELETE, unlock: { POST: unlockPOST, DELETE: unlockDELETE }, seed: { POST: seedPOST } };
 }
