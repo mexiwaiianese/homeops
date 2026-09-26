@@ -269,15 +269,27 @@ async function livePersonas(): Promise<Persona[]> {
 
 /** Sign the SSR client in as `email` through an admin-generated magic link. Returns the auth user id. */
 async function signInSupabaseUser(admin: SupabaseClient, email: string) {
+  const supabase = await createSupabaseServerClient();
+  if (!supabase) return { error: "Supabase is not configured." };
+  const existing = await supabase.auth.getUser();
+  if (existing.data.user?.email?.toLowerCase() === email.toLowerCase()) return { userId: existing.data.user.id };
+  // Local only: a global sign-out revokes the one-time token this request is about to verify.
+  if (existing.data.user) await supabase.auth.signOut({ scope: "local" });
+
   // generateLink creates the auth user when it does not exist yet, so a fresh identity works the first time.
   const { data, error } = await admin.auth.admin.generateLink({ type: "magiclink", email });
   const tokenHash = data?.properties?.hashed_token;
   if (error || !tokenHash) return { error: error?.message || "Supabase did not return a sign-in token." };
-  const supabase = await createSupabaseServerClient();
-  if (!supabase) return { error: "Supabase is not configured." };
-  const verify = await supabase.auth.verifyOtp({ type: "magiclink", token_hash: tokenHash });
-  if (verify.error || !verify.data.user) return { error: verify.error?.message || "Sign-in did not return a user." };
-  return { userId: verify.data.user.id };
+  const preferred = data.properties?.verification_type === "magiclink" ? "magiclink" : "email";
+  const types = preferred === "magiclink" ? (["magiclink", "email"] as const) : (["email", "magiclink"] as const);
+  let lastError = "Sign-in did not return a user.";
+  for (const type of types) {
+    const verify = await supabase.auth.verifyOtp({ type, token_hash: tokenHash });
+    if (verify.data.user) return { userId: verify.data.user.id };
+    lastError = verify.error?.message || lastError;
+    if (!/invalid or has expired/i.test(lastError)) break;
+  }
+  return { error: lastError };
 }
 
 async function liveSignIn(persona: Persona): Promise<PersonaSignInResult> {
@@ -325,7 +337,7 @@ async function liveSignIn(persona: Persona): Promise<PersonaSignInResult> {
 // Live seed: put the demo organization into an empty Supabase project so personas exist.
 // Idempotent — keyed on the org slug and record names, so re-running never duplicates rows.
 
-const DEMO_ORG_SLUG = "homeops-demo-management";
+import { DEMO_ORG_SLUG, seedDemoOperatingHistory } from "@/lib/demo-ledger";
 
 async function seedLiveDemo(): Promise<{ ok: true; summary: string } | { ok: false; error: string; status?: number }> {
   const admin = createSupabaseAdminClient();
@@ -461,7 +473,14 @@ export const homeopsPersonaLogin: PersonaLoginAdapter = {
   },
 
   async signIn(persona) {
-    return isSupabaseConfigured() ? liveSignIn(persona) : demoSignIn(persona);
+    // Drop the previous persona's demo/tenant cookies without revoking the Supabase session.
+    // live sign-in replaces that session itself; a global sign-out here invalidates its token.
+    const tenant = await getTenantContext().catch(() => null);
+    if (tenant) await revokeTenantSession(tenant).catch(() => undefined);
+    const clears = [clear(demoOwnerSessionCookie), clear(demoVendorSessionCookie), clear(tenantSessionCookie)];
+    const result = isSupabaseConfigured() ? await liveSignIn(persona) : demoSignIn(persona);
+    if (!result.ok) return result;
+    return { ...result, cookies: [...clears, ...(result.cookies ?? [])] };
   },
 
   async signOut() {

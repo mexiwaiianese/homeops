@@ -1,6 +1,7 @@
 import { NextResponse } from "next/server";
 import { cookies } from "next/headers";
 import { getAuthedContext } from "@/lib/backend";
+import { createSupabaseAdminClient } from "@/lib/supabase/admin";
 import { vendors as demoVendors } from "@/lib/vendor-demo";
 import { demoVendorSessionCookie } from "@/lib/vendor-job-demo";
 
@@ -16,7 +17,9 @@ export async function GET() {
     });
   }
   if (!user) return NextResponse.json({ error: "Sign in to open the vendor desk." }, { status: 401 });
-  const { data } = await supabase.from("vendor_users").select("*, vendors(id,name,trade,email,city)").eq("auth_user_id", user.id).maybeSingle();
+  // Vendor desk users are not organization members, so the user-scoped client cannot see vendor_users under RLS.
+  const admin = createSupabaseAdminClient() || supabase;
+  const { data } = await admin.from("vendor_users").select("*, vendors(id,name,trade,email,city)").eq("auth_user_id", user.id).maybeSingle();
   if (!data) return NextResponse.json({ error: "This login is not linked to a vendor company." }, { status: 403 });
   const company = Array.isArray(data.vendors) ? data.vendors[0] : data.vendors;
   return NextResponse.json({

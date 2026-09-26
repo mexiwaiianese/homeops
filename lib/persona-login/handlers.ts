@@ -98,17 +98,17 @@ export function createPersonaLoginHandlers(adapter: PersonaLoginAdapter) {
     if (!persona) return json({ error: "Unknown persona." }, { status: 400 });
 
     const ctx = contextFor(request);
-    const cleared = (await adapter.signOut?.(ctx).catch(() => undefined)) ?? [];
+    // signIn replaces the previous persona. Signing out here first revokes the auth session
+    // and burns the one-time token the new sign-in is about to verify.
     const result = await adapter.signIn(persona, ctx);
     if (!result.ok) {
       log("sign-in failed", { personaId, via: access.via, ip: clientKey(request), error: result.error });
-      return json({ error: result.error }, { status: result.status ?? 400, cookies: cleared });
+      return json({ error: result.error }, { status: result.status ?? 400 });
     }
 
     log("sign-in", { personaId, group: persona.group, via: access.via, ip: clientKey(request) });
     const redirectTo = safeRedirect(result.redirectTo, persona.landingPath);
     const cookies: CookieToSet[] = [
-      ...cleared,
       ...(result.cookies ?? []),
       { name: personaActiveCookie, value: persona.id, options: baseCookieOptions(30 * 24 * 60 * 60) },
     ];
