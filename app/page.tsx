@@ -58,6 +58,9 @@ export default function HomeOps() {
           setMaintenance(demoMaintenance);
           setAutoAssignAlwaysOn(demoSettings.autoAssignAlwaysOn);
           setJobAutoAssign(Object.fromEntries(demoMaintenance.map((row) => [row.id, row.vendorId ? false : demoSettings.autoAssignAlwaysOn])));
+          if (Array.isArray(body.openAuctionJobIds)) {
+            setOpenAuctions(Object.fromEntries(body.openAuctionJobIds.map((id: string) => [id, true])));
+          }
           return;
         }
         setBackendMode("live");

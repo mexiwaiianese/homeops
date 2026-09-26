@@ -34,14 +34,14 @@ export function serviceFits(vendor: AutoAssignCandidate, title?: string) {
   const text = (title ?? "").toLowerCase();
   if (!text || !hay) return true;
   const pairs: Array<[RegExp, RegExp]> = [
-    [/drywall|patch|paint|handyman|general/, /general|handyman|maintenance|drywall/],
-    [/heat|furnace|ac|hvac|air/, /hvac|heat|furnace|air/],
-    [/plumb|leak|water heater|disposal|drain|toilet/, /plumb|water/],
-    [/electric|outlet|breaker|panel/, /electric/],
-    [/roof|gutter/, /roof/],
-    [/pest|bug|rodent/, /pest/],
-    [/lock|rekey/, /lock/],
-    [/flood|water damage|restore/, /restor|water/],
+    [/\b(drywall|patch|paint|handyman|general)\b/, /\b(general|handyman|maintenance|drywall)\b/],
+    [/water heater|\b(plumb|leak|disposal|drain|toilet)\b/, /\b(plumb|water)\b/],
+    [/\b(heat|furnace|hvac|ac|air)\b/, /\b(hvac|heat|furnace|air)\b/],
+    [/\b(electric|outlet|breaker|panel)\b/, /\belectric\b/],
+    [/\b(roof|gutter)\b/, /\broof\b/],
+    [/\b(pest|bug|rodent)\b/, /\bpest\b/],
+    [/\b(lock|rekey)\b/, /\block\b/],
+    [/\b(flood|restore)\b|water damage/, /\b(restor|water)\b/],
   ];
   const matched = pairs.find(([need]) => need.test(text));
   if (!matched) return true;

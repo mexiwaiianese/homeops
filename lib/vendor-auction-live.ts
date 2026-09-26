@@ -1,7 +1,8 @@
 import type { SupabaseClient } from "@supabase/supabase-js";
 import { serviceFits } from "@/lib/auto-assign";
 import { explainVendorEligibility } from "@/lib/vendors";
-import { autobidBlockReason, leadingBid, nextAutobidAmount, notifyAuctionInvite, bidUrl, type AuctionBid } from "@/lib/vendor-auction";
+import { leadingBid, nextAutobidAmount, notifyAuctionInvite, bidUrl, type AuctionBid } from "@/lib/vendor-auction";
+import { liveAutobidBlock, liveBidGate, vendorPortalTablesReady } from "@/lib/vendor-portal-live";
 
 function vendorDestination(vendor: { email?: string | null; phone?: string | null; vendor_contacts?: Array<{ email?: string | null; phone?: string | null; is_primary?: boolean }> }) {
   const primary = (vendor.vendor_contacts ?? []).find((row) => row.is_primary) || (vendor.vendor_contacts ?? [])[0];
@@ -40,10 +41,18 @@ export async function runLiveAutobid(supabase: SupabaseClient, opportunityId: st
       minNoticeHours: rule?.min_notice_hours ?? 4,
       jobDurationHours: rule?.job_duration_hours ?? 2,
     };
-    const blocked = autobidBlockReason({
+    const { data: requestRow } = await supabase.from("maintenance_requests").select("home_id, priority").eq("id", opportunity.maintenance_request_id).maybeSingle();
+    const blocked = await liveAutobidBlock(supabase, {
+      vendorId,
       rule: parsedRule,
       calendar,
+      homeId: requestRow?.home_id,
+      title: opportunity.title,
+      budgetCents: opportunity.budget_cents,
       neededBy: opportunity.needed_by,
+      city: opportunity.city,
+      state: opportunity.state,
+      emergency: String(requestRow?.priority || "").toLowerCase() === "emergency",
     });
     if (blocked) continue;
     const lead = leadingBid(bids);
@@ -156,6 +165,25 @@ export async function openLiveAuction(input: {
       ...vendor,
       services: [vendor.trade, ...((vendor.vendor_services ?? []).map((row: any) => row.specialty).filter(Boolean))],
     }, input.job.title)) continue;
+
+    if (await vendorPortalTablesReady(input.supabase)) {
+      const gate = await liveBidGate(input.supabase, {
+        vendorId: vendor.id,
+        homeId: input.job.home_id,
+        title: input.job.title,
+        budgetCents: input.budgetCents,
+        neededBy,
+        city: home?.city,
+        state: home?.state,
+        emergency: String(input.job.priority || "").toLowerCase() === "emergency",
+        vendor: {
+          trade: vendor.trade,
+          emergency_available: vendor.emergency_available,
+          services: [vendor.trade, ...((vendor.vendor_services ?? []).map((row: any) => row.specialty).filter(Boolean))],
+        },
+      });
+      if (gate.notificationReason) continue;
+    }
 
     const destination = vendorDestination(vendor);
     const { data: invite, error: inviteError } = await input.supabase

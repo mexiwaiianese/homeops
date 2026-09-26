@@ -13,6 +13,7 @@ import { resetDemoOwnerPortal } from "@/lib/owner-portal-demo";
 import { listDemoCharges, resetDemoRent } from "@/lib/rent-demo";
 import { resetDemoTenantPortal } from "@/lib/tenant-demo";
 import { resetDemoAuctions } from "@/lib/vendor-auction-demo";
+import { resetDemoPortal } from "@/lib/vendor-portal-demo";
 import { listDemoJobsForVendor, resetDemoJobs } from "@/lib/vendor-job-demo";
 import { resetDemoOutreach } from "@/lib/vendor-prospect-demo";
 
@@ -21,6 +22,7 @@ export function resetDemoStores() {
   // Order matters: jobs read maintenance, rent posts into books, so clear dependents first.
   resetDemoJobs();
   resetDemoAuctions();
+  resetDemoPortal();
   resetDemoRent();
   resetDemoBooks();
   resetDemoMaintenance();

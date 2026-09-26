@@ -8,6 +8,7 @@ import ManagerSignOut from "@/components/manager-sign-out";
 import BrandIcon from "@/components/brand-icon";
 import RecruitmentBoard from "./recruitment-board";
 import VendorBiddingPanel from "@/components/vendor-bidding-panel";
+import VendorBidAccess from "@/components/vendor-bid-access";
 
 type VendorRow = {
   id: string;
@@ -443,6 +444,7 @@ export default function VendorsPage() {
                   <span>Objective ≠ subjective</span>
                 </div>
                 <Scorecard vendor={vendor} />
+                <VendorBidAccess vendorId={vendor.id} />
                 {networkAdmin && <VendorBiddingPanel vendorId={vendor.id} />}
                 {networkAdmin && (
                 <div className="notice">

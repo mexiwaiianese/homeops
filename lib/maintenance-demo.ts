@@ -22,9 +22,9 @@ const store: Store =
   });
 
 function seedIfNeeded() {
-  if (store.rows.size) return;
   const now = Date.now();
   initialMaintenance.forEach((row, index) => {
+    if (store.rows.has(row.id)) return;
     const tenant = tenants.find((t) => t.name === row.tenant);
     const openedAt = new Date(now - (index + 1) * 36 * 60 * 60 * 1000).toISOString();
     store.rows.set(row.id, {

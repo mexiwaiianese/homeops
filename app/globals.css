@@ -3530,3 +3530,29 @@ a.statLink:hover {
     justify-content: flex-end;
   }
 }
+
+.vendorPortal {
+  align-items: start;
+}
+.vendorPortal .intakeCard {
+  width: min(880px, 100%);
+}
+.vendorPortal .primary,
+.vendorPortal .secondaryBtn {
+  width: auto;
+}
+.vendorDeskNav {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 8px 16px;
+  margin: 4px 0 12px;
+}
+.vendorDeskNav a {
+  color: var(--teal);
+  font-size: 13px;
+  font-weight: 800;
+  text-decoration: none;
+}
+.vendorDeskNav a.active {
+  text-decoration: underline;
+}

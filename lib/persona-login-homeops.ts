@@ -508,6 +508,7 @@ const SCHEMA_MARKERS: SchemaMarker[] = [
   { migration: "20260921210000_property_books.sql", table: "financial_transactions", column: "source" },
   { migration: "20260926090000_owner_portal.sql", table: "owner_users", column: "id" },
   { migration: "20260926093000_tenant_portal.sql", table: "tenant_sessions", column: "id" },
+  { migration: "20260926120000_vendor_portal_controls.sql", table: "vendor_notification_rules", column: "vendor_id" },
 ];
 
 async function missingMigrations(admin: NonNullable<ReturnType<typeof createSupabaseAdminClient>>): Promise<string[]> {

@@ -4,6 +4,9 @@ import { getDemoAutobid, getDemoCalendar } from "@/lib/vendor-auction-demo";
 import { vendors as demoVendors } from "@/lib/vendor-demo";
 import { leadingBid, participatingBidCount, publishedLeadBid, vendorBidOutcome, vendorOwnBid, type AuctionBid } from "@/lib/vendor-auction";
 import { autobidBlockReason } from "@/lib/vendor-auction";
+import { accessSummary } from "@/lib/vendor-portal";
+import { demoOpportunityGate } from "@/lib/vendor-portal-demo";
+import { liveBidGate } from "@/lib/vendor-portal-live";
 import { createSupabaseAdminClient } from "@/lib/supabase/admin";
 import { runLiveAutobid } from "@/lib/vendor-auction-live";
 import { ensureDemoJobSite, getDemoJobByRequest } from "@/lib/vendor-job-demo";
@@ -26,6 +29,8 @@ function publicOpportunity(input: {
   calendarConnected: boolean;
   autobid: ReturnType<typeof getDemoAutobid>;
   autobidBlocked: string | null;
+  bidBlocked: string | null;
+  accessSummary?: string | null;
   fieldUrl?: string | null;
 }) {
   const lead = publishedLeadBid(input.bids, input.status);
@@ -50,6 +55,8 @@ function publicOpportunity(input: {
     calendarConnected: input.calendarConnected,
     autobid: input.autobid,
     autobidBlocked: input.autobidBlocked,
+    bidBlocked: input.bidBlocked,
+    accessSummary: input.accessSummary || null,
     fieldUrl: outcome === "won" ? input.fieldUrl || null : null,
   };
 }
@@ -62,6 +69,16 @@ export async function GET(request: Request, { params }: { params: Promise<{ toke
     const vendor = demoVendors.find((row) => row.id === demo.invite.vendorId);
     const calendar = getDemoCalendar(demo.invite.vendorId);
     const autobid = getDemoAutobid(demo.invite.vendorId);
+    const gate = demoOpportunityGate(demo.invite.vendorId, {
+      homeId: demo.opportunity.homeId,
+      title: demo.opportunity.title,
+      budgetCents: demo.opportunity.budgetCents,
+      neededBy: demo.opportunity.neededBy,
+      city: demo.opportunity.city,
+      state: demo.opportunity.state,
+      emergency: demo.opportunity.priority === "Emergency",
+      vendorServices: [],
+    });
     const won = demo.opportunity.status === "awarded" && demo.opportunity.awardedVendorId === demo.invite.vendorId;
     const job = won
       ? ensureDemoJobSite({
@@ -88,7 +105,15 @@ export async function GET(request: Request, { params }: { params: Promise<{ toke
         bids: demo.opportunity.bids,
         calendarConnected: calendar.status === "connected",
         autobid,
-        autobidBlocked: autobidBlockReason({ rule: autobid, calendar, neededBy: demo.opportunity.neededBy }),
+        autobidBlocked: autobidBlockReason({
+          rule: autobid,
+          calendar,
+          neededBy: demo.opportunity.neededBy,
+          accessReason: gate.access.allowed ? null : gate.access.reason,
+          notificationReason: gate.notificationReason,
+        }),
+        bidBlocked: gate.bidBlocked,
+        accessSummary: gate.summary,
         fieldUrl: won && job ? `${origin}${jobFieldPath(job.token)}` : null,
       }),
     });
@@ -128,6 +153,17 @@ export async function GET(request: Request, { params }: { params: Promise<{ toke
     source: bid.source,
     status: bid.status,
   }));
+  const requestRow = (await admin.from("maintenance_requests").select("home_id, priority").eq("id", opportunity.maintenance_request_id).maybeSingle()).data;
+  const gated = await liveBidGate(admin, {
+    vendorId: invite.vendor_id,
+    homeId: requestRow?.home_id,
+    title: opportunity.title,
+    budgetCents: opportunity.budget_cents,
+    neededBy: opportunity.needed_by,
+    city: opportunity.city,
+    state: opportunity.state,
+    emergency: String(requestRow?.priority || "").toLowerCase() === "emergency",
+  });
   const { data: jobSite } = opportunity.status === "awarded" && opportunity.awarded_vendor_id === invite.vendor_id
     ? await admin.from("vendor_job_sites").select("token").eq("maintenance_request_id", opportunity.maintenance_request_id).maybeSingle()
     : { data: null };
@@ -149,7 +185,15 @@ export async function GET(request: Request, { params }: { params: Promise<{ toke
       bids,
       calendarConnected: calendar?.status === "connected",
       autobid,
-      autobidBlocked: autobidBlockReason({ rule: autobid, calendar, neededBy: opportunity.needed_by }),
+      autobidBlocked: autobidBlockReason({
+        rule: autobid,
+        calendar,
+        neededBy: opportunity.needed_by,
+        accessReason: gated.accessReason,
+        notificationReason: gated.notificationReason,
+      }),
+      bidBlocked: gated.bidBlocked,
+      accessSummary: gated.access ? accessSummary(gated.access) : null,
       fieldUrl: jobSite?.token ? `${new URL(request.url).origin}${jobFieldPath(jobSite.token)}` : null,
     }),
   });
@@ -183,6 +227,18 @@ export async function POST(request: Request, { params }: { params: Promise<{ tok
   const opportunity = Array.isArray(invite.vendor_bid_opportunities) ? invite.vendor_bid_opportunities[0] : invite.vendor_bid_opportunities;
   if (!opportunity || opportunity.status !== "open") return NextResponse.json({ error: "This auction is closed." }, { status: 409 });
   if (new Date(opportunity.ends_at) < new Date()) return NextResponse.json({ error: "This auction has ended." }, { status: 410 });
+  const requestRow = (await admin.from("maintenance_requests").select("home_id, priority").eq("id", opportunity.maintenance_request_id).maybeSingle()).data;
+  const gated = await liveBidGate(admin, {
+    vendorId: invite.vendor_id,
+    homeId: requestRow?.home_id,
+    title: opportunity.title,
+    budgetCents: opportunity.budget_cents,
+    neededBy: opportunity.needed_by,
+    city: opportunity.city,
+    state: opportunity.state,
+    emergency: String(requestRow?.priority || "").toLowerCase() === "emergency",
+  });
+  if (gated.bidBlocked) return NextResponse.json({ error: gated.bidBlocked }, { status: 403 });
 
   const { data: bid, error } = await admin.from("vendor_bids").upsert({
     organization_id: invite.organization_id,

@@ -44,7 +44,7 @@ export default function VendorLoginPage() {
         <BrandLockup artwork="lockup" />
         <p className="eyebrow">VENDOR DESK</p>
         <h1>Sign in as your company.</h1>
-        <p>The desk is where you set calendar and autobid rules, then open awarded jobs. Crews still use the no-login job link to record arrival, photos, and departure.</p>
+        <p>The desk is where you set notification and autobid rules, open awarded jobs, add crew, and review what you can collect. Crews still use a no-login link for the job report.</p>
         <form onSubmit={signIn}>
           <label>Work email
             <input type="email" value={email} onChange={(e) => setEmail(e.target.value)} placeholder="dispatch@yourcompany.com" />

@@ -3,10 +3,23 @@ import { getAuthedContext } from "@/lib/backend";
 import { homes, owners, tenants } from "@/lib/data";
 import { listDemoMaintenance } from "@/lib/maintenance-demo";
 import { getDemoOrgSettings } from "@/lib/org-settings";
+import { seedManagerOpportunities } from "@/lib/vendor-auction-demo";
 
-export async function GET() {
+export async function GET(request: Request) {
   const { supabase, user, organizationId, role } = await getAuthedContext();
-  if (!supabase) return NextResponse.json({ mode: "demo", homes, owners, tenants, maintenance: listDemoMaintenance(), settings: getDemoOrgSettings(), role: "manager" });
+  if (!supabase) {
+    const seeded = await seedManagerOpportunities(new URL(request.url).origin);
+    return NextResponse.json({
+      mode: "demo",
+      homes,
+      owners,
+      tenants,
+      maintenance: listDemoMaintenance(),
+      settings: getDemoOrgSettings(),
+      role: "manager",
+      openAuctionJobIds: seeded.openJobIds,
+    });
+  }
   if (!user || !organizationId) return NextResponse.json({ mode: "auth", authenticated: false }, { status: 401 });
 
   const [ownerRows, homeRows, tenantRows, maintenanceRows, orgRow] = await Promise.all([

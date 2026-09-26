@@ -2,6 +2,7 @@ import { NextResponse } from "next/server";
 import { getAuthedContext } from "@/lib/backend";
 import { isNetworkAdmin } from "@/lib/vendors";
 import { getDemoAutobid, setDemoAutobid } from "@/lib/vendor-auction-demo";
+import { normalizeAutobidInput } from "@/lib/vendor-portal";
 
 export async function GET(_: Request, { params }: { params: Promise<{ id: string }> }) {
   const { supabase, user, organizationId } = await getAuthedContext();
@@ -26,14 +27,9 @@ export async function PATCH(request: Request, { params }: { params: Promise<{ id
   const { supabase, user, organizationId, role } = await getAuthedContext();
   const { id } = await params;
   const body = await request.json().catch(() => ({}));
-  const rule = {
-    enabled: body.enabled === true,
-    maxAmountCents: body.maxAmount == null || body.maxAmount === "" ? null : Math.round(Number(body.maxAmount) * 100),
-    minAmountCents: body.minAmount == null || body.minAmount === "" ? null : Math.round(Number(body.minAmount) * 100),
-    undercutCents: body.undercut == null || body.undercut === "" ? 2500 : Math.round(Number(body.undercut) * 100),
-    minNoticeHours: Number(body.minNoticeHours ?? 4),
-    jobDurationHours: Number(body.jobDurationHours ?? 2),
-  };
+  const parsed = normalizeAutobidInput(body, getDemoAutobid(id));
+  if (parsed.error) return NextResponse.json({ error: parsed.error }, { status: 400 });
+  const rule = parsed.rule;
   if (!supabase) return NextResponse.json({ mode: "demo", rule: setDemoAutobid(id, rule) });
   if (!user || !organizationId) return NextResponse.json({ error: "Authentication required" }, { status: 401 });
   if (!isNetworkAdmin(role)) return NextResponse.json({ error: "Network admin required" }, { status: 403 });

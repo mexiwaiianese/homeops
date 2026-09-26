@@ -22,6 +22,8 @@ type BidPage = {
   calendarConnected: boolean;
   autobid?: { enabled?: boolean } | null;
   autobidBlocked: string | null;
+  bidBlocked?: string | null;
+  accessSummary?: string | null;
   fieldUrl?: string | null;
   error?: string;
 };
@@ -147,11 +149,13 @@ export default function VendorBidPage() {
             {page.fieldUrl && (
               <a className="primary jobSiteLink" href={page.fieldUrl}>Open job site for the crew</a>
             )}
-            {status === "form" && page.autobid?.enabled && page.autobidBlocked && (
-              <div className="notice">Autobid is paused: {page.autobidBlocked}. Connect your service calendar in HomeOps before autobid can fire.</div>
+            {page.accessSummary && <div className="notice">{page.accessSummary}</div>}
+            {status === "form" && page.bidBlocked && <div className="notice">{page.bidBlocked}</div>}
+            {status === "form" && !page.bidBlocked && page.autobid?.enabled && page.autobidBlocked && (
+              <div className="notice">Autobid will not run: {page.autobidBlocked}</div>
             )}
             {message && <div className="notice">{message}</div>}
-            {status === "form" && (
+            {status === "form" && !page.bidBlocked && (
               <form onSubmit={submit}>
                 <label>Your bid ($)<input required type="number" min="1" step="1" value={amount} onChange={(e) => setAmount(e.target.value)} /></label>
                 <label>Notes<textarea rows={4} value={notes} onChange={(e) => setNotes(e.target.value)} placeholder="Crew size, materials, or when you can start. Do not upload W-9s or insurance here." /></label>

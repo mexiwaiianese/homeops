@@ -102,8 +102,16 @@ export function autobidBlockReason(input: {
   rule?: AutobidRule | null;
   calendar?: CalendarConnection | null;
   neededBy?: string | null;
+  accessReason?: string | null;
+  notificationReason?: string | null;
 }) {
+  if (input.accessReason) return input.accessReason;
+  if (input.notificationReason) return input.notificationReason;
   if (!input.rule?.enabled) return "Autobid is off";
+  if (input.rule.maxAmountCents == null || input.rule.minAmountCents == null) {
+    return "Autobid needs both a floor and a ceiling before it can run";
+  }
+  if (input.rule.minAmountCents > input.rule.maxAmountCents) return "Autobid floor is above the ceiling";
   if (!isCalendarConnected(input.calendar)) return "Service calendar is not connected";
   if (input.neededBy) {
     const noticeMs = (input.rule.minNoticeHours || 0) * 60 * 60 * 1000;

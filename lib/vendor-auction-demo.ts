@@ -1,9 +1,10 @@
 import { homes } from "@/lib/data";
-import { getDemoMaintenance } from "@/lib/maintenance-demo";
+import { getDemoMaintenance, listDemoMaintenance } from "@/lib/maintenance-demo";
 import { serviceFits } from "@/lib/auto-assign";
 import { explainVendorEligibility } from "@/lib/vendors";
 import { autobidBlockReason, leadingBid, nextAutobidAmount, notifyAuctionInvite, type AuctionBid, type AutobidRule } from "@/lib/vendor-auction";
 import { vendors as demoVendors } from "@/lib/vendor-demo";
+import { demoOpportunityGate } from "@/lib/vendor-portal-demo";
 import type { CalendarConnection } from "@/lib/vendor-calendar";
 
 type DemoInvite = {
@@ -23,6 +24,7 @@ type DemoInvite = {
 type DemoOpportunity = {
   id: string;
   maintenanceRequestId: string;
+  homeId: string;
   title: string;
   description: string;
   city: string;
@@ -31,6 +33,7 @@ type DemoOpportunity = {
   address1: string;
   budgetCents: number | null;
   neededBy: string;
+  priority: string;
   startsAt: string;
   endsAt: string;
   status: "open" | "awarded" | "cancelled" | "expired";
@@ -39,10 +42,13 @@ type DemoOpportunity = {
   bids: AuctionBid[];
 };
 
+const SEED_REVISION = 2;
+
 type DemoStore = {
   opportunities: Map<string, DemoOpportunity>;
   calendars: Map<string, CalendarConnection>;
   autobid: Map<string, AutobidRule>;
+  revision?: number;
 };
 
 function defaultCalendars(): Map<string, CalendarConnection> {
@@ -123,13 +129,34 @@ function vendorContact(vendorId: string) {
   return { email: vendor?.email || null, phone: vendor?.phone || null, name: vendor?.name || "Vendor" };
 }
 
+function opportunityMatch(opportunity: DemoOpportunity) {
+  return {
+    homeId: opportunity.homeId,
+    title: opportunity.title,
+    budgetCents: opportunity.budgetCents,
+    neededBy: opportunity.neededBy,
+    city: opportunity.city,
+    state: opportunity.state,
+    emergency: opportunity.priority === "Emergency",
+    vendorServices: [] as string[],
+  };
+}
+
 function runAutobid(opportunity: DemoOpportunity) {
   for (const invite of opportunity.invites) {
+    if (invite.status === "skipped" || invite.status === "declined") continue;
     const vendor = demoVendors.find((row) => row.id === invite.vendorId);
     if (!vendor) continue;
     const rule = getDemoAutobid(vendor.id);
     const calendar = getDemoCalendar(vendor.id);
-    const blocked = autobidBlockReason({ rule, calendar, neededBy: opportunity.neededBy });
+    const gate = demoOpportunityGate(vendor.id, opportunityMatch(opportunity));
+    const blocked = autobidBlockReason({
+      rule,
+      calendar,
+      neededBy: opportunity.neededBy,
+      accessReason: gate.access.allowed ? null : gate.access.reason,
+      notificationReason: gate.notificationReason,
+    });
     if (blocked) continue;
     const lead = leadingBid(opportunity.bids);
     const amount = nextAutobidAmount({
@@ -157,25 +184,71 @@ function runAutobid(opportunity: DemoOpportunity) {
   }
 }
 
+async function inviteVendor(opportunity: DemoOpportunity, vendorId: string, origin: string) {
+  const vendor = demoVendors.find((row) => row.id === vendorId);
+  if (!vendor) return;
+  const existing = opportunity.invites.find((row) => row.vendorId === vendorId);
+  const gate = demoOpportunityGate(vendorId, opportunityMatch(opportunity));
+  if (gate.notificationReason) {
+    if (existing && existing.status === "invited") existing.status = "skipped";
+    return;
+  }
+  if (existing && existing.status !== "skipped") return;
+  const contact = vendorContact(vendorId);
+  const inviteToken = existing?.token || token();
+  const url = `${origin.replace(/\/$/, "")}/vendors/bid/${inviteToken}`;
+  const delivery = await notifyAuctionInvite({
+    email: contact.email,
+    phone: contact.phone,
+    organizationName: "HomeOps Demo Management",
+    vendorName: vendor.name,
+    title: opportunity.title,
+    url,
+    budgetCents: opportunity.budgetCents,
+    neededBy: opportunity.neededBy,
+  });
+  const invite: DemoInvite = {
+    id: existing?.id || `inv-${vendorId}-${opportunity.id}`,
+    vendorId,
+    vendorName: vendor.name,
+    token: inviteToken,
+    status: "invited",
+    channel: delivery.channel,
+    sentTo: delivery.sentTo,
+    bidUrl: url,
+    notifiedAt: new Date().toISOString(),
+    viewedAt: existing?.viewedAt || null,
+    deliveryError: delivery.sent ? null : delivery.error || "Link generated; email/SMS not configured",
+  };
+  opportunity.invites = [...opportunity.invites.filter((row) => row.vendorId !== vendorId), invite];
+}
+
+function eligibleVendorIds(title: string) {
+  return demoVendors
+    .filter((vendor) => explainVendorEligibility(vendor).eligible && serviceFits(vendor, title))
+    .map((vendor) => vendor.id);
+}
+
 export async function openDemoAuction(input: {
   jobId: string;
   budgetCents: number | null;
   neededBy?: string | null;
   origin: string;
 }) {
-  const existing = getDemoOpportunityByJob(input.jobId);
-  if (existing && existing.status === "open") return { opportunity: existing, created: false };
   const job = getDemoMaintenance(input.jobId);
   if (!job) throw new Error("Request not found");
+  const existing = getDemoOpportunityByJob(input.jobId);
+  if (existing && existing.status === "open") {
+    if (!existing.homeId) existing.homeId = job.homeId;
+    if (!existing.priority) existing.priority = job.priority;
+    return { opportunity: existing, created: false };
+  }
   const home = homes.find((row) => row.id === job.homeId);
   const neededBy = input.neededBy || new Date(Date.now() + (job.priority === "Emergency" ? 8 : 48) * 60 * 60 * 1000).toISOString();
-  const eligible = demoVendors.filter((vendor) => {
-    const result = explainVendorEligibility(vendor);
-    return result.eligible && serviceFits(vendor, job.title);
-  });
   const opportunity: DemoOpportunity = {
     id: `opp-${input.jobId}`,
     maintenanceRequestId: input.jobId,
+    homeId: job.homeId,
     title: job.title,
     description: job.note,
     city: home?.city.split(",")[0] || "Lehi",
@@ -184,43 +257,102 @@ export async function openDemoAuction(input: {
     address1: home?.address || "",
     budgetCents: input.budgetCents,
     neededBy,
+    priority: job.priority,
     startsAt: new Date().toISOString(),
     endsAt: new Date(Date.now() + 24 * 60 * 60 * 1000).toISOString(),
     status: "open",
     invites: [],
     bids: [],
   };
-  for (const vendor of eligible) {
-    const contact = vendorContact(vendor.id);
-    const inviteToken = token();
-    const url = `${input.origin.replace(/\/$/, "")}/vendors/bid/${inviteToken}`;
-    const delivery = await notifyAuctionInvite({
-      email: contact.email,
-      phone: contact.phone,
-      organizationName: "HomeOps Demo Management",
-      vendorName: vendor.name,
-      title: job.title,
-      url,
-      budgetCents: input.budgetCents,
-      neededBy,
-    });
-    opportunity.invites.push({
-      id: `inv-${vendor.id}`,
-      vendorId: vendor.id,
-      vendorName: vendor.name,
-      token: inviteToken,
-      status: "invited",
-      channel: delivery.channel,
-      sentTo: delivery.sentTo,
-      bidUrl: url,
-      notifiedAt: new Date().toISOString(),
-      viewedAt: null,
-      deliveryError: delivery.sent ? null : delivery.error || "Link generated; email/SMS not configured",
-    });
+  for (const vendorId of eligibleVendorIds(job.title)) {
+    await inviteVendor(opportunity, vendorId, input.origin);
   }
   runAutobid(opportunity);
   store.opportunities.set(opportunity.id, opportunity);
   return { opportunity, created: true };
+}
+
+/** Re-check open auctions after a vendor changes notification rules, and invite anyone who now matches. */
+export async function syncDemoInvites(origin: string) {
+  for (const opportunity of store.opportunities.values()) {
+    if (opportunity.status !== "open") continue;
+    for (const vendorId of eligibleVendorIds(opportunity.title)) {
+      await inviteVendor(opportunity, vendorId, origin);
+    }
+    runAutobid(opportunity);
+  }
+}
+
+/** Property-manager board seed: open a reverse auction for every unassigned job sitting in Authorize. */
+export async function seedManagerOpportunities(origin: string) {
+  if (store.revision !== SEED_REVISION) {
+    store.opportunities.clear();
+    store.revision = SEED_REVISION;
+  }
+  const jobs = listDemoMaintenance().filter((job) => !job.vendorId && job.status === "Authorize");
+  const created: string[] = [];
+  for (const job of jobs) {
+    const opened = await openDemoAuction({
+      jobId: job.id,
+      budgetCents: job.estimate ? Math.round(job.estimate * 100) : null,
+      origin,
+    });
+    if (opened.created) created.push(job.id);
+  }
+  return {
+    created,
+    openJobIds: [...store.opportunities.values()].filter((row) => row.status === "open").map((row) => row.maintenanceRequestId),
+  };
+}
+
+export function listDemoOpportunitiesForVendor(vendorId: string) {
+  return [...store.opportunities.values()]
+    .filter((opportunity) => opportunity.status === "open" || opportunity.awardedVendorId === vendorId)
+    .map((opportunity) => {
+      const invite = opportunity.invites.find((row) => row.vendorId === vendorId && row.status !== "skipped" && row.status !== "declined");
+      const gate = demoOpportunityGate(vendorId, opportunityMatch(opportunity));
+      const ownBid = opportunity.bids.find((bid) => bid.vendorId === vendorId && bid.status !== "withdrawn") || null;
+      if (!invite && !ownBid) return null;
+      if (gate.notificationReason && !ownBid) return null;
+      return {
+        id: opportunity.id,
+        maintenanceRequestId: opportunity.maintenanceRequestId,
+        title: opportunity.title,
+        address: opportunity.address1,
+        city: opportunity.city,
+        state: opportunity.state,
+        budgetCents: opportunity.budgetCents,
+        neededBy: opportunity.neededBy,
+        status: opportunity.status,
+        bidUrl: invite?.bidUrl || null,
+        ownBidCents: ownBid?.amountCents ?? null,
+        ownBidSource: ownBid?.source ?? null,
+        leadingCents: leadingBid(opportunity.bids)?.amountCents ?? null,
+        bidBlocked: ownBid ? null : gate.bidBlocked,
+        accessScope: gate.access.scope,
+        accessSummary: gate.summary,
+        autobidBlocked: (() => {
+          const rule = getDemoAutobid(vendorId);
+          const blocked = autobidBlockReason({
+            rule,
+            calendar: getDemoCalendar(vendorId),
+            neededBy: opportunity.neededBy,
+            accessReason: gate.access.allowed ? null : gate.access.reason,
+            notificationReason: gate.notificationReason,
+          });
+          if (blocked || !rule.enabled || ownBid) return blocked;
+          const lead = leadingBid(opportunity.bids);
+          const amount = nextAutobidAmount({
+            rule,
+            leadingCents: lead && lead.vendorId !== vendorId ? lead.amountCents : null,
+            budgetCents: opportunity.budgetCents,
+          });
+          return amount == null ? "No autobid fits inside your floor, ceiling, and undercut for this budget." : null;
+        })(),
+      };
+    })
+    .filter((row): row is NonNullable<typeof row> => Boolean(row))
+    .sort((a, b) => a.title.localeCompare(b.title));
 }
 
 export function placeDemoBid(tokenValue: string, input: { amountCents: number; notes?: string; proposedStart?: string | null }) {
@@ -229,6 +361,8 @@ export function placeDemoBid(tokenValue: string, input: { amountCents: number; n
   const { opportunity, invite } = found;
   if (opportunity.status !== "open") return { error: "This auction is closed.", status: 409 as const };
   if (new Date(opportunity.endsAt) < new Date()) return { error: "This auction has ended.", status: 410 as const };
+  const gate = demoOpportunityGate(invite.vendorId, opportunityMatch(opportunity));
+  if (gate.bidBlocked) return { error: gate.bidBlocked, status: 403 as const };
   const vendor = demoVendors.find((row) => row.id === invite.vendorId);
   const bid: AuctionBid = {
     id: `bid-${invite.vendorId}-${opportunity.id}`,

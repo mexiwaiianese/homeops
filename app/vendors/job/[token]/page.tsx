@@ -146,7 +146,7 @@ export default function VendorJobPage() {
               <div><span>Left</span><strong>{stamp(job.departedAt)}</strong></div>
               <div><span>Location</span><strong>{job.locationConfirmed ? "Confirmed" : "Not confirmed"}</strong></div>
             </div>
-            <p className="summary">No login needed on this page. Record the visit as you work. Do not upload W-9s, insurance, or tax files here.</p>
+            <p className="summary">No login needed. This is the job report for the crew on this visit. Record arrival, photos, and departure. Do not upload W-9s, insurance, or tax files here.</p>
             {message && <div className="notice error">{message}</div>}
             {!closed && (
               <div className="visitActions">
