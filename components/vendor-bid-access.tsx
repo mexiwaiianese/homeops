@@ -51,7 +51,7 @@ export default function VendorBidAccess({ vendorId }: { vendorId: string }) {
         <div className="notice">This company has completed enough jobs to bid and autobid across the network, still inside the guardrails they set on their own desk.</div>
       ) : data.grants.length ? (
         <div className="notice">
-          Allowed only on {data.grants.map((grant) => grant.properties.join(", ")).join("; ") || "the properties you selected"}. They cannot bid on anyone else's portfolio until they reach {data.jobsRequired} successful jobs.
+          Allowed only on {data.grants.map((grant) => grant.properties.join(", ")).join("; ") || "the properties you selected"}. They cannot bid outside this property set until they reach {data.jobsRequired} successful jobs.
         </div>
       ) : (
         <div className="notice">Autobid and bidding stay off until they finish {data.jobsRequired} successful jobs, unless you allow them onto your properties.</div>
