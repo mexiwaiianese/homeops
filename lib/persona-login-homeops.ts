@@ -484,4 +484,18 @@ export const homeopsPersonaLogin: PersonaLoginAdapter = {
     if (!isSupabaseConfigured()) return { ok: true, summary: "Demo mode already has its seed data in memory." };
     return seedLiveDemo();
   },
+
+  async diagnostics() {
+    if (!isSupabaseConfigured()) return [];
+    const warnings: string[] = [];
+    const admin = createSupabaseAdminClient();
+    if (!admin) {
+      warnings.push("SUPABASE_SERVICE_ROLE_KEY is missing or empty on this server. Live personas, tenant sessions, and demo seeding need it. Set it in the hosting environment and redeploy.");
+      return warnings;
+    }
+    const probe = await admin.from("organizations").select("id", { count: "exact", head: true });
+    if (probe.error) warnings.push(`Database check failed: ${probe.error.message}`);
+    else if ((probe.count ?? 0) === 0) warnings.push("The database has no organizations yet. Use “Create demo data” to add the demo organization.");
+    return warnings;
+  },
 };

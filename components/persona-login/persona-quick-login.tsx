@@ -9,7 +9,7 @@ import { useCallback, useEffect, useState } from "react";
 import "./persona-login.css";
 
 type PublicPersona = { id: string; label: string; description?: string; group: string; groupLabel?: string; landingPath: string; badge?: string };
-type Status = { enabled: boolean; unlocked: boolean; codeAvailable: boolean; allowlistAvailable: boolean; via: string | null; environment: string; canSeed?: boolean; reason?: string };
+type Status = { enabled: boolean; unlocked: boolean; codeAvailable: boolean; allowlistAvailable: boolean; via: string | null; environment: string; canSeed?: boolean; warnings?: string[]; reason?: string };
 type ListResponse = { status: Status; personas: PublicPersona[]; active: string | null };
 
 export type PersonaQuickLoginProps = {
@@ -107,7 +107,8 @@ export default function PersonaQuickLogin({ group, title = "Open as a test perso
         </div>
       ) : personas.length === 0 ? (
         <div className="plEmpty">
-          <p>No {group ? `${group} ` : ""}personas are available on this server yet.</p>
+          {status.warnings?.map((warning) => <p key={warning}>{warning}</p>)}
+          {!status.warnings?.length && <p>No {group ? `${group} ` : ""}personas are available on this server yet.</p>}
           {status.canSeed && (
             <button className="plPrimary" type="button" disabled={Boolean(busy)} onClick={() => void seed()}>
               {busy === "seed" ? "Creating…" : "Create demo data"}

@@ -69,6 +69,7 @@ export function createPersonaLoginHandlers(adapter: PersonaLoginAdapter) {
     if (!config.enabled) return notFound();
     const status = await personaLoginStatus(adapter);
     status.canSeed = typeof adapter.seed === "function";
+    if (status.unlocked && adapter.diagnostics) status.warnings = await adapter.diagnostics().catch(() => []);
     const personas = status.unlocked ? (await adapter.listPersonas()).map(publicPersona) : [];
     const active = status.unlocked ? await activePersonaId() : null;
     return json({ status, personas, active });

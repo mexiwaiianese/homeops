@@ -66,6 +66,11 @@ export type PersonaLoginAdapter = {
    * Must be idempotent; return a short summary for the UI.
    */
   seed?(ctx: PersonaSignInContext): Promise<{ ok: true; summary: string } | { ok: false; error: string; status?: number }>;
+  /**
+   * Optional: short human-readable warnings about server configuration that would stop personas
+   * from working (missing service key, unreachable database). Shown to unlocked testers.
+   */
+  diagnostics?(): Promise<string[]>;
 };
 
 export type PersonaLoginAccess =
@@ -83,5 +88,7 @@ export type PersonaLoginStatus = {
   environment: "development" | "production" | "test";
   /** True when the adapter can create demo records (shows "Create demo data" on an empty list). */
   canSeed?: boolean;
+  /** Server configuration problems reported by the adapter (only for unlocked callers). */
+  warnings?: string[];
   reason?: string;
 };

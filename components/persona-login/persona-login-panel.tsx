@@ -24,6 +24,7 @@ type Status = {
   via: "open" | "code" | "allowlist" | null;
   environment: "development" | "production" | "test";
   canSeed?: boolean;
+  warnings?: string[];
   reason?: string;
 };
 
@@ -187,6 +188,9 @@ export default function PersonaLoginPanel({ apiBase = "/api/persona-login", appN
         </div>
       ) : (
         <>
+          {status.warnings?.map((warning) => (
+            <div className="plNotice plNotice-error" key={warning}>{warning}</div>
+          ))}
           {groups.length === 0 && (
             <div className="plEmpty">
               <p>No personas are available yet. The database has no organizations, owners, tenants, or vendors, or discovery is off (<code>PERSONA_LOGIN_LIVE_DISCOVERY=false</code>) and <code>PERSONA_LOGIN_LIVE_PERSONAS</code> is empty.</p>
