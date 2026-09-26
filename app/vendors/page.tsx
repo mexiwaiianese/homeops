@@ -4,6 +4,7 @@ import { useCallback, useEffect, useMemo, useState } from "react";
 import type { VendorApprovalStatus, VendorWorkflowStage } from "@/lib/vendors";
 import { isNetworkAdmin, managerVisibleStatuses } from "@/lib/vendors";
 import BrandLockup from "@/components/brand-lockup";
+import ManagerSignOut from "@/components/manager-sign-out";
 import BrandIcon from "@/components/brand-icon";
 import RecruitmentBoard from "./recruitment-board";
 import VendorBiddingPanel from "@/components/vendor-bidding-panel";
@@ -206,6 +207,7 @@ export default function VendorsPage() {
             <BrandIcon name="applications" className="navIcon" />
             Approved Vendors
           </a>
+          <ManagerSignOut className="finNav" />
         </nav>
         <div className="portfolio">
           <small>VENDOR NETWORK</small>

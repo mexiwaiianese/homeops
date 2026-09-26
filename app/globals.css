@@ -1232,6 +1232,29 @@ button:disabled {
 .finNav.active .navIcon {
   color: var(--teal);
 }
+/* Sidebar sign-out: a button styled like the nav links, pushed to the bottom of the list. */
+.signOutNav {
+  border: 0;
+  background: transparent;
+  cursor: pointer;
+  font: inherit;
+  font-weight: 700;
+  text-align: left;
+  width: 100%;
+  margin-top: 6px;
+  color: #9bb8c4;
+}
+.signOutNav:hover {
+  color: #fff;
+}
+.signOutNav:disabled {
+  opacity: 0.6;
+  cursor: default;
+}
+.navGlyph {
+  padding: 4px;
+  color: currentColor;
+}
 .finContent {
   padding: 34px 42px 60px;
   max-width: 1500px;

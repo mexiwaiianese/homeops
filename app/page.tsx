@@ -3,6 +3,7 @@
 import { useEffect, useState } from "react";
 import BrandLockup from "@/components/brand-lockup";
 import BrandIcon from "@/components/brand-icon";
+import ManagerSignOut from "@/components/manager-sign-out";
 import { homes as seedHomes, initialMaintenance, owners as seedOwners, tenants as seedTenants, type MaintenanceStatus } from "@/lib/data";
 import { parseOrgSettings } from "@/lib/org-settings";
 import SettingsModal from "@/components/settings-modal";
@@ -251,6 +252,7 @@ export default function HomeOps() {
         <a className="nav" href="/payments" style={{textDecoration:"none"}}><BrandIcon name="rent" className="navIcon" />Payments</a>
         <a className="nav" href="/financials" style={{textDecoration:"none"}}><BrandIcon name="rent" className="navIcon" />Books</a>
         <a className="nav" href="/vendors" style={{textDecoration:"none"}}><BrandIcon name="applications" className="navIcon" />Approved Vendors</a>
+        <ManagerSignOut className="nav" />
         <div className="portfolio"><small>PORTFOLIO</small><strong>{homes.length} homes</strong><span>{money(monthlyRent)} monthly rent</span><span className={`mode ${backendMode}`}>{backendMode === "live" ? "● Supabase live" : backendMode === "demo" ? "○ Demo mode" : backendMode === "auth" ? "Sign-in required" : backendMode === "checking" ? "Checking backend…" : "Backend unavailable"}</span></div>
       </aside>
 

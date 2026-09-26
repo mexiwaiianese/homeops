@@ -2,6 +2,7 @@
 
 import { FormEvent, useEffect, useMemo, useState } from "react";
 import BrandLockup from "@/components/brand-lockup";
+import ManagerSignOut from "@/components/manager-sign-out";
 import BrandIcon from "@/components/brand-icon";
 import { moneyCents } from "@/lib/rent";
 
@@ -115,6 +116,7 @@ export default function PaymentsPage() {
           <a className="finNav active" href="/payments"><BrandIcon name="rent" className="navIcon" />Payments</a>
           <a className="finNav" href="/financials"><BrandIcon name="rent" className="navIcon" />Books</a>
           <a className="finNav" href="/vendors"><BrandIcon name="applications" className="navIcon" />Approved Vendors</a>
+          <ManagerSignOut className="finNav" />
         </nav>
         <div className="portfolio">
           <small>COLLECTION</small>

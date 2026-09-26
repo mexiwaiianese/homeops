@@ -2,6 +2,7 @@
 
 import { useEffect, useState } from "react";
 import BrandLockup from "@/components/brand-lockup";
+import ManagerSignOut from "@/components/manager-sign-out";
 import BrandIcon from "@/components/brand-icon";
 
 type Connection = {
@@ -211,6 +212,7 @@ export default function ListingsPage() {
           <a className="finNav" href="/payments"><BrandIcon name="rent" className="navIcon" />Payments</a>
           <a className="finNav" href="/financials"><BrandIcon name="rent" className="navIcon" />Books</a>
           <a className="finNav" href="/vendors"><BrandIcon name="applications" className="navIcon" />Approved Vendors</a>
+          <ManagerSignOut className="finNav" />
         </nav>
         <div className="portfolio">
           <small>RENTAL LISTINGS</small>
