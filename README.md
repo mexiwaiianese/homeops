@@ -206,6 +206,17 @@ Live setup:
 3. Insert an `owner_users` row per owner login (`owner_id`, `organization_id`, `email`). `auth_user_id` fills on first sign-in.
 4. Set `homes.property_type` where it is not single family.
 
+## Persona login (dev and beta testers)
+
+`/dev/personas` opens HomeOps as any persona in one click: the demo manager, each demo owner, tenant, and vendor. It is meant for local development and authorized beta testers only.
+
+- Local dev: on by default with no env. Set `PERSONA_LOGIN_ACCESS_CODE` if the machine is shared.
+- Production: off unless `PERSONA_LOGIN_ENABLED=true` **and** either `PERSONA_LOGIN_ACCESS_CODE` (≥ 12 chars) or `PERSONA_LOGIN_ALLOWED_EMAILS` is set. Otherwise the page and API return 404.
+- Live mode (Supabase configured): personas come from `PERSONA_LOGIN_LIVE_PERSONAS`, a JSON array of test accounts you own. Email personas sign in through Supabase Auth without sending mail; tenant personas get a `tenant_sessions` row.
+- Every switch is logged as `[persona-login]`. Testers see labels only; emails and ids stay server-side.
+
+The core (`lib/persona-login/`, `components/persona-login/`) has no HomeOps imports. To reuse it in another app, copy those folders and write an adapter like `lib/persona-login-homeops.ts`. See `lib/persona-login/README.md`.
+
 ## Deploy on Laravel Forge
 
 Production should run on your Forge server as a Node daemon, not Vercel. See `docs/forge-deploy.md`.

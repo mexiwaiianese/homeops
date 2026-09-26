@@ -1,0 +1,220 @@
+/* Persona login panel. Self-contained; uses app CSS variables when present with safe fallbacks. */
+
+.plPanel {
+  --pl-ink: var(--ink, #14211b);
+  --pl-muted: var(--muted, #6b746f);
+  --pl-line: var(--line, #e2e6e2);
+  --pl-accent: var(--teal, #008c99);
+  --pl-primary: var(--green, #2f7a52);
+  --pl-surface: #fff;
+  width: min(640px, 100%);
+  margin: 0 auto;
+  background: var(--pl-surface);
+  border: 1px solid var(--pl-line);
+  border-radius: 20px;
+  padding: 30px;
+  box-shadow: 0 18px 60px rgba(24, 48, 37, 0.08);
+  color: var(--pl-ink);
+  font-size: 14px;
+}
+.plHeader h1 {
+  margin: 6px 0 8px;
+  font-size: 28px;
+  letter-spacing: -0.04em;
+  font-family: var(--font-display, inherit);
+  line-height: 1.15;
+}
+.plEyebrow {
+  margin: 0;
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  font-size: 11px;
+  font-weight: 800;
+  letter-spacing: 0.12em;
+  text-transform: uppercase;
+  color: var(--pl-accent);
+}
+.plLead {
+  margin: 0 0 20px;
+  color: var(--pl-muted);
+  font-size: 13px;
+  line-height: 1.6;
+}
+.plTag {
+  font-size: 10px;
+  letter-spacing: 0.06em;
+  padding: 3px 8px;
+  border-radius: 999px;
+  background: #eef2f0;
+  color: var(--pl-muted);
+}
+.plTag-development { background: #e6f4f6; color: var(--pl-accent); }
+.plTag-beta { background: #fdf1dc; color: #9a6400; }
+.plTag-test { background: #f0e9fb; color: #6d3fc5; }
+
+.plGate {
+  border: 1px dashed var(--pl-line);
+  border-radius: 14px;
+  padding: 18px;
+  background: #fafbf9;
+}
+.plGateReason {
+  margin: 0 0 12px;
+  color: var(--pl-muted);
+  font-size: 13px;
+}
+.plUnlock label {
+  display: flex;
+  flex-direction: column;
+  gap: 6px;
+  margin: 0 0 12px;
+  font-size: 11px;
+  font-weight: 800;
+  color: var(--pl-muted);
+}
+.plUnlock input {
+  width: 100%;
+  border: 1px solid var(--pl-line);
+  background: #fff;
+  padding: 11px 12px;
+  border-radius: 9px;
+  font: inherit;
+  color: var(--pl-ink);
+  outline: none;
+}
+.plUnlock input:focus {
+  border-color: var(--pl-accent);
+  box-shadow: 0 0 0 3px rgba(0, 140, 153, 0.12);
+}
+
+.plGroup { margin-top: 22px; }
+.plGroup h2 {
+  margin: 0 0 8px;
+  font-size: 13px;
+  font-weight: 800;
+  letter-spacing: 0.02em;
+  color: var(--pl-muted);
+}
+.plList {
+  border: 1px solid var(--pl-line);
+  border-radius: 12px;
+  overflow: hidden;
+}
+.plRow {
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  gap: 12px;
+  padding: 12px 14px;
+  border-top: 1px solid var(--pl-line);
+}
+.plRow:first-child { border-top: 0; }
+.plRow-active { background: #f2f9f5; }
+.plRowText { min-width: 0; }
+.plRowText strong,
+.plRowText span { display: block; }
+.plRowText strong {
+  display: flex;
+  align-items: center;
+  gap: 6px;
+  flex-wrap: wrap;
+  font-size: 14px;
+}
+.plRowText > span {
+  font-size: 11px;
+  color: var(--pl-muted);
+  margin-top: 3px;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+.plBadge {
+  font-size: 9px;
+  font-weight: 800;
+  letter-spacing: 0.08em;
+  text-transform: uppercase;
+  padding: 2px 6px;
+  border-radius: 999px;
+  background: #eef2f0;
+  color: var(--pl-muted);
+}
+.plBadge-active { background: #dcefe4; color: var(--pl-primary); }
+
+.plPrimary {
+  border: 0;
+  background: var(--pl-primary);
+  color: #fff;
+  padding: 10px 16px;
+  border-radius: 10px;
+  font: inherit;
+  font-size: 13px;
+  font-weight: 700;
+  cursor: pointer;
+  white-space: nowrap;
+}
+.plPrimary:disabled { opacity: 0.55; cursor: default; }
+.plUnlock .plPrimary { width: 100%; }
+.plGhost {
+  border: 1px solid var(--pl-line);
+  background: #fff;
+  color: var(--pl-ink);
+  padding: 9px 14px;
+  border-radius: 10px;
+  font: inherit;
+  font-size: 12px;
+  font-weight: 700;
+  cursor: pointer;
+}
+.plGhost:disabled { opacity: 0.55; cursor: default; }
+.plActions {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 8px;
+  margin-top: 20px;
+}
+.plEmpty {
+  border: 1px dashed var(--pl-line);
+  background: #fafbf9;
+  border-radius: 10px;
+  padding: 16px;
+  color: var(--pl-muted);
+  font-size: 12px;
+  margin-top: 16px;
+}
+.plEmpty code { font-size: 11px; }
+
+.plNotice {
+  margin-top: 14px;
+  padding: 10px 12px;
+  border-radius: 10px;
+  font-size: 12px;
+  background: #eef5f1;
+  color: #1f5a3a;
+}
+.plNotice-error { background: #fdeeee; color: #8d1f1f; }
+
+.plFooter {
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  gap: 12px;
+  margin-top: 22px;
+  padding-top: 14px;
+  border-top: 1px solid var(--pl-line);
+  font-size: 11px;
+  color: var(--pl-muted);
+}
+.plLink {
+  color: var(--pl-accent);
+  font-size: 12px;
+  font-weight: 700;
+  text-decoration: none;
+}
+.plGate .plLink { display: inline-block; margin-top: 10px; }
+
+@media (max-width: 560px) {
+  .plPanel { padding: 22px 18px; border-radius: 16px; }
+  .plRow { flex-direction: column; align-items: stretch; }
+  .plRowText > span { white-space: normal; }
+}

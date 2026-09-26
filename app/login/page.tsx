@@ -40,8 +40,9 @@ export default function LoginPage() {
         {message && <div className="notice">{message}</div>}
         <a href="/">Return to demo</a>
         <a href="/vendors/login">Vendor desk sign-in</a>
-        <a href="/tenant/login">Tenant portal sign-in</a>
         <a href="/owners/login">Owner portal sign-in</a>
+        <a href="/tenant/login">Tenant portal sign-in</a>
+        {process.env.NODE_ENV !== "production" && <a href="/dev/personas">Dev: open as a persona</a>}
       </form>
     </main>
   );
