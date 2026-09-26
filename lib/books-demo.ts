@@ -59,16 +59,20 @@ function addEntry(kind: BookKind, input: Omit<BookEntry, "kind" | "flowType" | "
 function seedIfNeeded() {
   if (store.entries.size) return;
   const doors = booksHomes();
-  const months = ["2026-05-01", "2026-06-01", "2026-07-01", "2026-08-01", "2026-09-01"];
+  // Thirteen months of history so owner closings show full months, quarters, and a prior year.
+  const months = ["2025-09-01", "2025-10-01", "2025-11-01", "2025-12-01", "2026-01-01", "2026-02-01", "2026-03-01", "2026-04-01", "2026-05-01", "2026-06-01", "2026-07-01", "2026-08-01", "2026-09-01"];
   for (const date of months) {
     for (const home of doors) {
       const tenant = tenants.find((row) => row.id === home.tenantId);
       const skipCurrentUnpaid = date.startsWith("2026-09") && tenant?.balance;
       if (skipCurrentUnpaid) continue;
+      // Rent rose at the 2026 renewals; earlier months reflect the prior lease.
+      const rent = homes.find((row) => row.id === home.id)?.rent || 0;
+      const priorLease = date < "2026-01-01" ? rent - 100 : rent;
       addEntry("rent_income", {
         id: `bk-rent-${home.id}-${date.slice(0, 7)}`,
         txDate: date,
-        amountCents: Math.round((homes.find((row) => row.id === home.id)?.rent || 0) * 100),
+        amountCents: Math.round(priorLease * 100),
         homeId: home.id,
         ownerId: home.ownerId,
         tenantId: home.tenantId,
@@ -77,7 +81,50 @@ function seedIfNeeded() {
         source: "rent",
         chargeId: date.startsWith("2026-09") ? `chg-${home.tenantId}-${date}` : null,
       });
+      // Management fee (8% of collected rent) posts a few days after rent for every closed month.
+      if (!date.startsWith("2026-09")) {
+        addEntry("management", {
+          id: `bk-mgmt-${home.id}-${date.slice(0, 7)}`,
+          txDate: `${date.slice(0, 8)}05`,
+          amountCents: Math.round(priorLease * 100 * 0.08),
+          homeId: home.id,
+          ownerId: home.ownerId,
+          vendorName: "HomeOps Management",
+          description: `${new Date(`${date}T12:00:00`).toLocaleDateString("en-US", { month: "long" })} management fee`,
+          source: "bill",
+        });
+      }
     }
+  }
+
+  // Prior-year and early-2026 history: taxes, insurance, seasonal work, and owner draws.
+  addEntry("taxes", { txDate: "2025-11-20", amountCents: 248000, homeId: "h1", ownerId: "o1", vendorName: "County Treasurer", description: "2025 property tax", source: "bill" });
+  addEntry("taxes", { txDate: "2025-11-20", amountCents: 231000, homeId: "h2", ownerId: "o1", vendorName: "County Treasurer", description: "2025 property tax", source: "bill" });
+  addEntry("taxes", { txDate: "2025-11-20", amountCents: 198000, homeId: "h3", ownerId: "o2", vendorName: "County Treasurer", description: "2025 property tax", source: "bill" });
+  addEntry("taxes", { txDate: "2025-11-20", amountCents: 264000, homeId: "h4", ownerId: "o3", vendorName: "County Treasurer", description: "2025 property tax", source: "bill" });
+  addEntry("insurance", { txDate: "2026-01-15", amountCents: 142000, homeId: "h1", ownerId: "o1", vendorName: "Demo Mutual", description: "Annual landlord policy", source: "bill" });
+  addEntry("insurance", { txDate: "2026-01-15", amountCents: 128000, homeId: "h2", ownerId: "o1", vendorName: "Demo Mutual", description: "Annual landlord policy", source: "bill" });
+  addEntry("insurance", { txDate: "2026-02-01", amountCents: 96000, homeId: "h3", ownerId: "o2", vendorName: "Demo Mutual", description: "Annual condo policy", source: "bill" });
+  addEntry("insurance", { txDate: "2026-01-15", amountCents: 151000, homeId: "h4", ownerId: "o3", vendorName: "Demo Mutual", description: "Annual landlord policy", source: "bill" });
+  addEntry("hvac", { txDate: "2025-10-09", amountCents: 16500, homeId: "h1", ownerId: "o1", vendorName: "Demo Heating Co.", description: "Fall furnace tune-up", source: "bill" });
+  addEntry("hvac", { txDate: "2025-10-09", amountCents: 16500, homeId: "h2", ownerId: "o1", vendorName: "Demo Heating Co.", description: "Fall furnace tune-up", source: "bill" });
+  addEntry("landscaping", { txDate: "2025-10-22", amountCents: 12500, homeId: "h2", ownerId: "o1", vendorName: "GreenScape", description: "Sprinkler winterization", source: "bill" });
+  addEntry("repairs", { txDate: "2025-12-03", amountCents: 27500, homeId: "h4", ownerId: "o3", vendorName: "Demo Home Services", description: "Garage door opener", source: "bill" });
+  addEntry("plumbing", { txDate: "2026-02-18", amountCents: 41000, homeId: "h2", ownerId: "o1", vendorName: "Demo Plumbing Co.", description: "Frozen hose bib repair", source: "bill" });
+  addEntry("hoa", { txDate: "2025-09-20", amountCents: 19500, homeId: "h3", ownerId: "o2", vendorName: "Canyon HOA", description: "Quarterly dues", source: "bill" });
+  addEntry("hoa", { txDate: "2025-12-20", amountCents: 19500, homeId: "h3", ownerId: "o2", vendorName: "Canyon HOA", description: "Quarterly dues", source: "bill" });
+  addEntry("hoa", { txDate: "2026-03-20", amountCents: 19500, homeId: "h3", ownerId: "o2", vendorName: "Canyon HOA", description: "Quarterly dues", source: "bill" });
+  addEntry("turnover", { txDate: "2026-04-14", amountCents: 62000, homeId: "h4", ownerId: "o3", vendorName: "Demo Home Services", description: "Carpet clean and touch-up paint", source: "bill" });
+  addEntry("landscaping", { txDate: "2026-04-28", amountCents: 14000, homeId: "h2", ownerId: "o1", vendorName: "GreenScape", description: "Spring sprinkler start-up", source: "bill" });
+  for (const [date, amount, ownerId, memo] of [
+    ["2025-10-10", 370000, "o1", "October owner draw"], ["2025-11-10", 120000, "o1", "November owner draw"], ["2025-12-10", 360000, "o1", "December owner draw"],
+    ["2026-01-10", 150000, "o1", "January owner draw"], ["2026-02-10", 330000, "o1", "February owner draw"], ["2026-03-10", 390000, "o1", "March owner draw"],
+    ["2026-04-10", 380000, "o1", "April owner draw"], ["2026-05-10", 360000, "o1", "May owner draw"], ["2026-06-10", 100000, "o1", "June owner draw"], ["2026-07-10", 200000, "o1", "July owner draw"],
+    ["2025-10-15", 180000, "o2", "October owner draw"], ["2025-11-15", 60000, "o2", "November owner draw"], ["2026-01-15", 170000, "o2", "January owner draw"], ["2026-03-15", 160000, "o2", "March owner draw"], ["2026-05-15", 180000, "o2", "May owner draw"], ["2026-08-15", 100000, "o2", "August owner draw"],
+    ["2025-10-10", 210000, "o3", "October owner draw"], ["2025-12-10", 60000, "o3", "December owner draw"], ["2026-02-10", 200000, "o3", "February owner draw"], ["2026-05-10", 150000, "o3", "May owner draw"], ["2026-07-10", 210000, "o3", "July owner draw"], ["2026-08-10", 200000, "o3", "August owner draw"],
+  ] as Array<[string, number, string, string]>) {
+    const owner = owners.find((row) => row.id === ownerId);
+    addEntry("owner_disbursement", { txDate: date, amountCents: amount, homeId: null, ownerId, vendorName: owner?.name || "Owner", description: memo, source: "owner" });
   }
 
   addEntry("hvac", { txDate: "2026-05-16", amountCents: 18900, homeId: "h1", ownerId: "o1", vendorName: "Demo Heating Co.", description: "Spring tune-up", source: "bill", billId: "bill-hvac-h1" });

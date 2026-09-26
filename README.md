@@ -108,7 +108,7 @@ A submitted request is written to `maintenance_requests` with status `diagnose` 
 3. Add Home Passport asset create/edit + equipment-photo capture.
 4. Add rule evaluation: estimated repair → auto-determine whether owner approval is required.
 5. Add preferred-vendor matching and dispatch.
-6. Create owner portal + monthly property-health digest.
+6. Monthly property-health digest email for owners (portal shipped; see below).
 7. Add recurring preventive-maintenance schedules.
 8. Add AI maintenance triage using the Home Passport as context.
 
@@ -186,6 +186,25 @@ HomeOps owns the charge ledger. Stripe only processes the card or ACH. Paid rent
 Run `supabase/migrations/20260921210000_property_books.sql` for live orgs.
 
 Print/PDF: Books → Reports → Open print / PDF, then the browser Save as PDF. Direct URL: `/financials/print?year=2026`. CSV downloads: accountant ledger, Schedule E worksheet, 1099-NEC worksheet. These are cash-basis packets for the CPA, not filed returns.
+
+## Owner portal
+
+`/owners` is a read-only, owner-facing dashboard for the client owners on the `owners` table (not managers). It reads the same books as `/financials`, scoped to that owner's doors.
+
+- Sign-in at `/owners/login`: email magic link, **Google**, or **Apple** (Supabase Auth OAuth). The first sign-in links the auth identity to a pre-registered `owner_users` row by verified email, so managers only need to add the owner's email. Owners never get `organization_members` access; the API reads their scoped data server-side after verifying the link.
+- Managers preview any owner's portal from the Owners tab (`/owners?ownerId=…`).
+- Filters: period (this/last month, QTD, last quarter, YTD, last year, trailing 12, custom month range), property, and property type (`homes.property_type`).
+- Metrics: net to owner, NOI and margin, rent collected, occupancy, collection rate, expense ratio, maintenance per door, reserve vs. floor, income/expense/NOI chart, expense mix, P&L with prior-period column, cash flow to owner, property results, open maintenance, leases.
+- Closed periods: monthly, quarterly, and annual P&L + cash flow for every period on the books, with CSV export.
+- Arrange: drag (mouse or touch), arrow buttons, resize, hide, and reset cards. Layout persists per owner in `owner_dashboard_layouts` (in-memory in demo, plus localStorage cache).
+- Ask for a number: plain-language requests become a validated formula over a fixed vocabulary (`lib/owner-portal.ts` → `METRIC_VARIABLES`), evaluated locally so every result is reproducible and re-computes as filters change. One-time answers stay in the panel; **Pin to dashboard** persists them in `owner_custom_metrics`. Set `OPENAI_API_KEY` for natural-language interpretation (any OpenAI-compatible endpoint); without it a built-in interpreter handles "per door", "as a percent of income", "months of reserves", "vs. prior period", and property/type/period mentions.
+
+Live setup:
+
+1. Run `supabase/migrations/20260926090000_owner_portal.sql`.
+2. Enable Google and/or Apple in Supabase Auth → Providers and add `{NEXT_PUBLIC_APP_URL}/auth/callback` to the redirect allow-list. Apple requires a Services ID, Team ID, Key ID, and private key from the Apple Developer account.
+3. Insert an `owner_users` row per owner login (`owner_id`, `organization_id`, `email`). `auth_user_id` fills on first sign-in.
+4. Set `homes.property_type` where it is not single family.
 
 ## Deploy on Laravel Forge
 

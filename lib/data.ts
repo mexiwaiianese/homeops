@@ -1,12 +1,15 @@
 export type Health = "good" | "watch" | "urgent";
 export type MaintenanceStatus = "Diagnose" | "Authorize" | "Dispatch" | "Scheduled" | "Repair" | "Invoice" | "Documented";
 
+export type PropertyType = "single_family" | "townhome" | "condo" | "duplex" | "multifamily" | "other";
+
 export type Home = {
   id: string;
   address: string;
   city: string;
   ownerId: string;
   tenantId: string;
+  type: PropertyType;
   rent: number;
   reserve: number;
   health: Health;
@@ -30,7 +33,7 @@ export const tenants = [
 
 export const homes: Home[] = [
   {
-    id: "h1", address: "100 Demo Lane", city: "Example City, UT", ownerId: "o1", tenantId: "t1", rent: 2250, reserve: 750, health: "urgent", leaseEnds: "2027-02-28",
+    id: "h1", address: "100 Demo Lane", city: "Example City, UT", ownerId: "o1", tenantId: "t1", type: "single_family", rent: 2250, reserve: 750, health: "urgent", leaseEnds: "2027-02-28",
     systems: [
       { name: "HVAC", detail: "Carrier 58STA • installed 2018", age: "8 yrs", next: "Service due now" },
       { name: "Water heater", detail: "Rheem 50 gal • installed 2019", age: "7 yrs", next: "Inspect Oct 2026" },
@@ -40,7 +43,7 @@ export const homes: Home[] = [
     access: ["Fictional demo access record"],
   },
   {
-    id: "h2", address: "200 Sample Avenue", city: "Example City, UT", ownerId: "o1", tenantId: "t2", rent: 2310, reserve: 615, health: "watch", leaseEnds: "2026-10-18",
+    id: "h2", address: "200 Sample Avenue", city: "Example City, UT", ownerId: "o1", tenantId: "t2", type: "townhome", rent: 2310, reserve: 615, health: "watch", leaseEnds: "2026-10-18",
     systems: [
       { name: "HVAC", detail: "Lennox ML180 • installed 2020", age: "6 yrs", next: "Service Sep 2026" },
       { name: "Water heater", detail: "AO Smith 50 gal • 2020", age: "6 yrs", next: "Flush Oct 2026" },
@@ -49,7 +52,7 @@ export const homes: Home[] = [
     access: ["Fictional demo access record"],
   },
   {
-    id: "h3", address: "300 Example Court", city: "Example City, UT", ownerId: "o2", tenantId: "t3", rent: 2250, reserve: 800, health: "watch", leaseEnds: "2027-05-31",
+    id: "h3", address: "300 Example Court", city: "Example City, UT", ownerId: "o2", tenantId: "t3", type: "condo", rent: 2250, reserve: 800, health: "watch", leaseEnds: "2027-05-31",
     systems: [
       { name: "Water heater", detail: "Bradford White 50 gal • 2013", age: "13 yrs", next: "Replacement recommended" },
       { name: "HVAC", detail: "Trane XR80 • 2017", age: "9 yrs", next: "Service Oct 2026" },
@@ -57,7 +60,7 @@ export const homes: Home[] = [
     access: ["Fictional demo access record"],
   },
   {
-    id: "h4", address: "400 Preview Road", city: "Example City, UT", ownerId: "o3", tenantId: "t4", rent: 2480, reserve: 1150, health: "good", leaseEnds: "2027-01-15",
+    id: "h4", address: "400 Preview Road", city: "Example City, UT", ownerId: "o3", tenantId: "t4", type: "single_family", rent: 2480, reserve: 1150, health: "good", leaseEnds: "2027-01-15",
     systems: [
       { name: "HVAC", detail: "Goodman GM9C96 • 2023", age: "3 yrs", next: "Service Nov 2026" },
       { name: "Water heater", detail: "Rheem Performance • 2022", age: "4 yrs", next: "Flush Nov 2026" },
