@@ -65,6 +65,13 @@ function seedIfNeeded() {
 
 seedIfNeeded();
 
+/** Drop listings, publications, and network connections; the next read re-seeds the draft listing. */
+export function resetDemoListings() {
+  store.listings.clear();
+  store.publications.clear();
+  store.connections.clear();
+}
+
 function pubKey(listingId: string, network: ListingNetworkId) {
   return `${listingId}:${network}`;
 }

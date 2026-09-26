@@ -24,6 +24,12 @@ function token(prefix: string) {
   return `${prefix}-${Date.now().toString(36)}${Math.random().toString(36).slice(2, 8)}`;
 }
 
+/** Forget saved dashboard layouts and custom metrics. */
+export function resetDemoOwnerPortal() {
+  store.layouts.clear();
+  store.metrics.clear();
+}
+
 export function demoOwnerProfile(ownerId: string): OwnerProfile | null {
   const owner = owners.find((row) => row.id === ownerId);
   if (!owner) return null;

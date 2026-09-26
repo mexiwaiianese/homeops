@@ -61,7 +61,7 @@ export default function PersonaQuickLogin({ group, title = "Open as a test perso
   async function seed() {
     setBusy("seed");
     setMessage(null);
-    const response = await fetch(`${apiBase}/seed`, { method: "POST" });
+    const response = await fetch(`${apiBase}/seed`, { method: "POST", headers: { "Content-Type": "application/json" }, body: JSON.stringify({ reset: false }) });
     const body = await readJson<{ ok?: boolean; summary?: string }>(response);
     setBusy("");
     setMessage(response.ok ? { tone: "info", text: body.summary || "Demo data created." } : { tone: "error", text: body.error || "Could not create demo data." });

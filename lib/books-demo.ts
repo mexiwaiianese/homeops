@@ -150,6 +150,12 @@ function seedIfNeeded() {
 
 seedIfNeeded();
 
+/** Drop the ledger and bills; the next read re-seeds thirteen months of history. */
+export function resetDemoBooks() {
+  store.entries.clear();
+  store.bills.clear();
+}
+
 export function listDemoEntries() {
   seedIfNeeded();
   return [...store.entries.values()].sort((a, b) => b.txDate.localeCompare(a.txDate) || a.description.localeCompare(b.description));

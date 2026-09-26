@@ -33,3 +33,9 @@ export function setDemoOrgSettings(next: Partial<OrgDispatchSettings>) {
   Object.assign(demoStore, parseOrgSettings({ ...demoStore, ...next }));
   return getDemoOrgSettings();
 }
+
+/** Put dispatch settings back to the defaults. */
+export function resetDemoOrgSettings() {
+  Object.assign(demoStore, DEFAULT_ORG_SETTINGS);
+  return getDemoOrgSettings();
+}

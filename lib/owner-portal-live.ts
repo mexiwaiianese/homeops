@@ -1,6 +1,6 @@
 import type { SupabaseClient } from "@supabase/supabase-js";
 import { listLiveEntries } from "@/lib/books-live";
-import { DEMO_ORG_SLUG, seedDemoOperatingHistory } from "@/lib/demo-ledger";
+import { isDemoOrganizationSlug, seedDemoOperatingHistory } from "@/lib/demo-ledger";
 import { depositsHeldByHome } from "@/lib/owner-portal-demo";
 import {
   isPropertyType,
@@ -64,11 +64,12 @@ export async function buildLiveOwnerPortal(
     listLiveEntries(db, organizationId),
   ]);
   let entries = allEntries.filter((row) => row.ownerId === ownerId || (row.homeId && homeIds.includes(row.homeId)));
-  // The demo organization is seeded with homes and leases only. Fill its operating
-  // history once so the owner portal is not a set of zeroed money metrics.
+  // Safety net for demo organizations created before the full seed existed: fill the operating
+  // history once so the owner portal is not a set of zeroed money metrics. Sandboxes created by
+  // the persona switcher already have it and skip this branch.
   if (!entries.length && homeIds.length) {
     const org = await db.from("organizations").select("slug").eq("id", organizationId).maybeSingle();
-    if (org.data?.slug === DEMO_ORG_SLUG) {
+    if (isDemoOrganizationSlug(org.data?.slug)) {
       try {
         const inserted = await seedDemoOperatingHistory(db, organizationId);
         if (inserted) {

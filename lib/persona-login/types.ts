@@ -45,6 +45,21 @@ export type PersonaSignInContext = {
   origin: string;
 };
 
+export type PersonaSeedContext = PersonaSignInContext & {
+  /**
+   * True when the tester asked for a clean slate (POST <apiBase>/seed with { reset: true }).
+   * False means "fill in whatever is missing without touching existing records".
+   */
+  reset: boolean;
+};
+
+export type PersonaSeedResult =
+  | { ok: true; summary: string; cookies?: CookieToSet[] }
+  | { ok: false; error: string; status?: number };
+
+/** What an app does when a tester proves they hold the access code (or forgets it). */
+export type PersonaUnlockHookResult = { cookies?: CookieToSet[]; summary?: string } | void;
+
 export type PersonaLoginAdapter = {
   /** All personas a tester may become right now. Called on every list/sign-in request. */
   listPersonas(): Promise<Persona[]>;
@@ -62,10 +77,28 @@ export type PersonaLoginAdapter = {
   currentUserEmail?(): Promise<string | null>;
   /**
    * Optional: create demo records so personas exist on an empty backend. Exposed as
-   * POST <apiBase>/seed and a "Create demo data" button when the persona list is empty.
-   * Must be idempotent; return a short summary for the UI.
+   * POST <apiBase>/seed and a "Create demo data" button when the persona list is empty, plus a
+   * "Reset demo data" action that calls it with `ctx.reset = true`.
+   * Without `reset` it must be idempotent (fill gaps, never overwrite); with `reset` it should
+   * discard the caller's sandbox and rebuild it. Return a short summary for the UI.
    */
-  seed?(ctx: PersonaSignInContext): Promise<{ ok: true; summary: string } | { ok: false; error: string; status?: number }>;
+  seed?(ctx: PersonaSeedContext): Promise<PersonaSeedResult>;
+  /**
+   * Optional: runs after a correct access code is submitted (POST <apiBase>/unlock). This is the
+   * place to give the tester a fresh, isolated sandbox. Cookies returned here are set alongside
+   * the unlock cookie; `summary` is shown in the panel.
+   */
+  onUnlock?(ctx: PersonaSignInContext): Promise<PersonaUnlockHookResult>;
+  /**
+   * Optional: runs when a tester forgets the access code on this browser (DELETE <apiBase>/unlock).
+   * Return cookies to clear (e.g. the sandbox pointer) and tear down anything per-browser.
+   */
+  onLock?(ctx: PersonaSignInContext): Promise<CookieToSet[] | void>;
+  /**
+   * Optional: one line describing the caller's current sandbox ("Sandbox a1b2c3 · created 2 hours
+   * ago"). Shown in the panel footer so testers know which data set they are looking at.
+   */
+  sandboxLabel?(): Promise<string | null>;
   /**
    * Optional: short human-readable warnings about server configuration that would stop personas
    * from working (missing service key, unreachable database). Shown to unlocked testers.
@@ -88,6 +121,8 @@ export type PersonaLoginStatus = {
   environment: "development" | "production" | "test";
   /** True when the adapter can create demo records (shows "Create demo data" on an empty list). */
   canSeed?: boolean;
+  /** One-line description of the caller's sandbox from the adapter, when it keeps one per tester. */
+  sandbox?: string | null;
   /** Server configuration problems reported by the adapter (only for unlocked callers). */
   warnings?: string[];
   reason?: string;

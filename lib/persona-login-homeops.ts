@@ -3,13 +3,16 @@
 // Demo mode (no Supabase env): personas are the seeded manager, owners, tenants, and vendors and
 // sign-in sets the same cookies the real demo pickers set.
 //
-// Live mode (Supabase configured): personas are discovered from the database — one manager persona
-// per organization plus every owner, tenant, and vendor row (capped per group). Sign-in never touches
-// a real person's login. Each persona gets its own synthetic identity (<group>-<id>@persona.example.com)
-// that is created on first use and linked with organization_members / owner_users / vendor_users, so
-// the persona sees exactly what that owner, vendor, or manager would see. Tenant personas get a row in
-// tenant_sessions exactly like a consumed sign-in link would. Set PERSONA_LOGIN_LIVE_DISCOVERY=false
-// to turn discovery off and rely only on PERSONA_LOGIN_LIVE_PERSONAS.
+// Live mode (Supabase configured): every tester gets a private sandbox organization seeded with the
+// full demo data set (lib/demo-workspace, lib/demo-seed-live). Personas are discovered from that
+// sandbox only — one manager persona plus every owner, tenant, and vendor row. Entering the beta
+// access code again throws the sandbox away and seeds a fresh one; reloading pages never re-seeds.
+// Sign-in never touches a real person's login. Each persona gets its own synthetic identity
+// (<group>-<id>@persona.example.com) that is created on first use and linked with
+// organization_members / owner_users / vendor_users, so the persona sees exactly what that owner,
+// vendor, or manager would see. Tenant personas get a row in tenant_sessions exactly like a consumed
+// sign-in link would. Set PERSONA_LOGIN_LIVE_DISCOVERY=false to turn discovery (and sandboxes) off
+// and rely only on PERSONA_LOGIN_LIVE_PERSONAS.
 //
 // PERSONA_LOGIN_LIVE_PERSONAS (optional JSON) adds explicit accounts you control on top of discovery:
 //   [
@@ -25,6 +28,9 @@ import { createHash, randomBytes } from "crypto";
 import type { SupabaseClient } from "@supabase/supabase-js";
 import { getAuthedContext } from "@/lib/backend";
 import { homes, owners as demoOwners, tenants as demoTenants } from "@/lib/data";
+import { resetDemoStores } from "@/lib/demo-reset";
+import { seedDemoWorkspace, summarizeSeed } from "@/lib/demo-seed-live";
+import { describeWorkspace, dropWorkspace, ensureWorkspace, resolveWorkspace, type DemoWorkspace } from "@/lib/demo-workspace";
 import { demoOwnerSessionCookie } from "@/lib/owner-portal-access";
 import type { CookieToSet, Persona, PersonaLoginAdapter, PersonaSignInResult } from "@/lib/persona-login";
 import { createSupabaseAdminClient } from "@/lib/supabase/admin";
@@ -34,7 +40,6 @@ import { getTenantContext, revokeTenantSession, tenantSessionCookie, tenantSessi
 import { consumeDemoLoginToken, issueDemoLoginToken, SESSION_TTL_MS } from "@/lib/tenant-demo";
 import { vendors as demoVendors } from "@/lib/vendor-demo";
 import { demoVendorSessionCookie } from "@/lib/vendor-job-demo";
-import { DEMO_ORG_SLUG, seedDemoOperatingHistory } from "@/lib/demo-ledger";
 
 type Group = "manager" | "owner" | "tenant" | "vendor";
 
@@ -162,7 +167,7 @@ function envPersonas(): Persona[] {
 }
 
 // ---------------------------------------------------------------------------------------------
-// Live personas: discovered from the database
+// Live personas: discovered from the caller's sandbox organization
 
 const DISCOVERY_CAP = 12;
 const PERSONA_EMAIL_DOMAIN = "persona.example.com";
@@ -178,15 +183,31 @@ function personaEmail(group: Group, recordId: string) {
 
 type HomeRow = { id: string; address1: string; city: string; state: string; owner_id?: string };
 
-async function discoverPersonas(admin: SupabaseClient): Promise<Persona[]> {
-  const [orgs, owners, tenants, vendors, homes, leases] = await Promise.all([
-    admin.from("organizations").select("id, name").order("created_at").limit(5),
-    admin.from("owners").select("id, organization_id, full_name, email").order("created_at").limit(DISCOVERY_CAP),
-    admin.from("tenants").select("id, organization_id, full_name, email").order("created_at").limit(DISCOVERY_CAP),
-    admin.from("vendors").select("id, organization_id, name, trade, city, state").order("created_at").limit(DISCOVERY_CAP),
-    admin.from("homes").select("id, owner_id, address1, city, state").limit(200),
-    admin.from("leases").select("tenant_id, home_id, status").limit(400),
+/**
+ * The tester's sandbox, created and seeded on first contact so every portal has data the moment it
+ * loads. Existing sandboxes are reused as-is: nothing is re-seeded or overwritten on later visits.
+ */
+async function currentWorkspace(admin: SupabaseClient): Promise<DemoWorkspace | null> {
+  try {
+    const result = await ensureWorkspace(admin);
+    if (result.created) console.info("[persona-login] sandbox created", { slug: result.workspace.slug, summary: result.report ? summarizeSeed(result.report) : "" });
+    return result.workspace;
+  } catch (error) {
+    console.warn("[persona-login] could not prepare a sandbox", error);
+    return null;
+  }
+}
+
+async function discoverPersonas(admin: SupabaseClient, workspace: DemoWorkspace): Promise<Persona[]> {
+  const organizationId = workspace.organizationId;
+  const [owners, tenants, vendors, homes, leases] = await Promise.all([
+    admin.from("owners").select("id, organization_id, full_name, email").eq("organization_id", organizationId).order("created_at").limit(DISCOVERY_CAP),
+    admin.from("tenants").select("id, organization_id, full_name, email").eq("organization_id", organizationId).order("created_at").limit(DISCOVERY_CAP),
+    admin.from("vendors").select("id, organization_id, name, trade, city, state").eq("organization_id", organizationId).order("created_at").limit(DISCOVERY_CAP),
+    admin.from("homes").select("id, owner_id, address1, city, state").eq("organization_id", organizationId).limit(200),
+    admin.from("leases").select("tenant_id, home_id, status").eq("organization_id", organizationId).limit(400),
   ]);
+  const orgs = { data: [{ id: organizationId, name: workspace.name }] };
   const orgName = new Map((orgs.data ?? []).map((row) => [row.id as string, row.name as string]));
   const homeRows = (homes.data ?? []) as HomeRow[];
   const homesByOwner = new Map<string, number>();
@@ -205,8 +226,8 @@ async function discoverPersonas(admin: SupabaseClient): Promise<Persona[]> {
       id: `manager:${org.id}`,
       group: "manager",
       groupLabel: GROUPS.manager.label,
-      label: `Manager · ${org.name}`,
-      description: "Operations desk, maintenance, books, listings for this organization",
+      label: "Demo manager",
+      description: `Operations desk, rent collection, books, vendor network, listings for ${org.name}`,
       landingPath: GROUPS.manager.landingPath,
       badge: "live",
       meta: { organizationId: org.id, email: personaEmail("manager", org.id) },
@@ -259,7 +280,9 @@ async function livePersonas(): Promise<Persona[]> {
   const admin = createSupabaseAdminClient();
   if (!admin) return explicit;
   try {
-    const discovered = await discoverPersonas(admin);
+    const workspace = await currentWorkspace(admin);
+    if (!workspace) return explicit;
+    const discovered = await discoverPersonas(admin, workspace);
     const seen = new Set(explicit.map((row) => row.id));
     return [...explicit, ...discovered.filter((row) => !seen.has(row.id))];
   } catch (error) {
@@ -324,7 +347,8 @@ async function liveSignIn(persona: Persona): Promise<PersonaSignInResult> {
   const stamp = { full_name: "Persona login", auth_user_id: signedIn.userId };
   let link: { error: { message: string } | null } = { error: null };
   if (persona.group === "manager" && meta.organizationId) {
-    link = await admin.from("organization_members").upsert({ organization_id: meta.organizationId, user_id: signedIn.userId, role: "manager" }, { onConflict: "organization_id,user_id" });
+    // "admin" so the sandbox manager can also run network-admin actions (add vendors, invite prospects).
+    link = await admin.from("organization_members").upsert({ organization_id: meta.organizationId, user_id: signedIn.userId, role: "admin" }, { onConflict: "organization_id,user_id" });
   } else if (persona.group === "owner" && meta.ownerId && meta.organizationId) {
     link = await admin.from("owner_users").upsert({ organization_id: meta.organizationId, owner_id: meta.ownerId, email: meta.email, role: "owner", ...stamp }, { onConflict: "owner_id,email" });
   } else if (persona.group === "vendor" && meta.vendorId && meta.organizationId) {
@@ -332,142 +356,6 @@ async function liveSignIn(persona: Persona): Promise<PersonaSignInResult> {
   }
   if (link.error) return { ok: false, error: schemaHint(`Signed in, but could not link the persona: ${link.error.message}`), status: 500 };
   return { ok: true };
-}
-
-// ---------------------------------------------------------------------------------------------
-// Live seed: put the demo organization into an empty Supabase project so personas exist.
-// Idempotent — keyed on the org slug and record names, so re-running never duplicates rows.
-
-async function seedLiveDemo(): Promise<{ ok: true; summary: string } | { ok: false; error: string; status?: number }> {
-  const admin = createSupabaseAdminClient();
-  if (!admin) return { ok: false, error: "Seeding needs SUPABASE_SERVICE_ROLE_KEY on the server.", status: 503 };
-
-  const org = await admin
-    .from("organizations")
-    .upsert({ name: "HomeOps Demo Management", slug: DEMO_ORG_SLUG }, { onConflict: "slug" })
-    .select("id")
-    .single();
-  if (org.error || !org.data) return { ok: false, error: `organizations: ${org.error?.message || "no row"}` };
-  const organizationId = org.data.id as string;
-  const created = { owners: 0, homes: 0, tenants: 0, leases: 0, vendors: 0, ledger: 0 };
-
-  // Owners (by full_name within the org)
-  const ownerIds = new Map<string, string>();
-  for (const owner of demoOwners) {
-    const existing = await admin.from("owners").select("id").eq("organization_id", organizationId).eq("full_name", owner.name).maybeSingle();
-    if (existing.data) { ownerIds.set(owner.id, existing.data.id); continue; }
-    const inserted = await admin
-      .from("owners")
-      .insert({
-        organization_id: organizationId,
-        full_name: owner.name,
-        email: owner.email,
-        maintenance_authority_cents: owner.auth * 100,
-        emergency_authority_cents: owner.emergency * 100,
-        minimum_reserve_cents: owner.reserve * 100,
-        notify_over_cents: owner.notifyOver * 100,
-        preferred_vendor_name: owner.preferred,
-        disbursement_day: owner.disbursement.startsWith("15") ? 15 : 10,
-      })
-      .select("id")
-      .single();
-    if (inserted.error || !inserted.data) return { ok: false, error: `owners: ${inserted.error?.message}` };
-    ownerIds.set(owner.id, inserted.data.id);
-    created.owners += 1;
-  }
-
-  // Tenants (by full_name within the org)
-  const tenantIds = new Map<string, string>();
-  for (const tenant of demoTenants) {
-    const existing = await admin.from("tenants").select("id").eq("organization_id", organizationId).eq("full_name", tenant.name).maybeSingle();
-    if (existing.data) { tenantIds.set(tenant.id, existing.data.id); continue; }
-    const inserted = await admin
-      .from("tenants")
-      .insert({ organization_id: organizationId, full_name: tenant.name, email: tenant.email, phone: tenant.phone })
-      .select("id")
-      .single();
-    if (inserted.error || !inserted.data) return { ok: false, error: `tenants: ${inserted.error?.message}` };
-    tenantIds.set(tenant.id, inserted.data.id);
-    created.tenants += 1;
-  }
-
-  // Homes + active leases (by address within the org)
-  for (const home of homes) {
-    const ownerId = ownerIds.get(home.ownerId);
-    const tenantId = tenantIds.get(home.tenantId);
-    if (!ownerId || !tenantId) continue;
-    const [city, state] = home.city.split(",").map((part) => part.trim());
-    let homeId: string | null = null;
-    const existing = await admin.from("homes").select("id").eq("organization_id", organizationId).eq("address1", home.address).maybeSingle();
-    if (existing.data) homeId = existing.data.id;
-    else {
-      const inserted = await admin
-        .from("homes")
-        .insert({
-          organization_id: organizationId,
-          owner_id: ownerId,
-          address1: home.address,
-          city: city || "Example City",
-          state: state || "UT",
-          monthly_rent_cents: home.rent * 100,
-          reserve_balance_cents: home.reserve * 100,
-          health_status: home.health,
-          access_notes: home.access,
-        })
-        .select("id")
-        .single();
-      if (inserted.error || !inserted.data) return { ok: false, error: `homes: ${inserted.error?.message}` };
-      homeId = inserted.data.id;
-      created.homes += 1;
-    }
-    const lease = await admin.from("leases").select("id").eq("home_id", homeId).eq("tenant_id", tenantId).maybeSingle();
-    if (!lease.data) {
-      const inserted = await admin.from("leases").insert({
-        organization_id: organizationId,
-        home_id: homeId,
-        tenant_id: tenantId,
-        starts_on: "2026-03-01",
-        ends_on: home.leaseEnds,
-        rent_cents: home.rent * 100,
-        deposit_cents: home.rent * 100,
-        status: "active",
-      });
-      if (inserted.error) return { ok: false, error: `leases: ${inserted.error.message}` };
-      created.leases += 1;
-    }
-  }
-
-  // Vendors (by name within the org)
-  for (const vendor of demoVendors) {
-    const existing = await admin.from("vendors").select("id").eq("organization_id", organizationId).eq("name", vendor.name).maybeSingle();
-    if (existing.data) continue;
-    const inserted = await admin.from("vendors").insert({
-      organization_id: organizationId,
-      name: vendor.name,
-      trade: vendor.trade,
-      email: vendor.email,
-      phone: vendor.phone,
-      city: vendor.city,
-      state: vendor.state,
-      workflow_stage: vendor.workflow_stage,
-      approval_status: vendor.approval_status,
-      emergency_available: vendor.emergency_available,
-      expected_response_minutes: vendor.expected_response_minutes,
-      minimum_trip_charge_cents: vendor.minimum_trip_charge_cents,
-      hourly_rate_cents: vendor.hourly_rate_cents,
-    });
-    if (inserted.error) return { ok: false, error: schemaHint(`vendors: ${inserted.error.message}`) };
-    created.vendors += 1;
-  }
-
-  try {
-    created.ledger = await seedDemoOperatingHistory(admin, organizationId);
-  } catch (error) {
-    return { ok: false, error: schemaHint(`ledger: ${error instanceof Error ? error.message : "could not seed operating history"}`) };
-  }
-
-  const parts = Object.entries(created).filter(([, count]) => count > 0).map(([table, count]) => `${count} ${table}`);
-  return { ok: true, summary: parts.length ? `Created ${parts.join(", ")} in "HomeOps Demo Management".` : "Demo data was already present; nothing new created." };
 }
 
 // ---------------------------------------------------------------------------------------------
@@ -504,9 +392,68 @@ export const homeopsPersonaLogin: PersonaLoginAdapter = {
     return user?.email ?? null;
   },
 
-  async seed() {
-    if (!isSupabaseConfigured()) return { ok: true, summary: "Demo mode already has its seed data in memory." };
-    return seedLiveDemo();
+  // "Create demo data" fills gaps in the caller's sandbox without touching existing rows.
+  // "Reset demo data" (reset: true) throws the sandbox away and seeds a pristine one.
+  async seed({ reset }) {
+    if (!isSupabaseConfigured()) {
+      if (reset) return { ok: true, summary: resetDemoStores() };
+      return { ok: true, summary: "Demo mode already has its seed data in memory. Use “Reset demo data” to start over." };
+    }
+    const admin = createSupabaseAdminClient();
+    if (!admin) return { ok: false, error: "Seeding needs SUPABASE_SERVICE_ROLE_KEY on the server.", status: 503 };
+    try {
+      if (reset) {
+        const result = await ensureWorkspace(admin, { reset: true });
+        const summary = result.report ? summarizeSeed(result.report, result.workspace.name) : "Sandbox ready.";
+        const clears = [clear(demoOwnerSessionCookie), clear(demoVendorSessionCookie), clear(tenantSessionCookie)];
+        return { ok: true, summary: `${result.replaced ? "Previous sandbox deleted. " : ""}Fresh sandbox seeded. ${summary}`, cookies: [...clears, ...result.cookies] };
+      }
+      const result = await ensureWorkspace(admin);
+      if (result.created) {
+        return { ok: true, summary: `New sandbox seeded. ${result.report ? summarizeSeed(result.report, result.workspace.name) : ""}`.trim(), cookies: result.cookies };
+      }
+      const report = await seedDemoWorkspace(admin, result.workspace.organizationId);
+      return { ok: true, summary: summarizeSeed(report, result.workspace.name), cookies: result.cookies };
+    } catch (error) {
+      return { ok: false, error: schemaHint(error instanceof Error ? error.message : "Could not seed demo data.") };
+    }
+  },
+
+  // A fresh access-code submission is the tester's "start over" signal: zero out their sandbox and
+  // seed it again so every portal (manager, owner, tenant, vendor) opens on the same clean data set.
+  async onUnlock() {
+    // Any persona session on this browser points at the data set being discarded.
+    const clears = [clear(demoOwnerSessionCookie), clear(demoVendorSessionCookie), clear(tenantSessionCookie)];
+    if (!isSupabaseConfigured()) return { cookies: clears, summary: resetDemoStores() };
+    const admin = createSupabaseAdminClient();
+    if (!admin) return { summary: "Unlocked. Sandboxes need SUPABASE_SERVICE_ROLE_KEY on the server; personas will come from PERSONA_LOGIN_LIVE_PERSONAS only." };
+    if (!discoveryEnabled()) return { summary: "Unlocked. Live discovery is off, so no sandbox was created." };
+    try {
+      const result = await ensureWorkspace(admin, { reset: true });
+      const summary = result.report ? summarizeSeed(result.report, result.workspace.name) : "";
+      return {
+        cookies: [...clears, ...result.cookies],
+        summary: `${result.replaced ? "Your previous demo data was cleared. " : ""}Fresh demo sandbox ready for every portal. ${summary}`.trim(),
+      };
+    } catch (error) {
+      return { summary: `Unlocked, but the demo sandbox could not be prepared: ${schemaHint(error instanceof Error ? error.message : String(error))}` };
+    }
+  },
+
+  // Forgetting the code on this browser also throws its sandbox away; the next unlock starts clean.
+  async onLock() {
+    if (!isSupabaseConfigured()) return [];
+    const admin = createSupabaseAdminClient();
+    if (!admin) return [];
+    return dropWorkspace(admin);
+  },
+
+  async sandboxLabel() {
+    if (!isSupabaseConfigured()) return "In-memory demo data · shared by everyone on this server · resets when the beta code is entered";
+    const admin = createSupabaseAdminClient();
+    if (!admin || !discoveryEnabled()) return null;
+    const workspace = await resolveWorkspace(admin).catch(() => null);
+    return workspace ? describeWorkspace(workspace) : null;
   },
 
   async diagnostics() {
@@ -514,7 +461,7 @@ export const homeopsPersonaLogin: PersonaLoginAdapter = {
     const warnings: string[] = [];
     const admin = createSupabaseAdminClient();
     if (!admin) {
-      warnings.push("SUPABASE_SERVICE_ROLE_KEY is missing or empty on this server. Live personas, tenant sessions, and demo seeding need it. Set it in the hosting environment and redeploy.");
+      warnings.push("SUPABASE_SERVICE_ROLE_KEY is missing or empty on this server. Live personas, tenant sessions, and demo sandboxes need it. Set it in the hosting environment and redeploy.");
       return warnings;
     }
     const probe = await admin.from("organizations").select("id", { count: "exact", head: true });
@@ -522,7 +469,6 @@ export const homeopsPersonaLogin: PersonaLoginAdapter = {
       warnings.push(`Database check failed: ${probe.error.message}`);
       return warnings;
     }
-    if ((probe.count ?? 0) === 0) warnings.push("The database has no organizations yet. Use “Create demo data” to add the demo organization.");
     const missing = await missingMigrations(admin);
     if (missing.length) {
       warnings.push(

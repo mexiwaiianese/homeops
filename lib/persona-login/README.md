@@ -26,7 +26,7 @@ app/dev/personas/page.tsx          the page (404 when disabled)
 | `PERSONA_LOGIN_ENABLED` | unset → on outside production, off in production. `true`/`false` overrides. |
 | `PERSONA_LOGIN_ACCESS_CODE` | Shared tester code, ≥ 12 chars. In production you need this **or** an allowlist. |
 | `PERSONA_LOGIN_ALLOWED_EMAILS` | Comma list. A real signed-in user with one of these emails skips the code. |
-| `PERSONA_LOGIN_UNLOCK_DAYS` | Unlock cookie lifetime (default 14, max 90). |
+| `PERSONA_LOGIN_UNLOCK_DAYS` | Unlock cookie lifetime (default 14, max 90). Also how long an untouched per-tester sandbox lives. |
 | `PERSONA_LOGIN_COOKIE_SECRET` | Optional HMAC key. Default derives from code + allowlist, so rotating the code logs every tester out. |
 
 Local dev with nothing set: wide open at `/dev/personas`. Set a code locally if the machine is shared.
@@ -69,15 +69,61 @@ export const myAppPersonaLogin: PersonaLoginAdapter = {
     // Optional: lets PERSONA_LOGIN_ALLOWED_EMAILS work.
     return null;
   },
-  async seed() {
-    // Optional, idempotent: create demo records so personas exist on an empty backend.
-    // Shows a "Create demo data" button when the list is empty; served at POST <apiBase>/seed.
+  async seed({ reset }) {
+    // Optional: create demo records so personas exist on an empty backend.
+    // reset=false must be idempotent (fill gaps, never overwrite). reset=true should discard the
+    // caller's sandbox and rebuild it. "Create demo data" / "Reset demo data" in the panel,
+    // served at POST <apiBase>/seed with { reset?: boolean }.
     return { ok: true, summary: "Created 1 organization, 3 customers." };
+  },
+  async onUnlock() {
+    // Optional: runs after a correct access code. Give the tester a fresh sandbox here and return
+    // any cookies that point the browser at it. `summary` is shown in the panel.
+    return { summary: "Fresh sandbox ready." };
+  },
+  async onLock() {
+    // Optional: runs when the tester forgets the code on this browser. Return cookies to clear.
+  },
+  async sandboxLabel() {
+    // Optional: one line for the panel footer, e.g. "Sandbox a1b2c3 · created 5 min ago".
+    return null;
   },
 };
 ```
 
 Mount `handlers.seed.POST` at `app/api/persona-login/seed/route.ts` if you implement `seed`.
+
+## Per-tester sandboxes (HomeOps adapter)
+
+Every beta tester gets a private, fully seeded copy of the demo data so the manager desk, owner
+portal, tenant portal, and vendor desk all agree with each other and nobody sees another tester's
+edits.
+
+| Event | What happens |
+| --- | --- |
+| Correct access code entered (`POST /unlock`) | Previous sandbox for this browser deleted; a new organization `homeops-demo-ws-<random>` is created and seeded with the full data set. Any active persona is signed out. |
+| Pages load / personas listed / sign in | The existing sandbox is reused as-is. Nothing is re-seeded or overwritten, so edits made as any persona persist across every portal. If the browser has no sandbox yet (open dev mode, allowlisted user, expired cookie) one is created on the spot. |
+| "Create demo data" (`POST /seed`) | Fills in any rows missing from the current sandbox without touching existing ones. |
+| "Reset demo data" (`POST /seed { reset: true }`) | Same as entering the code again, without the code. |
+| "Forget access code" (`DELETE /unlock`) | Deletes this browser's sandbox and clears the pointer cookie. |
+| Housekeeping | Sandboxes older than `PERSONA_LOGIN_UNLOCK_DAYS` are deleted whenever a new one is created (no browser can still hold a valid cookie for them). |
+
+The browser keeps a signed, httpOnly `persona_login_workspace` cookie (`<organizationId>.<hmac>`).
+A tampered cookie is ignored, and only organizations whose slug starts with `homeops-demo-ws-` are
+ever deleted, so the switcher can never point at or remove a real customer organization.
+
+What the seed covers (`lib/demo-seed-live.ts`): organization settings; owners, tenants, homes with
+Home Passport assets, active leases (including the tenant with an outstanding balance); vendors with
+credentials, service categories, contacts, owner preferences, calendar connections, autobid rules,
+and a few closed jobs for the scorecards; the maintenance board with the awarded heating job on the
+vendor desk; this month's rent charges and ACH payments; vendor bills; thirteen months of operating
+ledger linked to those charges and bills; the draft rental listing and network connections; and the
+recruitment catalog. Synthetic persona logins created for a sandbox are removed from Supabase Auth
+when it is deleted.
+
+Demo mode (no Supabase env) has one in-memory data set per server process. Entering the code or
+pressing "Reset demo data" empties every store and re-seeds it, but two testers on the same demo
+server share that data; isolation needs the database.
 
 Mount it:
 

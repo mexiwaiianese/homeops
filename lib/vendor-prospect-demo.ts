@@ -44,6 +44,11 @@ type DemoOutreach = {
 const demoOutreach: Map<string, DemoOutreach> =
   ((globalThis as typeof globalThis & { __homeopsDemoOutreach?: Map<string, DemoOutreach> }).__homeopsDemoOutreach ??= new Map());
 
+/** Forget every invite and registration so the catalog reads as freshly discovered. */
+export function resetDemoOutreach() {
+  demoOutreach.clear();
+}
+
 export function demoInviteToken(sourcePlaceId: string) {
   return sourcePlaceId.startsWith("demo-") ? sourcePlaceId : `demo-${sourcePlaceId}`;
 }

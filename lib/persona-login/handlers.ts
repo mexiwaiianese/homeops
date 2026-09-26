@@ -7,9 +7,11 @@
 //   GET    /api/persona-login          { status, personas, active }   (404 when the feature is off)
 //   POST   /api/persona-login          { personaId } -> { ok, redirectTo, persona }
 //   DELETE /api/persona-login          clears every persona session
-//   POST   /api/persona-login/unlock   { code } -> sets the unlock cookie
-//   DELETE /api/persona-login/unlock   forgets the unlock cookie
-//   POST   /api/persona-login/seed     creates demo records (only if the adapter implements seed)
+//   POST   /api/persona-login/unlock   { code } -> sets the unlock cookie, then adapter.onUnlock
+//                                      (apps use it to hand the tester a fresh sandbox)
+//   DELETE /api/persona-login/unlock   forgets the unlock cookie, then adapter.onLock
+//   POST   /api/persona-login/seed     { reset?: boolean } creates demo records (adapter.seed);
+//                                      reset=true discards the caller's sandbox first
 
 import { NextResponse } from "next/server";
 import { getPersonaLoginConfig } from "./config";
@@ -70,7 +72,9 @@ export function createPersonaLoginHandlers(adapter: PersonaLoginAdapter) {
     const status = await personaLoginStatus(adapter);
     status.canSeed = typeof adapter.seed === "function";
     if (status.unlocked && adapter.diagnostics) status.warnings = await adapter.diagnostics().catch(() => []);
+    // listPersonas may provision the caller's sandbox on first use, so it runs before sandboxLabel.
     const personas = status.unlocked ? (await adapter.listPersonas()).map(publicPersona) : [];
+    if (status.unlocked && adapter.sandboxLabel) status.sandbox = await adapter.sandboxLabel().catch(() => null);
     const active = status.unlocked ? await activePersonaId() : null;
     return json({ status, personas, active });
   }
@@ -80,10 +84,18 @@ export function createPersonaLoginHandlers(adapter: PersonaLoginAdapter) {
     if (!config.enabled || !adapter.seed) return notFound();
     const access = await resolvePersonaLoginAccess(adapter);
     if (!access.allowed) return json({ error: access.reason, needsUnlock: access.needsUnlock }, { status: 403 });
-    const result = await adapter.seed(contextFor(request));
-    log(result.ok ? "seed" : "seed failed", { via: access.via, ip: clientKey(request), ...(result.ok ? { summary: result.summary } : { error: result.error }) });
+    const body = (await request.json().catch(() => ({}))) as { reset?: unknown };
+    const reset = body.reset === true;
+    const result = await adapter.seed({ ...contextFor(request), reset });
+    log(result.ok ? (reset ? "reset" : "seed") : reset ? "reset failed" : "seed failed", {
+      via: access.via,
+      ip: clientKey(request),
+      ...(result.ok ? { summary: result.summary } : { error: result.error }),
+    });
     if (!result.ok) return json({ error: result.error }, { status: result.status ?? 500 });
-    return json({ ok: true, summary: result.summary });
+    const cookies: CookieToSet[] = [...(result.cookies ?? [])];
+    if (reset) cookies.push({ name: personaActiveCookie, value: "", options: baseCookieOptions(0) });
+    return json({ ok: true, reset, summary: result.summary }, { cookies });
   }
 
   async function POST(request: Request) {
@@ -145,13 +157,31 @@ export function createPersonaLoginHandlers(adapter: PersonaLoginAdapter) {
     }
     resetUnlockAttempts(key);
     log("unlock", { ip: key, days: config.unlockDays });
-    return json({ ok: true, unlockDays: config.unlockDays }, { cookies: [issueUnlockCookie(config)] });
+    const cookies: CookieToSet[] = [issueUnlockCookie(config)];
+    let summary: string | undefined;
+    if (adapter.onUnlock) {
+      // A fresh code submission is the tester's "start over" signal. Never fail the unlock itself
+      // if the sandbox could not be rebuilt; surface the problem in the panel instead.
+      try {
+        const hook = await adapter.onUnlock(contextFor(request));
+        if (hook?.cookies) cookies.push(...hook.cookies);
+        // Whatever persona was active belonged to the old data set.
+        cookies.push({ name: personaActiveCookie, value: "", options: baseCookieOptions(0) });
+        summary = hook?.summary;
+        log("unlock sandbox", { ip: key, summary: summary ?? "(none)" });
+      } catch (error) {
+        summary = `Unlocked, but the demo sandbox could not be prepared: ${error instanceof Error ? error.message : String(error)}`;
+        log("unlock sandbox failed", { ip: key, error: summary });
+      }
+    }
+    return json({ ok: true, unlockDays: config.unlockDays, summary }, { cookies });
   }
 
-  async function unlockDELETE() {
+  async function unlockDELETE(request: Request) {
     const config = getPersonaLoginConfig();
     if (!config.enabled) return notFound();
-    return json({ ok: true }, { cookies: [clearUnlockCookie(), { name: personaActiveCookie, value: "", options: baseCookieOptions(0) }] });
+    const cleared = (await adapter.onLock?.(contextFor(request)).catch(() => undefined)) ?? [];
+    return json({ ok: true }, { cookies: [...cleared, clearUnlockCookie(), { name: personaActiveCookie, value: "", options: baseCookieOptions(0) }] });
   }
 
   return { GET, POST, DELETE, unlock: { POST: unlockPOST, DELETE: unlockDELETE }, seed: { POST: seedPOST } };

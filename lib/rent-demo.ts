@@ -71,6 +71,11 @@ function seedIfNeeded() {
 
 seedIfNeeded();
 
+/** Drop every demo charge and payment; the next read re-seeds the current month. */
+export function resetDemoRent() {
+  store.charges.clear();
+}
+
 export function listDemoCharges() {
   seedIfNeeded();
   return [...store.charges.values()].sort((a, b) => a.dueOn.localeCompare(b.dueOn) || a.address.localeCompare(b.address));

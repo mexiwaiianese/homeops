@@ -24,6 +24,7 @@ type Status = {
   via: "open" | "code" | "allowlist" | null;
   environment: "development" | "production" | "test";
   canSeed?: boolean;
+  sandbox?: string | null;
   warnings?: string[];
   reason?: string;
 };
@@ -78,11 +79,11 @@ export default function PersonaLoginPanel({ apiBase = "/api/persona-login", appN
     setBusy("unlock");
     setMessage(null);
     const response = await fetch(`${apiBase}/unlock`, { method: "POST", headers: { "Content-Type": "application/json" }, body: JSON.stringify({ code }) });
-    const body = await readJson<{ ok?: boolean; unlockDays?: number }>(response);
+    const body = await readJson<{ ok?: boolean; unlockDays?: number; summary?: string }>(response);
     setBusy("");
     if (!response.ok) { setMessage({ tone: "error", text: body.error || "Could not unlock." }); return; }
     setCode("");
-    setMessage({ tone: "info", text: `Unlocked on this browser for ${body.unlockDays} days.` });
+    setMessage({ tone: "info", text: [`Unlocked on this browser for ${body.unlockDays} days.`, body.summary].filter(Boolean).join(" ") });
     await load();
   }
 
@@ -112,13 +113,14 @@ export default function PersonaLoginPanel({ apiBase = "/api/persona-login", appN
     await load();
   }
 
-  async function seed() {
-    setBusy("seed");
+  async function seed(reset = false) {
+    if (reset && !window.confirm("Reset demo data? Everything you changed as any persona in this sandbox is discarded and the pristine demo data set is loaded again.")) return;
+    setBusy(reset ? "reset" : "seed");
     setMessage(null);
-    const response = await fetch(`${apiBase}/seed`, { method: "POST" });
+    const response = await fetch(`${apiBase}/seed`, { method: "POST", headers: { "Content-Type": "application/json" }, body: JSON.stringify({ reset }) });
     const body = await readJson<{ ok?: boolean; summary?: string }>(response);
     setBusy("");
-    setMessage(response.ok ? { tone: "info", text: body.summary || "Demo data created." } : { tone: "error", text: body.error || "Could not create demo data." });
+    setMessage(response.ok ? { tone: "info", text: body.summary || (reset ? "Demo data reset." : "Demo data created.") } : { tone: "error", text: body.error || (reset ? "Could not reset demo data." : "Could not create demo data.") });
     await load();
   }
 
@@ -230,6 +232,11 @@ export default function PersonaLoginPanel({ apiBase = "/api/persona-login", appN
             <button className="plGhost" type="button" disabled={Boolean(busy)} onClick={() => void signOutAll()}>
               {busy === "signout" ? "Signing out…" : "Sign out of all personas"}
             </button>
+            {status.canSeed && groups.length > 0 && (
+              <button className="plGhost" type="button" disabled={Boolean(busy)} onClick={() => void seed(true)} title="Discard every change made in this sandbox and reload the pristine demo data set">
+                {busy === "reset" ? "Resetting…" : "Reset demo data"}
+              </button>
+            )}
             {status.via === "code" && (
               <button className="plGhost" type="button" disabled={Boolean(busy)} onClick={() => void forgetUnlock()}>
                 {busy === "lock" ? "…" : "Forget access code"}
@@ -244,6 +251,7 @@ export default function PersonaLoginPanel({ apiBase = "/api/persona-login", appN
       <footer className="plFooter">
         <span>
           Access: {status.via === "open" ? "local development" : status.via === "code" ? "beta access code" : status.via === "allowlist" ? "allowlisted email" : "locked"}
+          {status.unlocked && status.sandbox ? ` · ${status.sandbox}` : ""}
         </span>
         {signInHref && <a className="plLink" href={signInHref}>Regular sign-in</a>}
       </footer>

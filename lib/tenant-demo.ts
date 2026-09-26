@@ -26,6 +26,13 @@ const store: Store =
 export const LOGIN_TOKEN_TTL_MS = 15 * 60 * 1000;
 export const SESSION_TTL_MS = 30 * 24 * 60 * 60 * 1000;
 
+/** Forget saved payment methods and Stripe customers. Sessions stay so the caller is not logged out mid-reset. */
+export function resetDemoTenantPortal() {
+  store.loginTokens.clear();
+  store.paymentMethods.clear();
+  store.stripeCustomers.clear();
+}
+
 function digits(value?: string | null) {
   const d = (value ?? "").replace(/\D/g, "");
   return d.length === 11 && d.startsWith("1") ? d.slice(1) : d;

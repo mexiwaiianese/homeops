@@ -45,20 +45,35 @@ type DemoStore = {
   autobid: Map<string, AutobidRule>;
 };
 
+function defaultCalendars(): Map<string, CalendarConnection> {
+  return new Map([
+    ["v1", { provider: "demo", status: "connected", connected_at: new Date().toISOString(), metadata: { busyBlocks: [] } }],
+    ["v2", { provider: "demo", status: "connected", connected_at: new Date().toISOString(), metadata: { busyBlocks: [] } }],
+    ["v3", { provider: "demo", status: "disconnected", metadata: { busyBlocks: [] } }],
+  ]);
+}
+
+function defaultAutobid(): Map<string, AutobidRule> {
+  return new Map([
+    ["v1", { enabled: true, maxAmountCents: 42000, minAmountCents: 12000, undercutCents: 1500, minNoticeHours: 2, jobDurationHours: 2 }],
+    ["v2", { enabled: true, maxAmountCents: 90000, minAmountCents: 18000, undercutCents: 2500, minNoticeHours: 4, jobDurationHours: 3 }],
+    ["v3", { enabled: true, maxAmountCents: 24000, minAmountCents: 9000, undercutCents: 1000, minNoticeHours: 4, jobDurationHours: 2 }],
+  ]);
+}
+
 const store: DemoStore =
   ((globalThis as typeof globalThis & { __homeopsAuctions?: DemoStore }).__homeopsAuctions ??= {
     opportunities: new Map(),
-    calendars: new Map([
-      ["v1", { provider: "demo", status: "connected", connected_at: new Date().toISOString(), metadata: { busyBlocks: [] } }],
-      ["v2", { provider: "demo", status: "connected", connected_at: new Date().toISOString(), metadata: { busyBlocks: [] } }],
-      ["v3", { provider: "demo", status: "disconnected", metadata: { busyBlocks: [] } }],
-    ]),
-    autobid: new Map([
-      ["v1", { enabled: true, maxAmountCents: 42000, minAmountCents: 12000, undercutCents: 1500, minNoticeHours: 2, jobDurationHours: 2 }],
-      ["v2", { enabled: true, maxAmountCents: 90000, minAmountCents: 18000, undercutCents: 2500, minNoticeHours: 4, jobDurationHours: 3 }],
-      ["v3", { enabled: true, maxAmountCents: 24000, minAmountCents: 9000, undercutCents: 1000, minNoticeHours: 4, jobDurationHours: 2 }],
-    ]),
+    calendars: defaultCalendars(),
+    autobid: defaultAutobid(),
   });
+
+/** Drop every auction and put vendor calendars and autobid rules back to their demo defaults. */
+export function resetDemoAuctions() {
+  store.opportunities.clear();
+  store.calendars = defaultCalendars();
+  store.autobid = defaultAutobid();
+}
 
 function token() {
   return `bid-${Date.now().toString(36)}${Math.random().toString(36).slice(2, 12)}`;

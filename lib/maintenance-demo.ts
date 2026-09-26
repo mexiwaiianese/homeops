@@ -42,6 +42,11 @@ function seedIfNeeded() {
 
 seedIfNeeded();
 
+/** Drop every demo request (seeded and tenant-created); the next read re-seeds the board. */
+export function resetDemoMaintenance() {
+  store.rows.clear();
+}
+
 export function listDemoMaintenance() {
   seedIfNeeded();
   return [...store.rows.values()].sort((a, b) => b.openedAt.localeCompare(a.openedAt));

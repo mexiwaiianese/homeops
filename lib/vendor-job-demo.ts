@@ -52,6 +52,11 @@ function seedIfNeeded() {
 
 seedIfNeeded();
 
+/** Drop every job site and its field logs; the next read re-seeds the awarded heating job. */
+export function resetDemoJobs() {
+  store.jobs.clear();
+}
+
 function firstResponseFromOpportunity(jobId: string, vendorId: string) {
   const opportunity = getDemoOpportunityByJob(jobId);
   if (!opportunity) return { notifiedAt: null as string | null, firstResponseAt: null as string | null };
