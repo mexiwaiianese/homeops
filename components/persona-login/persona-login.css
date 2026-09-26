@@ -213,6 +213,65 @@
 }
 .plGate .plLink { display: inline-block; margin-top: 10px; }
 
+/* Compact per-group picker embedded under a real sign-in form */
+.plQuick {
+  --pl-ink: var(--ink, #14211b);
+  --pl-muted: var(--muted, #6b746f);
+  --pl-line: var(--line, #e2e6e2);
+  --pl-accent: var(--teal, #008c99);
+  --pl-primary: var(--green, #2f7a52);
+  margin-top: 24px;
+  color: var(--pl-ink);
+  font-size: 14px;
+  text-align: left;
+}
+.plQuickHead {
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  gap: 12px;
+  margin-bottom: 8px;
+}
+.plQuickHead h3 {
+  margin: 0;
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  font-size: 14px;
+  font-weight: 800;
+}
+.plQuickHead > span {
+  font-size: 11px;
+  color: var(--pl-muted);
+}
+.plGate-compact { padding: 14px; }
+.plUnlock-row {
+  display: flex;
+  gap: 8px;
+}
+.plUnlock-row input {
+  flex: 1;
+  min-width: 0;
+  border: 1px solid var(--pl-line);
+  background: #fff;
+  padding: 10px 12px;
+  border-radius: 9px;
+  font: inherit;
+  color: var(--pl-ink);
+  outline: none;
+}
+.plUnlock-row input:focus {
+  border-color: var(--pl-accent);
+  box-shadow: 0 0 0 3px rgba(0, 140, 153, 0.12);
+}
+.plUnlock-row .plPrimary { width: auto; margin: 0; }
+.plQuick .plEmpty { margin-top: 0; }
+.plQuickAll {
+  display: block;
+  text-align: center;
+  margin-top: 12px;
+}
+
 @media (max-width: 560px) {
   .plPanel { padding: 22px 18px; border-radius: 16px; }
   .plRow { flex-direction: column; align-items: stretch; }

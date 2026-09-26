@@ -10,7 +10,8 @@ lib/persona-login/                 portable core (copy as-is)
   handlers.ts  createPersonaLoginHandlers(adapter) -> GET/POST/DELETE + unlock
   types.ts     Persona, PersonaLoginAdapter, ...
 components/persona-login/          portable UI (copy as-is)
-  persona-login-panel.tsx          client component, talks only to the API
+  persona-login-panel.tsx          full switcher page body (all groups, unlock form, sign-out)
+  persona-quick-login.tsx          compact one-group picker to embed under a real sign-in form
   persona-login.css
 lib/persona-login-<app>.ts         YOUR adapter (HomeOps: lib/persona-login-homeops.ts)
 app/api/persona-login/route.ts     mounts GET/POST/DELETE
@@ -87,7 +88,16 @@ export const POST = handlers.unlock.POST; export const DELETE = handlers.unlock.
 // app/dev/personas/page.tsx
 if (!isPersonaLoginEnabled()) notFound();
 return <PersonaLoginPanel appName="My App" signInHref="/login" />;
+
+// Under any real sign-in form (renders nothing when the feature is off; children are the fallback)
+<PersonaQuickLogin group="customer" title="Open as a customer" />
 ```
+
+## Setting the access code
+
+`PERSONA_LOGIN_ACCESS_CODE` is an environment variable, 12+ characters. Rotate it to log every tester out.
+Vercel: Settings → Environment Variables → edit (Production) → Redeploy. CLI:
+`vercel env add PERSONA_LOGIN_ACCESS_CODE production --value "…" --no-sensitive --force` then `vercel redeploy <prod-url> --target production`.
 
 ### Supabase Auth personas
 

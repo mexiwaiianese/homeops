@@ -208,12 +208,21 @@ Live setup:
 
 ## Persona login (dev and beta testers)
 
-`/dev/personas` opens HomeOps as any persona in one click: the demo manager, each demo owner, tenant, and vendor. It is meant for local development and authorized beta testers only.
+Open HomeOps as any persona in one click. Every sign-in page has an "Open as…" picker for its own group (`/login` managers, `/owners/login` owners, `/tenant/login` tenants, `/vendors/login` vendors), and `/dev/personas` lists all of them together. Meant for local development and authorized beta testers only.
 
 - Local dev: on by default with no env. Set `PERSONA_LOGIN_ACCESS_CODE` if the machine is shared.
-- Production: off unless `PERSONA_LOGIN_ENABLED=true` **and** either `PERSONA_LOGIN_ACCESS_CODE` (≥ 12 chars) or `PERSONA_LOGIN_ALLOWED_EMAILS` is set. Otherwise the page and API return 404.
-- Live mode (Supabase configured): personas come from `PERSONA_LOGIN_LIVE_PERSONAS`, a JSON array of test accounts you own. Email personas sign in through Supabase Auth without sending mail; tenant personas get a `tenant_sessions` row.
+- Production: off unless `PERSONA_LOGIN_ENABLED=true` **and** either `PERSONA_LOGIN_ACCESS_CODE` (≥ 12 chars) or `PERSONA_LOGIN_ALLOWED_EMAILS` is set. Otherwise the pickers hide and the page and API return 404.
+- Demo mode (no Supabase): personas are the seeded manager, owners, tenants, and vendors.
+- Live mode (Supabase configured): personas are discovered from the database — one manager per organization plus every owner, tenant, and vendor (12 per group). Each gets a synthetic `<group>-<id>@persona.example.com` login that is created and linked (`organization_members`, `owner_users`, `vendor_users`) on first use, so no real customer login is ever impersonated. Tenants get a `tenant_sessions` row. `PERSONA_LOGIN_LIVE_DISCOVERY=false` turns discovery off; `PERSONA_LOGIN_LIVE_PERSONAS` adds explicit accounts.
 - Every switch is logged as `[persona-login]`. Testers see labels only; emails and ids stay server-side.
+
+**Setting or rotating the beta access code.** The code is the `PERSONA_LOGIN_ACCESS_CODE` environment variable (12+ characters). Rotating it signs every tester out of the switcher.
+
+- Vercel dashboard: Project → Settings → Environment Variables → edit `PERSONA_LOGIN_ACCESS_CODE` (Production) → Redeploy.
+- CLI: `npx vercel env add PERSONA_LOGIN_ACCESS_CODE production --value "your-new-code" --no-sensitive --force` then `npx vercel redeploy <current-production-url> --target production`.
+- Local: add `PERSONA_LOGIN_ACCESS_CODE=...` to `.env.local` and restart `npm run dev`.
+
+Testers enter the code once on any sign-in page; the unlock lasts `PERSONA_LOGIN_UNLOCK_DAYS` (14) on that browser.
 
 The core (`lib/persona-login/`, `components/persona-login/`) has no HomeOps imports. To reuse it in another app, copy those folders and write an adapter like `lib/persona-login-homeops.ts`. See `lib/persona-login/README.md`.
 

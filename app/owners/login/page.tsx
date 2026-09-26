@@ -4,6 +4,7 @@ import { useState } from "react";
 import { useRouter } from "next/navigation";
 import { createBrowserClient } from "@supabase/ssr";
 import BrandLockup from "@/components/brand-lockup";
+import PersonaQuickLogin from "@/components/persona-login/persona-quick-login";
 import { owners as demoOwners } from "@/lib/data";
 
 type Provider = "google" | "apple";
@@ -82,22 +83,24 @@ export default function OwnerLoginPage() {
         {message && <div className="notice">{message}</div>}
         <p className="opHint">Use the same email address your property manager has on file. Google and Apple sign-in link to that address the first time you use them.</p>
 
-        {!configured && (
-          <>
-            <div className="sectionTitle"><h3>Demo owners</h3><span>No password</span></div>
-            <div className="credentialList">
-              {demoOwners.map((owner) => (
-                <div className="credential" key={owner.id}>
-                  <div>
-                    <strong>{owner.name}</strong>
-                    <span>{owner.homes} {owner.homes === 1 ? "property" : "properties"} · {owner.email}</span>
+        <PersonaQuickLogin group="owner" title="Open as an owner">
+          {!configured && (
+            <>
+              <div className="sectionTitle"><h3>Demo owners</h3><span>No password</span></div>
+              <div className="credentialList">
+                {demoOwners.map((owner) => (
+                  <div className="credential" key={owner.id}>
+                    <div>
+                      <strong>{owner.name}</strong>
+                      <span>{owner.homes} {owner.homes === 1 ? "property" : "properties"} · {owner.email}</span>
+                    </div>
+                    <button className="primary" disabled={Boolean(busy)} onClick={() => void enterDemo(owner.id)}>{busy === owner.id ? "Opening…" : "Open portal"}</button>
                   </div>
-                  <button className="primary" disabled={Boolean(busy)} onClick={() => void enterDemo(owner.id)}>{busy === owner.id ? "Opening…" : "Open portal"}</button>
-                </div>
-              ))}
-            </div>
-          </>
-        )}
+                ))}
+              </div>
+            </>
+          )}
+        </PersonaQuickLogin>
         <a href="/login">Property manager sign-in</a>
       </section>
     </main>

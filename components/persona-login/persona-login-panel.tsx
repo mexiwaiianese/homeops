@@ -178,7 +178,7 @@ export default function PersonaLoginPanel({ apiBase = "/api/persona-login", appN
         <>
           {groups.length === 0 && (
             <div className="plEmpty">
-              No personas are configured. In live mode, set <code>PERSONA_LOGIN_LIVE_PERSONAS</code> on the server.
+              No personas are available. The database has no organizations, owners, tenants, or vendors yet, or discovery is off (<code>PERSONA_LOGIN_LIVE_DISCOVERY=false</code>) and <code>PERSONA_LOGIN_LIVE_PERSONAS</code> is empty.
             </div>
           )}
           {groups.map((group) => (

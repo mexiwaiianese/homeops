@@ -3,6 +3,7 @@
 import { Suspense, useState } from "react";
 import { useSearchParams } from "next/navigation";
 import BrandLockup from "@/components/brand-lockup";
+import PersonaQuickLogin from "@/components/persona-login/persona-quick-login";
 import { tenants as demoTenants } from "@/lib/data";
 
 function TenantLoginForm() {
@@ -70,6 +71,7 @@ function TenantLoginForm() {
           </div>
         )}
         <p className="tenantFinePrint">Links expire after 15 minutes and work once. Signing in keeps you logged in on this device for 30 days.</p>
+        <PersonaQuickLogin group="tenant" title="Open as a tenant" />
         <a href="/login">Property manager sign-in</a>
       </section>
     </main>

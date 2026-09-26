@@ -3,19 +3,26 @@
 // Demo mode (no Supabase env): personas are the seeded manager, owners, tenants, and vendors and
 // sign-in sets the same cookies the real demo pickers set.
 //
-// Live mode (Supabase configured): personas come from PERSONA_LOGIN_LIVE_PERSONAS, a JSON array of
-// test accounts you control. Email personas are signed in through Supabase Auth using an admin
-// generated magic-link token that is verified server-side, so the tester never needs the inbox.
-// Tenant personas get a row in tenant_sessions exactly like a consumed sign-in link would.
+// Live mode (Supabase configured): personas are discovered from the database — one manager persona
+// per organization plus every owner, tenant, and vendor row (capped per group). Sign-in never touches
+// a real person's login. Each persona gets its own synthetic identity (<group>-<id>@persona.example.com)
+// that is created on first use and linked with organization_members / owner_users / vendor_users, so
+// the persona sees exactly what that owner, vendor, or manager would see. Tenant personas get a row in
+// tenant_sessions exactly like a consumed sign-in link would. Set PERSONA_LOGIN_LIVE_DISCOVERY=false
+// to turn discovery off and rely only on PERSONA_LOGIN_LIVE_PERSONAS.
 //
-//   PERSONA_LOGIN_LIVE_PERSONAS='[
+// PERSONA_LOGIN_LIVE_PERSONAS (optional JSON) adds explicit accounts you control on top of discovery:
+//   [
 //     {"id":"manager","group":"manager","label":"Pilot manager","email":"manager@pilot.example"},
 //     {"id":"owner-jane","group":"owner","label":"Owner: Jane","email":"jane@pilot.example"},
 //     {"id":"tenant-main","group":"tenant","label":"Tenant: 123 Main St","tenantId":"<tenants.id uuid>"},
 //     {"id":"vendor-acme","group":"vendor","label":"Vendor: ACME Plumbing","email":"dispatch@acme.example"}
-//   ]'
+//   ]
+// Email personas are signed in through Supabase Auth using an admin-generated magic-link token that is
+// verified server-side, so the tester never needs the inbox.
 
 import { createHash, randomBytes } from "crypto";
+import type { SupabaseClient } from "@supabase/supabase-js";
 import { getAuthedContext } from "@/lib/backend";
 import { homes, owners as demoOwners, tenants as demoTenants } from "@/lib/data";
 import { demoOwnerSessionCookie } from "@/lib/owner-portal-access";
@@ -114,11 +121,11 @@ function demoSignIn(persona: Persona): PersonaSignInResult {
 }
 
 // ---------------------------------------------------------------------------------------------
-// Live personas (PERSONA_LOGIN_LIVE_PERSONAS)
+// Live personas: explicit env JSON (PERSONA_LOGIN_LIVE_PERSONAS)
 
 type LivePersonaInput = { id?: string; group?: string; label?: string; description?: string; email?: string; tenantId?: string; landingPath?: string };
 
-function livePersonas(): Persona[] {
+function envPersonas(): Persona[] {
   const raw = (process.env.PERSONA_LOGIN_LIVE_PERSONAS || "").trim();
   if (!raw) return [];
   let parsed: unknown;
@@ -153,14 +160,134 @@ function livePersonas(): Persona[] {
   return personas;
 }
 
+// ---------------------------------------------------------------------------------------------
+// Live personas: discovered from the database
+
+const DISCOVERY_CAP = 12;
+const PERSONA_EMAIL_DOMAIN = "persona.example.com";
+
+function discoveryEnabled() {
+  return !["0", "false", "no", "off"].includes((process.env.PERSONA_LOGIN_LIVE_DISCOVERY || "").trim().toLowerCase());
+}
+
+/** Synthetic, undeliverable login identity for a discovered record. Deterministic so re-use links to the same auth user. */
+function personaEmail(group: Group, recordId: string) {
+  return `${group}-${recordId.replace(/-/g, "").slice(0, 12)}@${PERSONA_EMAIL_DOMAIN}`;
+}
+
+type HomeRow = { id: string; address1: string; city: string; state: string; owner_id?: string };
+
+async function discoverPersonas(admin: SupabaseClient): Promise<Persona[]> {
+  const [orgs, owners, tenants, vendors, homes, leases] = await Promise.all([
+    admin.from("organizations").select("id, name").order("created_at").limit(5),
+    admin.from("owners").select("id, organization_id, full_name, email").order("created_at").limit(DISCOVERY_CAP),
+    admin.from("tenants").select("id, organization_id, full_name, email").order("created_at").limit(DISCOVERY_CAP),
+    admin.from("vendors").select("id, organization_id, name, trade, city, state").order("created_at").limit(DISCOVERY_CAP),
+    admin.from("homes").select("id, owner_id, address1, city, state").limit(200),
+    admin.from("leases").select("tenant_id, home_id, status").limit(400),
+  ]);
+  const orgName = new Map((orgs.data ?? []).map((row) => [row.id as string, row.name as string]));
+  const homeRows = (homes.data ?? []) as HomeRow[];
+  const homesByOwner = new Map<string, number>();
+  for (const home of homeRows) if (home.owner_id) homesByOwner.set(home.owner_id, (homesByOwner.get(home.owner_id) ?? 0) + 1);
+  const homeById = new Map(homeRows.map((row) => [row.id, row]));
+  const homeForTenant = new Map<string, HomeRow>();
+  for (const lease of (leases.data ?? []) as Array<{ tenant_id: string; home_id: string; status: string }>) {
+    const home = homeById.get(lease.home_id);
+    if (!home) continue;
+    if (!homeForTenant.has(lease.tenant_id) || lease.status === "active") homeForTenant.set(lease.tenant_id, home);
+  }
+
+  const personas: Persona[] = [];
+  for (const org of orgs.data ?? []) {
+    personas.push({
+      id: `manager:${org.id}`,
+      group: "manager",
+      groupLabel: GROUPS.manager.label,
+      label: `Manager · ${org.name}`,
+      description: "Operations desk, maintenance, books, listings for this organization",
+      landingPath: GROUPS.manager.landingPath,
+      badge: "live",
+      meta: { organizationId: org.id, email: personaEmail("manager", org.id) },
+    });
+  }
+  for (const owner of owners.data ?? []) {
+    const count = homesByOwner.get(owner.id) ?? 0;
+    personas.push({
+      id: `owner:${owner.id}`,
+      group: "owner",
+      groupLabel: GROUPS.owner.label,
+      label: owner.full_name,
+      description: [`${count} ${count === 1 ? "property" : "properties"}`, orgName.get(owner.organization_id)].filter(Boolean).join(" · "),
+      landingPath: GROUPS.owner.landingPath,
+      badge: "live",
+      meta: { ownerId: owner.id, organizationId: owner.organization_id, email: personaEmail("owner", owner.id) },
+    });
+  }
+  for (const tenant of tenants.data ?? []) {
+    const home = homeForTenant.get(tenant.id);
+    personas.push({
+      id: `tenant:${tenant.id}`,
+      group: "tenant",
+      groupLabel: GROUPS.tenant.label,
+      label: tenant.full_name,
+      description: home ? `${home.address1}, ${home.city}, ${home.state}` : orgName.get(tenant.organization_id) || "Tenant portal",
+      landingPath: GROUPS.tenant.landingPath,
+      badge: "live",
+      meta: { tenantId: tenant.id },
+    });
+  }
+  for (const vendor of vendors.data ?? []) {
+    personas.push({
+      id: `vendor:${vendor.id}`,
+      group: "vendor",
+      groupLabel: GROUPS.vendor.label,
+      label: vendor.name,
+      description: [vendor.trade, [vendor.city, vendor.state].filter(Boolean).join(", ")].filter(Boolean).join(" · ") || "Vendor desk",
+      landingPath: GROUPS.vendor.landingPath,
+      badge: "live",
+      meta: { vendorId: vendor.id, organizationId: vendor.organization_id, email: personaEmail("vendor", vendor.id) },
+    });
+  }
+  return personas;
+}
+
+async function livePersonas(): Promise<Persona[]> {
+  const explicit = envPersonas();
+  if (!discoveryEnabled()) return explicit;
+  const admin = createSupabaseAdminClient();
+  if (!admin) return explicit;
+  try {
+    const discovered = await discoverPersonas(admin);
+    const seen = new Set(explicit.map((row) => row.id));
+    return [...explicit, ...discovered.filter((row) => !seen.has(row.id))];
+  } catch (error) {
+    console.warn("[persona-login] live discovery failed", error);
+    return explicit;
+  }
+}
+
+/** Sign the SSR client in as `email` through an admin-generated magic link. Returns the auth user id. */
+async function signInSupabaseUser(admin: SupabaseClient, email: string) {
+  // generateLink creates the auth user when it does not exist yet, so a fresh identity works the first time.
+  const { data, error } = await admin.auth.admin.generateLink({ type: "magiclink", email });
+  const tokenHash = data?.properties?.hashed_token;
+  if (error || !tokenHash) return { error: error?.message || "Supabase did not return a sign-in token." };
+  const supabase = await createSupabaseServerClient();
+  if (!supabase) return { error: "Supabase is not configured." };
+  const verify = await supabase.auth.verifyOtp({ type: "magiclink", token_hash: tokenHash });
+  if (verify.error || !verify.data.user) return { error: verify.error?.message || "Sign-in did not return a user." };
+  return { userId: verify.data.user.id };
+}
+
 async function liveSignIn(persona: Persona): Promise<PersonaSignInResult> {
   const admin = createSupabaseAdminClient();
   if (!admin) return { ok: false, error: "Persona login in live mode needs SUPABASE_SERVICE_ROLE_KEY on the server.", status: 503 };
+  const meta = persona.meta ?? {};
 
   if (persona.group === "tenant") {
-    const tenantId = persona.meta?.tenantId;
-    if (!tenantId) return { ok: false, error: "Tenant persona is missing tenantId." };
-    const { data: row } = await admin.from("tenants").select("id, organization_id").eq("id", tenantId).maybeSingle();
+    if (!meta.tenantId) return { ok: false, error: "Tenant persona is missing tenantId." };
+    const { data: row } = await admin.from("tenants").select("id, organization_id").eq("id", meta.tenantId).maybeSingle();
     if (!row) return { ok: false, error: "Tenant record not found for this persona.", status: 404 };
     const sessionToken = randomBytes(32).toString("hex");
     const { error } = await admin.from("tenant_sessions").insert({
@@ -174,19 +301,23 @@ async function liveSignIn(persona: Persona): Promise<PersonaSignInResult> {
     return { ok: true, cookies: [{ name: tenantSessionCookie, value: `live.${sessionToken}`, options: tenantSessionCookieOptions() }] };
   }
 
-  const email = persona.meta?.email;
-  if (!email) return { ok: false, error: "Persona is missing an email." };
-  // generateLink creates the auth user when it does not exist yet, so a fresh test account works
-  // the first time. Owner/vendor linkage still follows the normal first-sign-in rules
-  // (owner_users / vendor_users rows keyed by email).
-  const { data, error } = await admin.auth.admin.generateLink({ type: "magiclink", email });
-  const tokenHash = data?.properties?.hashed_token;
-  if (error || !tokenHash) return { ok: false, error: error?.message || "Supabase did not return a sign-in token.", status: 502 };
+  if (!meta.email) return { ok: false, error: "Persona is missing an email." };
+  const signedIn = await signInSupabaseUser(admin, meta.email);
+  if (!("userId" in signedIn)) return { ok: false, error: signedIn.error, status: 502 };
 
-  const supabase = await createSupabaseServerClient();
-  if (!supabase) return { ok: false, error: "Supabase is not configured.", status: 503 };
-  const verify = await supabase.auth.verifyOtp({ type: "magiclink", token_hash: tokenHash });
-  if (verify.error) return { ok: false, error: verify.error.message, status: 502 };
+  // Discovered personas carry a record id; make sure the synthetic identity is linked to it so the
+  // portals resolve the persona the same way they resolve a real login. Explicit env personas
+  // (email only) keep the normal first-sign-in linkage rules.
+  const stamp = { full_name: "Persona login", auth_user_id: signedIn.userId };
+  let link: { error: { message: string } | null } = { error: null };
+  if (persona.group === "manager" && meta.organizationId) {
+    link = await admin.from("organization_members").upsert({ organization_id: meta.organizationId, user_id: signedIn.userId, role: "manager" }, { onConflict: "organization_id,user_id" });
+  } else if (persona.group === "owner" && meta.ownerId && meta.organizationId) {
+    link = await admin.from("owner_users").upsert({ organization_id: meta.organizationId, owner_id: meta.ownerId, email: meta.email, role: "owner", ...stamp }, { onConflict: "owner_id,email" });
+  } else if (persona.group === "vendor" && meta.vendorId && meta.organizationId) {
+    link = await admin.from("vendor_users").upsert({ organization_id: meta.organizationId, vendor_id: meta.vendorId, email: meta.email, role: "dispatcher", ...stamp }, { onConflict: "vendor_id,email" });
+  }
+  if (link.error) return { ok: false, error: `Signed in, but could not link the persona: ${link.error.message}`, status: 500 };
   return { ok: true };
 }
 

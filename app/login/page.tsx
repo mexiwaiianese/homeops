@@ -2,6 +2,7 @@
 
 import { useState } from "react";
 import { createBrowserClient } from "@supabase/ssr";
+import PersonaQuickLogin from "@/components/persona-login/persona-quick-login";
 
 export default function LoginPage() {
   const [email, setEmail] = useState("");
@@ -38,11 +39,11 @@ export default function LoginPage() {
         </label>
         <button className="primary" type="submit">Email me a sign-in link</button>
         {message && <div className="notice">{message}</div>}
+        <PersonaQuickLogin group="manager" title="Open as a manager" />
         <a href="/">Return to demo</a>
         <a href="/vendors/login">Vendor desk sign-in</a>
         <a href="/owners/login">Owner portal sign-in</a>
         <a href="/tenant/login">Tenant portal sign-in</a>
-        {process.env.NODE_ENV !== "production" && <a href="/dev/personas">Dev: open as a persona</a>}
       </form>
     </main>
   );

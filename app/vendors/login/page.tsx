@@ -4,6 +4,7 @@ import { useState } from "react";
 import { useRouter } from "next/navigation";
 import { createBrowserClient } from "@supabase/ssr";
 import BrandLockup from "@/components/brand-lockup";
+import PersonaQuickLogin from "@/components/persona-login/persona-quick-login";
 import { vendors as demoVendors } from "@/lib/vendor-demo";
 
 export default function VendorLoginPage() {
@@ -43,7 +44,7 @@ export default function VendorLoginPage() {
         <BrandLockup artwork="lockup" />
         <p className="eyebrow">VENDOR DESK</p>
         <h1>Sign in as your company.</h1>
-        <p>The desk shows every awarded job. Crews still use the no-login job link to record arrival, photos, and departure.</p>
+        <p>The desk is where you set calendar and autobid rules, then open awarded jobs. Crews still use the no-login job link to record arrival, photos, and departure.</p>
         <form onSubmit={signIn}>
           <label>Work email
             <input type="email" value={email} onChange={(e) => setEmail(e.target.value)} placeholder="dispatch@yourcompany.com" />
@@ -51,18 +52,24 @@ export default function VendorLoginPage() {
           <button className="primary" type="submit" disabled={!email}>Email me a vendor sign-in link</button>
         </form>
         {message && <div className="notice">{message}</div>}
-        <div className="sectionTitle"><h3>Demo companies</h3><span>No password</span></div>
-        <div className="credentialList">
-          {demoVendors.map((vendor) => (
-            <div className="credential" key={vendor.id}>
-              <div>
-                <strong>{vendor.name}</strong>
-                <span>{vendor.trade} · {vendor.city}, {vendor.state}</span>
+        <PersonaQuickLogin group="vendor" title="Open as a vendor">
+          {!configured && (
+            <>
+              <div className="sectionTitle"><h3>Demo companies</h3><span>No password</span></div>
+              <div className="credentialList">
+                {demoVendors.map((vendor) => (
+                  <div className="credential" key={vendor.id}>
+                    <div>
+                      <strong>{vendor.name}</strong>
+                      <span>{vendor.trade} · {vendor.city}, {vendor.state}</span>
+                    </div>
+                    <button className="primary" disabled={busy} onClick={() => void enterDemo(vendor.id)}>Enter desk</button>
+                  </div>
+                ))}
               </div>
-              <button className="primary" disabled={busy} onClick={() => void enterDemo(vendor.id)}>Enter desk</button>
-            </div>
-          ))}
-        </div>
+            </>
+          )}
+        </PersonaQuickLogin>
         <a href="/login">Property manager sign-in</a>
         <a href="/tenant/login">Tenant portal sign-in</a>
       </section>
