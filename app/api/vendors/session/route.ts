@@ -1,6 +1,8 @@
 import { NextResponse } from "next/server";
 import { cookies } from "next/headers";
 import { getAuthedContext } from "@/lib/backend";
+import { baseCookieOptions, personaActiveCookie } from "@/lib/persona-login";
+import { personaSignOutPath } from "@/lib/persona-sign-out";
 import { createSupabaseAdminClient } from "@/lib/supabase/admin";
 import { vendors as demoVendors } from "@/lib/vendor-demo";
 import { demoVendorSessionCookie } from "@/lib/vendor-job-demo";
@@ -45,7 +47,10 @@ export async function POST(request: Request) {
 }
 
 export async function DELETE() {
-  const response = NextResponse.json({ signedOut: true });
+  const { supabase, user } = await getAuthedContext();
+  if (supabase && user) await supabase.auth.signOut().catch(() => undefined);
+  const response = NextResponse.json({ signedOut: true, redirect: await personaSignOutPath("/vendors/login") });
   response.cookies.set(demoVendorSessionCookie, "", { httpOnly: true, sameSite: "lax", path: "/", maxAge: 0 });
+  response.cookies.set(personaActiveCookie, "", baseCookieOptions(0));
   return response;
 }

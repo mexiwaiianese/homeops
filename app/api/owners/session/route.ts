@@ -1,6 +1,8 @@
 import { NextResponse } from "next/server";
 import { owners as demoOwners } from "@/lib/data";
 import { getAuthedContext } from "@/lib/backend";
+import { baseCookieOptions, personaActiveCookie } from "@/lib/persona-login";
+import { personaSignOutPath } from "@/lib/persona-sign-out";
 import { demoOwnerSessionCookie, ownerPortalAccess } from "@/lib/owner-portal-access";
 
 const cookieOptions = { httpOnly: true, sameSite: "lax" as const, path: "/", maxAge: 60 * 60 * 24 * 14 };
@@ -26,7 +28,8 @@ export async function POST(request: Request) {
 export async function DELETE() {
   const { supabase } = await getAuthedContext();
   if (supabase) await supabase.auth.signOut().catch(() => undefined);
-  const response = NextResponse.json({ signedOut: true });
+  const response = NextResponse.json({ signedOut: true, redirect: await personaSignOutPath("/owners/login") });
   response.cookies.set(demoOwnerSessionCookie, "", { ...cookieOptions, maxAge: 0 });
+  response.cookies.set(personaActiveCookie, "", baseCookieOptions(0));
   return response;
 }

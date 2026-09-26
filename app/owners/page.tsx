@@ -2,6 +2,7 @@
 
 import { FormEvent, useCallback, useEffect, useMemo, useRef, useState } from "react";
 import BrandLockup from "@/components/brand-lockup";
+import { leavePersona } from "@/lib/persona-sign-out-client";
 import OwnerDashboardGrid, { type GridItem } from "@/components/owner-dashboard-grid";
 import {
   CashFlowView,
@@ -183,8 +184,7 @@ export default function OwnerPortalPage() {
   }
 
   async function signOut() {
-    await fetch("/api/owners/session", { method: "DELETE" });
-    window.location.href = "/owners/login";
+    await leavePersona("/api/owners/session", "/owners/login");
   }
 
   const toggle = <T,>(list: T[], value: T) => (list.includes(value) ? list.filter((item) => item !== value) : [...list, value]);

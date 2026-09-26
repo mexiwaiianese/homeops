@@ -2,11 +2,11 @@
 
 import { useState } from "react";
 import { LogOut } from "lucide-react";
+import { leavePersona } from "@/lib/persona-sign-out-client";
 
 /**
- * Sidebar sign-out for the manager desk. Ends the manager session (and the active persona) and
- * returns to /login. Works in demo mode too, where it simply takes the tester back to the sign-in
- * screen so they can pick another persona.
+ * Sidebar sign-out for the manager desk. Ends the manager session. A browser that unlocked with
+ * the beta access code returns to /dev/personas; everyone else returns to /login.
  */
 export default function ManagerSignOut({ className = "nav" }: { className?: string }) {
   const [busy, setBusy] = useState(false);
@@ -14,12 +14,7 @@ export default function ManagerSignOut({ className = "nav" }: { className?: stri
   async function signOut() {
     if (busy) return;
     setBusy(true);
-    try {
-      await fetch("/api/session", { method: "DELETE" });
-    } catch {
-      // Cookies may already be gone; still return to the sign-in screen.
-    }
-    window.location.href = "/login";
+    await leavePersona("/api/session", "/login");
   }
 
   return (

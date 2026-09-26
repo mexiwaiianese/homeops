@@ -3,6 +3,7 @@
 import { FormEvent, useCallback, useEffect, useMemo, useState } from "react";
 import { useRouter } from "next/navigation";
 import BrandLockup from "@/components/brand-lockup";
+import { leavePersona } from "@/lib/persona-sign-out-client";
 import StripePayForm from "@/components/stripe-pay-form";
 import StripeSetupForm from "@/components/stripe-setup-form";
 import { moneyCents } from "@/lib/rent";
@@ -66,8 +67,7 @@ export default function TenantPortalPage() {
   useEffect(() => { if (!toast) return; const t = setTimeout(() => setToast(""), 4000); return () => clearTimeout(t); }, [toast]);
 
   async function signOut() {
-    await fetch("/api/tenant/session", { method: "DELETE" });
-    router.replace("/tenant/login");
+    await leavePersona("/api/tenant/session", "/tenant/login");
   }
 
   if (loading) {

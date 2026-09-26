@@ -3,6 +3,7 @@
 import { useEffect, useState } from "react";
 import { useRouter } from "next/navigation";
 import BrandLockup from "@/components/brand-lockup";
+import { leavePersona } from "@/lib/persona-sign-out-client";
 
 type DeskJob = {
   id: string;
@@ -45,8 +46,7 @@ export default function VendorDeskPage() {
   }, [router]);
 
   async function signOut() {
-    await fetch("/api/vendors/session", { method: "DELETE" });
-    router.replace("/vendors/login");
+    await leavePersona("/api/vendors/session", "/vendors/login");
   }
 
   return (
