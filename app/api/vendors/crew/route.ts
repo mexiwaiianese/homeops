@@ -1,7 +1,15 @@
 import { NextResponse } from "next/server";
-import { addDemoCrew, assignDemoCrew, listDemoCrew } from "@/lib/vendor-portal-demo";
+import { crewDeliverySummary, notifyCrewLink, type CrewLinkDelivery } from "@/lib/vendor-crew-notify";
+import { vendors as demoVendors } from "@/lib/vendor-demo";
 import { listDemoJobsForVendor } from "@/lib/vendor-job-demo";
+import { addDemoCrew, assignDemoCrew, getDemoCrew, listDemoCrew, recordDemoCrewSend } from "@/lib/vendor-portal-demo";
 import { missingPortalTable, requireVendorActor } from "@/lib/vendor-session";
+
+type Actor = Exclude<Awaited<ReturnType<typeof requireVendorActor>>, { error: string }>;
+
+function crewUrl(origin: string, token: string) {
+  return `${origin}/vendors/crew/${token}`;
+}
 
 function demoCrewPayload(vendorId: string, origin: string) {
   const jobs = listDemoJobsForVendor(vendorId).map((job) => ({
@@ -16,29 +24,31 @@ function demoCrewPayload(vendorId: string, origin: string) {
     jobs,
     crew: listDemoCrew(vendorId).map((member) => ({
       ...member,
-      accessUrl: `${origin}/vendors/crew/${member.token}`,
+      accessUrl: crewUrl(origin, member.token),
+      linkSentAt: member.linkSentAt ?? null,
+      linkSummary: member.linkSentAt
+        ? crewDeliverySummary({ channel: member.linkChannel ?? null, sentTo: member.linkSentTo ?? null, sent: !member.linkDeliveryError, provider: "demo", error: member.linkDeliveryError })
+        : null,
     })),
   };
 }
 
-export async function GET(request: Request) {
-  const actor = await requireVendorActor();
-  if ("error" in actor) return NextResponse.json({ error: actor.error }, { status: actor.status });
-  const origin = new URL(request.url).origin;
-  if (actor.mode === "demo") return NextResponse.json(demoCrewPayload(actor.vendorId, origin));
+async function liveCrewPayload(actor: Actor & { mode: "live" }, origin: string) {
   const [{ data, error }, { data: sites }] = await Promise.all([
-    actor.admin.from("vendor_crew_members").select("*, vendor_crew_assignments(*)").eq("vendor_id", actor.vendorId),
-    actor.admin.from("vendor_job_sites").select("token, maintenance_requests(title, homes(address1, city))").eq("vendor_id", actor.vendorId),
+    actor.admin.from("vendor_crew_members").select("*, vendor_crew_assignments(*)").eq("vendor_id", actor.vendorId).order("created_at"),
+    actor.admin.from("vendor_job_sites").select("token, arrived_at, departed_at, completed_at, maintenance_requests(title, homes(address1, city))").eq("vendor_id", actor.vendorId),
   ]);
-  if (error) return NextResponse.json({ error: missingPortalTable(error.message) ? "Apply migration 20260926120000_vendor_portal_controls.sql." : error.message }, { status: error.code === "42P01" ? 503 : 400 });
-  return NextResponse.json({
-    mode: "live",
+  if (error) {
+    return { error: missingPortalTable(error.message) ? "Apply migration 20260926120000_vendor_portal_controls.sql." : error.message, status: error.code === "42P01" ? 503 : 400 };
+  }
+  return {
+    mode: "live" as const,
     jobs: (sites ?? []).map((row: any) => ({
       token: row.token,
       title: row.maintenance_requests?.title || "Job",
       address: row.maintenance_requests?.homes?.address1 || "",
       city: row.maintenance_requests?.homes?.city || "",
-      status: "assigned",
+      status: row.completed_at ? "completed" : row.departed_at ? "departed" : row.arrived_at ? "on_site" : "assigned",
     })),
     crew: (data ?? []).map((member: any) => ({
       id: member.id,
@@ -47,9 +57,71 @@ export async function GET(request: Request) {
       phone: member.phone,
       token: member.token,
       jobTokens: (member.vendor_crew_assignments ?? []).map((row: { job_token?: string }) => row.job_token).filter(Boolean),
-      accessUrl: `${origin}/vendors/crew/${member.token}`,
+      accessUrl: crewUrl(origin, member.token),
+      linkSentAt: member.link_sent_at ?? null,
+      linkSummary: member.link_sent_at
+        ? crewDeliverySummary({ channel: member.link_channel ?? null, sentTo: member.link_sent_to ?? null, sent: !member.link_delivery_error, provider: "live", error: member.link_delivery_error })
+        : null,
     })),
+  };
+}
+
+async function vendorName(actor: Actor) {
+  if (actor.mode === "demo") return demoVendors.find((row) => row.id === actor.vendorId)?.name || "Your company";
+  const { data } = await actor.admin.from("vendors").select("name").eq("id", actor.vendorId).maybeSingle();
+  return data?.name || "Your company";
+}
+
+/** Send the crew link and remember the outcome on the member. Never throws; the desk shows the result. */
+async function sendCrewLink(actor: Actor, crewId: string, origin: string): Promise<{ delivery: CrewLinkDelivery } | { error: string; status: number }> {
+  const company = await vendorName(actor);
+  if (actor.mode === "demo") {
+    const member = getDemoCrew(actor.vendorId, crewId);
+    if (!member) return { error: "Crew member not found.", status: 404 };
+    const delivery = await notifyCrewLink({ email: member.email, phone: member.phone, vendorName: company, crewName: member.name, url: crewUrl(origin, member.token), jobCount: member.jobTokens.length });
+    recordDemoCrewSend(actor.vendorId, crewId, delivery);
+    return { delivery };
+  }
+  const { data: member } = await actor.admin
+    .from("vendor_crew_members")
+    .select("id, name, email, phone, token, vendor_crew_assignments(id)")
+    .eq("id", crewId)
+    .eq("vendor_id", actor.vendorId)
+    .maybeSingle();
+  if (!member) return { error: "Crew member not found.", status: 404 };
+  const delivery = await notifyCrewLink({
+    email: member.email,
+    phone: member.phone,
+    vendorName: company,
+    crewName: member.name,
+    url: crewUrl(origin, member.token),
+    jobCount: ((member as any).vendor_crew_assignments ?? []).length,
   });
+  // Delivery columns arrived with 20260927090000_vendor_crew_link_sends.sql; older schemas still send the link.
+  await actor.admin.from("vendor_crew_members").update({
+    link_sent_at: new Date().toISOString(),
+    link_channel: delivery.channel,
+    link_sent_to: delivery.sentTo,
+    link_delivery_error: delivery.sent ? null : delivery.error || "Link was not delivered",
+  }).eq("id", member.id);
+  return { delivery };
+}
+
+async function payload(actor: Actor, origin: string) {
+  if (actor.mode === "demo") return demoCrewPayload(actor.vendorId, origin);
+  return liveCrewPayload(actor, origin);
+}
+
+function respond(body: Awaited<ReturnType<typeof payload>>, extra: Record<string, unknown> = {}) {
+  if ("error" in body) return NextResponse.json({ error: body.error }, { status: body.status });
+  return NextResponse.json({ ...body, ...extra });
+}
+
+export async function GET(request: Request) {
+  const actor = await requireVendorActor();
+  if ("error" in actor) return NextResponse.json({ error: actor.error }, { status: actor.status });
+  const origin = new URL(request.url).origin;
+  return respond(await payload(actor, origin));
 }
 
 export async function POST(request: Request) {
@@ -57,11 +129,20 @@ export async function POST(request: Request) {
   if ("error" in actor) return NextResponse.json({ error: actor.error }, { status: actor.status });
   const body = await request.json().catch(() => ({}));
   const origin = new URL(request.url).origin;
+
+  // Manual resend of the crew link.
+  if (body.crewId && body.action === "send") {
+    const result = await sendCrewLink(actor, String(body.crewId), origin);
+    if ("error" in result) return NextResponse.json({ error: result.error }, { status: result.status });
+    return respond(await payload(actor, origin), { delivery: result.delivery });
+  }
+
+  // Put a crew member on or off a job.
   if (body.crewId && body.jobToken) {
     if (actor.mode === "demo") {
       const result = assignDemoCrew(actor.vendorId, String(body.crewId), String(body.jobToken), body.assign !== false);
       if ("error" in result) return NextResponse.json({ error: result.error }, { status: result.status });
-      return NextResponse.json(demoCrewPayload(actor.vendorId, origin));
+      return respond(demoCrewPayload(actor.vendorId, origin));
     }
     if (body.assign === false) {
       await actor.admin.from("vendor_crew_assignments").delete().eq("crew_member_id", body.crewId).eq("job_token", body.jobToken);
@@ -69,24 +150,34 @@ export async function POST(request: Request) {
       const { error } = await actor.admin.from("vendor_crew_assignments").insert({ crew_member_id: body.crewId, job_token: body.jobToken });
       if (error && !/duplicate/i.test(error.message)) return NextResponse.json({ error: error.message }, { status: 400 });
     }
-    return GET(request);
+    return respond(await payload(actor, origin));
   }
+
+  // Add a crew member, then send them their link right away.
   const email = String(body.email || "");
   const phone = String(body.phone || "");
+  let crewId: string;
   if (actor.mode === "demo") {
     const result = addDemoCrew(actor.vendorId, { name: body.name, email, phone });
     if ("error" in result) return NextResponse.json({ error: result.error }, { status: result.status });
-    return NextResponse.json(demoCrewPayload(actor.vendorId, origin));
+    crewId = result.member.id;
+  } else {
+    if (!/^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(email.trim())) return NextResponse.json({ error: "Enter a valid email address." }, { status: 400 });
+    if (phone.replace(/\D/g, "").length < 10) return NextResponse.json({ error: "Enter a cell phone number with at least 10 digits." }, { status: 400 });
+    const { data, error } = await actor.admin
+      .from("vendor_crew_members")
+      .insert({
+        organization_id: actor.organizationId,
+        vendor_id: actor.vendorId,
+        name: String(body.name || email.split("@")[0]).trim(),
+        email: email.trim().toLowerCase(),
+        phone: phone.trim(),
+      })
+      .select("id")
+      .single();
+    if (error || !data) return NextResponse.json({ error: error?.message || "Could not add this person." }, { status: 400 });
+    crewId = data.id;
   }
-  if (!/^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(email.trim())) return NextResponse.json({ error: "Enter a valid email address." }, { status: 400 });
-  if (phone.replace(/\D/g, "").length < 10) return NextResponse.json({ error: "Enter a cell phone number with at least 10 digits." }, { status: 400 });
-  const { error } = await actor.admin.from("vendor_crew_members").insert({
-    organization_id: actor.organizationId,
-    vendor_id: actor.vendorId,
-    name: String(body.name || email.split("@")[0]).trim(),
-    email: email.trim().toLowerCase(),
-    phone: phone.trim(),
-  });
-  if (error) return NextResponse.json({ error: error.message }, { status: 400 });
-  return GET(request);
+  const sent = await sendCrewLink(actor, crewId, origin);
+  return respond(await payload(actor, origin), { added: crewId, delivery: "delivery" in sent ? sent.delivery : null });
 }

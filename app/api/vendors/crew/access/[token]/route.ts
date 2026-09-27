@@ -15,7 +15,7 @@ export async function GET(request: Request, { params }: { params: Promise<{ toke
       .map((job) => publicJob(job, origin));
     return NextResponse.json({
       mode: "demo",
-      crew: { name: demo.name, companyId: demo.vendorId },
+      crew: { name: demo.name, companyId: demo.vendorId, companyName: jobs[0]?.vendorName || null },
       jobs,
     });
   }
@@ -29,8 +29,9 @@ export async function GET(request: Request, { params }: { params: Promise<{ toke
     : { data: [] };
   return NextResponse.json({
     mode: "live",
-    crew: { name: member.name },
+    crew: { name: member.name, companyName: (member as any).vendors?.name || null },
     jobs: (sites ?? []).map((row: any) => ({
+      token: row.token,
       title: row.maintenance_requests?.title,
       address: row.maintenance_requests?.homes?.address1,
       city: [row.maintenance_requests?.homes?.city, row.maintenance_requests?.homes?.state].filter(Boolean).join(", "),

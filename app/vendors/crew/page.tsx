@@ -11,9 +11,19 @@ type CrewMember = {
   phone: string;
   accessUrl: string;
   jobTokens: string[];
+  linkSentAt: string | null;
+  linkSummary: string | null;
 };
 
 type Job = { token: string; title: string; address: string; city: string; status: string };
+
+type Delivery = { channel: "email" | "sms" | null; sentTo: string | null; sent: boolean; error?: string | null };
+
+function deliveryNote(delivery: Delivery | null | undefined, lead: string) {
+  if (!delivery) return `${lead} Copy the link and send it yourself.`;
+  if (delivery.sent) return `${lead} Their link went out by ${delivery.channel === "sms" ? "text" : "email"} to ${delivery.sentTo}.`;
+  return `${lead} The link could not be sent (${delivery.error || "delivery failed"}). Copy it and send it yourself.`;
+}
 
 export default function VendorCrewPage() {
   const router = useRouter();
@@ -23,6 +33,7 @@ export default function VendorCrewPage() {
   const [email, setEmail] = useState("");
   const [phone, setPhone] = useState("");
   const [message, setMessage] = useState("");
+  const [sending, setSending] = useState("");
 
   function apply(body: { crew?: CrewMember[]; jobs?: Job[]; error?: string }) {
     if (body.error) { setMessage(body.error); return; }
@@ -47,7 +58,21 @@ export default function VendorCrewPage() {
     const body = await response.json();
     if (!response.ok) { setMessage(body.error || "Could not add this person."); return; }
     setName(""); setEmail(""); setPhone("");
-    setMessage("Crew member added. Send them their link. They do not need an account.");
+    setMessage(deliveryNote(body.delivery, "Crew member added. They do not need an account."));
+    apply(body);
+  }
+
+  async function send(member: CrewMember) {
+    setSending(member.id);
+    const response = await fetch("/api/vendors/crew", {
+      method: "POST",
+      headers: { "Content-Type": "application/json" },
+      body: JSON.stringify({ crewId: member.id, action: "send" }),
+    });
+    const body = await response.json();
+    setSending("");
+    if (!response.ok) { setMessage(body.error || "Could not send the link."); return; }
+    setMessage(deliveryNote(body.delivery, `Link for ${member.name}:`));
     apply(body);
   }
 
@@ -76,7 +101,7 @@ export default function VendorCrewPage() {
     <VendorPortalFrame
       eyebrow="CREW"
       title="Add people by email and cell."
-      lede="Crew members do not sign in. Their link shows the jobs they are on and opens the job report for arrival, photos, and departure."
+      lede="Crew members do not sign in. New people get their link by email and text automatically. The link shows only the jobs they are on; they pick the one they are heading to and the job report opens for arrival, photos, and departure."
     >
       {message && <div className="notice">{message}</div>}
       <form className="formGrid" onSubmit={add}>
@@ -92,6 +117,11 @@ export default function VendorCrewPage() {
               <strong>{member.name}</strong>
               <span>{member.email} · {member.phone}</span>
               <span>No login. Jobs on this link: {member.jobTokens.length}</span>
+              <span className={member.linkSentAt && member.linkSummary && !/^Sent/.test(member.linkSummary) ? "crewLinkWarn" : undefined}>
+                {member.linkSentAt
+                  ? `Link ${/^Sent/.test(member.linkSummary || "") ? member.linkSummary!.replace(/^Sent/, "sent") : `not delivered · ${member.linkSummary}`} · ${new Date(member.linkSentAt).toLocaleString()}`
+                  : "Link not sent yet"}
+              </span>
               {jobs.length > 0 && (
                 <span>
                   {jobs.map((job) => (
@@ -103,7 +133,12 @@ export default function VendorCrewPage() {
                 </span>
               )}
             </div>
-            <button className="secondaryBtn" onClick={() => void copy(member.accessUrl)}>Copy crew link</button>
+            <div className="crewActions">
+              <button className="primary" disabled={Boolean(sending)} onClick={() => void send(member)}>
+                {sending === member.id ? "Sending…" : member.linkSentAt ? "Send link again" : "Send link"}
+              </button>
+              <button className="secondaryBtn" onClick={() => void copy(member.accessUrl)}>Copy crew link</button>
+            </div>
           </div>
         ))}
       </div>

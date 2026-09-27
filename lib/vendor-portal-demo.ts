@@ -27,6 +27,11 @@ export type CrewMember = {
   phone: string;
   token: string;
   jobTokens: string[];
+  /** Last time the job link was sent to this person, and how it went. */
+  linkSentAt?: string | null;
+  linkChannel?: "email" | "sms" | null;
+  linkSentTo?: string | null;
+  linkDeliveryError?: string | null;
 };
 
 export type ReceivableStatus = "upcoming" | "invoiced" | "paid" | "overdue";
@@ -220,6 +225,25 @@ export function addDemoCrew(vendorId: string, input: { name?: string; email: str
   };
   store.crew.set(id, member);
   return { member };
+}
+
+export function getDemoCrew(vendorId: string, crewId: string) {
+  const member = store.crew.get(crewId);
+  return member && member.vendorId === vendorId ? member : null;
+}
+
+export function recordDemoCrewSend(
+  vendorId: string,
+  crewId: string,
+  delivery: { channel: "email" | "sms" | null; sentTo: string | null; sent: boolean; error?: string | null },
+) {
+  const member = getDemoCrew(vendorId, crewId);
+  if (!member) return null;
+  member.linkSentAt = new Date().toISOString();
+  member.linkChannel = delivery.channel;
+  member.linkSentTo = delivery.sentTo;
+  member.linkDeliveryError = delivery.sent ? null : delivery.error || "Link was not delivered";
+  return member;
 }
 
 export function assignDemoCrew(vendorId: string, crewId: string, jobToken: string, assign: boolean) {
