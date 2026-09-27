@@ -1,7 +1,7 @@
 import { NextResponse } from "next/server";
-import { crewDeliverySummary, notifyCrewLink, type CrewLinkDelivery } from "@/lib/vendor-crew-notify";
+import { crewDeliverySummary, notifyCrewAssignment, notifyCrewLink, type CrewLinkDelivery } from "@/lib/vendor-crew-notify";
 import { vendors as demoVendors } from "@/lib/vendor-demo";
-import { listDemoJobsForVendor } from "@/lib/vendor-job-demo";
+import { getDemoJobByToken, listDemoJobsForVendor } from "@/lib/vendor-job-demo";
 import { addDemoCrew, assignDemoCrew, getDemoCrew, listDemoCrew, recordDemoCrewSend } from "@/lib/vendor-portal-demo";
 import { missingPortalTable, requireVendorActor } from "@/lib/vendor-session";
 
@@ -107,6 +107,57 @@ async function sendCrewLink(actor: Actor, crewId: string, origin: string): Promi
   return { delivery };
 }
 
+function rememberDelivery(actor: Actor, crewId: string, delivery: CrewLinkDelivery) {
+  if (actor.mode === "demo") {
+    recordDemoCrewSend(actor.vendorId, crewId, delivery);
+    return;
+  }
+  return actor.admin.from("vendor_crew_members").update({
+    link_sent_at: new Date().toISOString(),
+    link_channel: delivery.channel,
+    link_sent_to: delivery.sentTo,
+    link_delivery_error: delivery.sent ? null : delivery.error || "Link was not delivered",
+  }).eq("id", crewId);
+}
+
+/** Text and email a crew member that they were just put on one job. The link opens that job. */
+async function sendCrewAssignment(actor: Actor, crewId: string, jobToken: string, origin: string): Promise<CrewLinkDelivery | null> {
+  const company = await vendorName(actor);
+  if (actor.mode === "demo") {
+    const member = getDemoCrew(actor.vendorId, crewId);
+    const job = getDemoJobByToken(jobToken);
+    if (!member || !job || job.vendorId !== actor.vendorId) return null;
+    const delivery = await notifyCrewAssignment({
+      email: member.email,
+      phone: member.phone,
+      vendorName: company,
+      crewName: member.name,
+      title: job.title,
+      address: [job.address, job.city].filter(Boolean).join(", "),
+      url: `${crewUrl(origin, member.token)}?job=${encodeURIComponent(jobToken)}`,
+    });
+    rememberDelivery(actor, crewId, delivery);
+    return delivery;
+  }
+  const [{ data: member }, { data: site }] = await Promise.all([
+    actor.admin.from("vendor_crew_members").select("id, name, email, phone, token").eq("id", crewId).eq("vendor_id", actor.vendorId).maybeSingle(),
+    actor.admin.from("vendor_job_sites").select("token, maintenance_requests(title, homes(address1, city))").eq("token", jobToken).eq("vendor_id", actor.vendorId).maybeSingle(),
+  ]);
+  if (!member) return null;
+  const request = (site as { maintenance_requests?: { title?: string; homes?: { address1?: string; city?: string } } } | null)?.maintenance_requests;
+  const delivery = await notifyCrewAssignment({
+    email: member.email,
+    phone: member.phone,
+    vendorName: company,
+    crewName: member.name,
+    title: request?.title || "a job",
+    address: [request?.homes?.address1, request?.homes?.city].filter(Boolean).join(", "),
+    url: `${crewUrl(origin, member.token)}?job=${encodeURIComponent(jobToken)}`,
+  });
+  await rememberDelivery(actor, member.id, delivery);
+  return delivery;
+}
+
 async function payload(actor: Actor, origin: string) {
   if (actor.mode === "demo") return demoCrewPayload(actor.vendorId, origin);
   return liveCrewPayload(actor, origin);
@@ -137,20 +188,28 @@ export async function POST(request: Request) {
     return respond(await payload(actor, origin), { delivery: result.delivery });
   }
 
-  // Put a crew member on or off a job.
+  // Put a crew member on or off a job. A new assignment texts and emails them that job.
   if (body.crewId && body.jobToken) {
+    const crewId = String(body.crewId);
+    const jobToken = String(body.jobToken);
+    const assigning = body.assign !== false;
     if (actor.mode === "demo") {
-      const result = assignDemoCrew(actor.vendorId, String(body.crewId), String(body.jobToken), body.assign !== false);
+      const member = getDemoCrew(actor.vendorId, crewId);
+      if (!member) return NextResponse.json({ error: "Crew member not found." }, { status: 404 });
+      const already = member.jobTokens.includes(jobToken);
+      const result = assignDemoCrew(actor.vendorId, crewId, jobToken, assigning);
       if ("error" in result) return NextResponse.json({ error: result.error }, { status: result.status });
-      return respond(demoCrewPayload(actor.vendorId, origin));
+      const delivery = assigning && !already ? await sendCrewAssignment(actor, crewId, jobToken, origin) : null;
+      return respond(demoCrewPayload(actor.vendorId, origin), delivery ? { delivery } : {});
     }
-    if (body.assign === false) {
-      await actor.admin.from("vendor_crew_assignments").delete().eq("crew_member_id", body.crewId).eq("job_token", body.jobToken);
-    } else {
-      const { error } = await actor.admin.from("vendor_crew_assignments").insert({ crew_member_id: body.crewId, job_token: body.jobToken });
-      if (error && !/duplicate/i.test(error.message)) return NextResponse.json({ error: error.message }, { status: 400 });
+    if (!assigning) {
+      await actor.admin.from("vendor_crew_assignments").delete().eq("crew_member_id", crewId).eq("job_token", jobToken);
+      return respond(await payload(actor, origin));
     }
-    return respond(await payload(actor, origin));
+    const { error } = await actor.admin.from("vendor_crew_assignments").insert({ crew_member_id: crewId, job_token: jobToken });
+    if (error && !/duplicate/i.test(error.message)) return NextResponse.json({ error: error.message }, { status: 400 });
+    const delivery = error ? null : await sendCrewAssignment(actor, crewId, jobToken, origin);
+    return respond(await payload(actor, origin), delivery ? { delivery } : {});
   }
 
   // Add a crew member, then send them their link right away.

@@ -85,6 +85,9 @@ export default function VendorCrewPage() {
     });
     const body = await response.json();
     if (!response.ok) { setMessage(body.error || "Could not update the assignment."); return; }
+    setMessage(assigned
+      ? `${member.name} was taken off ${job.title}.`
+      : deliveryNote(body.delivery, `${member.name} was added to ${job.title}.`));
     apply(body);
   }
 
@@ -101,7 +104,7 @@ export default function VendorCrewPage() {
     <VendorPortalFrame
       eyebrow="CREW"
       title="Add people by email and cell."
-      lede="Crew members do not sign in. New people get their link by email and text automatically. The link shows only the jobs they are on; they pick the one they are heading to and the job report opens for arrival, photos, and departure."
+      lede="Crew members do not sign in. New people get their link by email and text automatically, and checking a job on their list sends them that visit. The link shows only the jobs they are on; they pick the one they are heading to and the job report opens for arrival, photos, and departure."
     >
       {message && <div className="notice">{message}</div>}
       <form className="formGrid" onSubmit={add}>

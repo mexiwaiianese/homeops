@@ -26,6 +26,56 @@ export function crewLinkCopy(input: { vendorName: string; crewName: string; url:
   ].join("\n");
 }
 
+export function crewAssignmentCopy(input: {
+  vendorName: string;
+  crewName: string;
+  title: string;
+  address: string;
+  url: string;
+  channel: "email" | "sms";
+}) {
+  const where = [input.title, input.address].filter(Boolean).join(" at ");
+  if (input.channel === "sms") {
+    return `${input.vendorName} added you to ${where}. Open it: ${input.url}`;
+  }
+  return [
+    `Hi ${input.crewName},`,
+    "",
+    `${input.vendorName} added you to a job.`,
+    where,
+    "",
+    `Open it: ${input.url}`,
+    "",
+    "No sign-in is needed. The link opens that job so you can record arrival, photos, notes, and departure.",
+  ].join("\n");
+}
+
+/** Email and text, reporting the first channel that went through. */
+async function deliverBoth(input: {
+  email?: string | null;
+  phone?: string | null;
+  subject: string;
+  emailText: string;
+  smsText: string;
+}): Promise<CrewLinkDelivery> {
+  const deliveries: CrewLinkDelivery[] = [];
+  if (input.email) {
+    const result = await sendVendorEmail({ to: input.email, subject: input.subject, text: input.emailText });
+    deliveries.push({ channel: "email", sentTo: input.email, ...result });
+  }
+  if (input.phone) {
+    const result = await sendVendorSms({ to: input.phone, text: input.smsText });
+    deliveries.push({ channel: "sms", sentTo: input.phone, ...result });
+  }
+  if (!deliveries.length) {
+    return { channel: null, sentTo: null, sent: false, provider: "unconfigured", error: "No email or phone on file for this crew member" };
+  }
+  const sent = deliveries.find((row) => row.sent);
+  if (sent) return sent;
+  const errors = [...new Set(deliveries.map((row) => row.error).filter(Boolean))];
+  return { ...deliveries[0], error: errors.join("; ") || "Link was not delivered" };
+}
+
 /**
  * Send a crew member their personal job link by email and text. Tries both channels when both are on
  * file and reports the first one that went through, so the vendor desk can show where it landed.
@@ -38,26 +88,32 @@ export async function notifyCrewLink(input: {
   url: string;
   jobCount: number;
 }): Promise<CrewLinkDelivery> {
-  const deliveries: CrewLinkDelivery[] = [];
-  if (input.email) {
-    const result = await sendVendorEmail({
-      to: input.email,
-      subject: `Your ${input.vendorName} job link`,
-      text: crewLinkCopy({ ...input, channel: "email" }),
-    });
-    deliveries.push({ channel: "email", sentTo: input.email, ...result });
-  }
-  if (input.phone) {
-    const result = await sendVendorSms({ to: input.phone, text: crewLinkCopy({ ...input, channel: "sms" }) });
-    deliveries.push({ channel: "sms", sentTo: input.phone, ...result });
-  }
-  if (!deliveries.length) {
-    return { channel: null, sentTo: null, sent: false, provider: "unconfigured", error: "No email or phone on file for this crew member" };
-  }
-  const sent = deliveries.find((row) => row.sent);
-  if (sent) return sent;
-  const errors = [...new Set(deliveries.map((row) => row.error).filter(Boolean))];
-  return { ...deliveries[0], error: errors.join("; ") || "Link was not delivered" };
+  return deliverBoth({
+    email: input.email,
+    phone: input.phone,
+    subject: `Your ${input.vendorName} job link`,
+    emailText: crewLinkCopy({ ...input, channel: "email" }),
+    smsText: crewLinkCopy({ ...input, channel: "sms" }),
+  });
+}
+
+/** Tell a crew member they were just put on one job. The url should open that job. */
+export async function notifyCrewAssignment(input: {
+  email?: string | null;
+  phone?: string | null;
+  vendorName: string;
+  crewName: string;
+  title: string;
+  address: string;
+  url: string;
+}): Promise<CrewLinkDelivery> {
+  return deliverBoth({
+    email: input.email,
+    phone: input.phone,
+    subject: `${input.vendorName} added you to ${input.title}`,
+    emailText: crewAssignmentCopy({ ...input, channel: "email" }),
+    smsText: crewAssignmentCopy({ ...input, channel: "sms" }),
+  });
 }
 
 /** Short status line for the vendor desk: "Sent by text to (801) 555-0100" or why it did not go. */
