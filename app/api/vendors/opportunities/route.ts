@@ -2,7 +2,7 @@ import { NextResponse } from "next/server";
 import { isDemoOrganizationSlug } from "@/lib/demo-ledger";
 import { leadingBid, type AuctionBid } from "@/lib/vendor-auction";
 import { getDemoAutobid, listDemoOpportunitiesForVendor, seedManagerOpportunities } from "@/lib/vendor-auction-demo";
-import { seedLiveManagerOpportunities } from "@/lib/vendor-auction-live";
+import { healDemoBoard } from "@/lib/demo-seed-live";
 import { demoBidAccess, demoSuccessfulJobs, getDemoGrants } from "@/lib/vendor-portal-demo";
 import { JOBS_BEFORE_OPEN_BIDDING, accessSummary } from "@/lib/vendor-portal";
 import { requireVendorActor } from "@/lib/vendor-session";
@@ -28,14 +28,9 @@ export async function GET(request: Request) {
 
   // Demo sandboxes: make sure every approved request on the manager board has an open auction, so
   // the vendor sees the same opportunities the manager sees.
-  const org = await actor.admin.from("organizations").select("slug, name").eq("id", actor.organizationId).maybeSingle();
+  const org = await actor.admin.from("organizations").select("slug").eq("id", actor.organizationId).maybeSingle();
   if (isDemoOrganizationSlug(org.data?.slug)) {
-    await seedLiveManagerOpportunities({
-      supabase: actor.admin,
-      organizationId: actor.organizationId,
-      organizationName: org.data?.name || "HomeOps Demo Management",
-      origin,
-    }).catch(() => null);
+    await healDemoBoard(actor.admin, actor.organizationId, origin);
   }
 
   const { data: invites, error } = await actor.admin

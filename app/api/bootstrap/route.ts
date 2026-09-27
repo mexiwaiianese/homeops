@@ -2,11 +2,11 @@ import { NextResponse } from "next/server";
 import { getAuthedContext } from "@/lib/backend";
 import { homes, owners, tenants } from "@/lib/data";
 import { isDemoOrganizationSlug } from "@/lib/demo-ledger";
+import { healDemoBoard } from "@/lib/demo-seed-live";
 import { listDemoMaintenance } from "@/lib/maintenance-demo";
 import { getDemoOrgSettings } from "@/lib/org-settings";
 import { createSupabaseAdminClient } from "@/lib/supabase/admin";
 import { seedManagerOpportunities } from "@/lib/vendor-auction-demo";
-import { seedLiveManagerOpportunities } from "@/lib/vendor-auction-live";
 
 export async function GET(request: Request) {
   const origin = new URL(request.url).origin;
@@ -32,8 +32,7 @@ export async function GET(request: Request) {
   // Demo sandboxes keep their board in sync with the vendor desks: any approved, unassigned request
   // gets an open auction so the vendors that match it can see and bid on it.
   if (isDemoOrganizationSlug(orgRow.data?.slug)) {
-    const admin = createSupabaseAdminClient() || supabase;
-    await seedLiveManagerOpportunities({ supabase: admin, organizationId, organizationName: orgRow.data?.name || "HomeOps Demo Management", origin }).catch(() => null);
+    await healDemoBoard(createSupabaseAdminClient() || supabase, organizationId, origin);
   }
 
   const [ownerRows, homeRows, tenantRows, maintenanceRows, auctionRows] = await Promise.all([

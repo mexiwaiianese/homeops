@@ -111,6 +111,105 @@ function bump(report: SeedReport, table: string, count = 1) {
   report.created[table] = (report.created[table] ?? 0) + count;
 }
 
+type DemoIdMaps = {
+  /** demo home id ("h1") -> live homes.id */
+  homeIds: Map<string, string>;
+  /** demo tenant id ("t1") -> live tenants.id */
+  tenantIds: Map<string, string>;
+  /** demo vendor id ("v1") -> live vendors.id */
+  vendorIds: Map<string, string>;
+};
+
+/** Resolve the demo portfolio that already exists in a live organization by its natural keys. */
+async function lookupDemoIds(admin: Admin, organizationId: string): Promise<DemoIdMaps> {
+  const [homesRes, tenantsRes, vendorsRes] = await Promise.all([
+    admin.from("homes").select("id, address1").eq("organization_id", organizationId),
+    admin.from("tenants").select("id, full_name").eq("organization_id", organizationId),
+    admin.from("vendors").select("id, name").eq("organization_id", organizationId),
+  ]);
+  const homeIds = new Map<string, string>();
+  for (const home of demoHomes) {
+    const match = (homesRes.data ?? []).find((row) => row.address1 === home.address);
+    if (match) homeIds.set(home.id, match.id as string);
+  }
+  const tenantIds = new Map<string, string>();
+  for (const tenant of demoTenants) {
+    const match = (tenantsRes.data ?? []).find((row) => row.full_name === tenant.name);
+    if (match) tenantIds.set(tenant.id, match.id as string);
+  }
+  const vendorIds = new Map<string, string>();
+  for (const vendor of demoVendors) {
+    const match = (vendorsRes.data ?? []).find((row) => row.name === vendor.name);
+    if (match) vendorIds.set(vendor.id, match.id as string);
+  }
+  return { homeIds, tenantIds, vendorIds };
+}
+
+/**
+ * Insert every seeded work order (lib/data initialMaintenance) that is not on the board yet, keyed by
+ * home + title. Each one is tied to the tenant who reported it and carries an estimate, so it shows
+ * as an expected repair on the property and in the owner's numbers.
+ */
+async function seedDemoMaintenanceRequests(admin: Admin, organizationId: string, ids: DemoIdMaps) {
+  const maintenanceIds = new Map<string, string>();
+  let created = 0;
+  for (const [index, row] of initialMaintenance.entries()) {
+    const homeId = ids.homeIds.get(row.homeId);
+    if (!homeId) continue;
+    const existing = await admin.from("maintenance_requests").select("id").eq("organization_id", organizationId).eq("home_id", homeId).eq("title", row.title).maybeSingle();
+    if (existing.error) throw new Error(existing.error.message);
+    if (existing.data) { maintenanceIds.set(row.id, existing.data.id); continue; }
+    const tenant = demoTenants.find((item) => item.name === row.tenant);
+    const openedAt = hoursAgo((index + 1) * 36);
+    const inserted = await admin
+      .from("maintenance_requests")
+      .insert({
+        organization_id: organizationId,
+        home_id: homeId,
+        tenant_id: tenant ? ids.tenantIds.get(tenant.id) ?? null : null,
+        vendor_id: row.vendorId ? ids.vendorIds.get(row.vendorId) ?? null : null,
+        title: row.title,
+        description: row.note,
+        priority: row.priority.toLowerCase(),
+        status: row.status.toLowerCase(),
+        diagnosis: { summary: row.note, source: "seed" },
+        estimated_cost_cents: Math.round(row.estimate * 100),
+        approved_cost_cents: row.status === "Scheduled" ? Math.round(row.estimate * 100) : null,
+        owner_approval_required: row.status === "Authorize",
+        opened_at: openedAt,
+        updated_at: openedAt,
+      })
+      .select("id")
+      .single();
+    if (inserted.error || !inserted.data) throw new Error(inserted.error?.message || "no row returned");
+    maintenanceIds.set(row.id, inserted.data.id);
+    created += 1;
+  }
+  return { ids: maintenanceIds, created };
+}
+
+/**
+ * Light self-heal for an existing demo sandbox, safe to run on every manager or vendor page load:
+ * top up the seeded work orders that were added after the sandbox was created, then make sure every
+ * approved, unassigned request has an open reverse auction with invites for the vendors whose
+ * services match. Never touches anything the tester created. Returns the request ids with an open
+ * auction so the manager board can show them.
+ */
+export async function healDemoBoard(admin: Admin, organizationId: string, origin: string) {
+  try {
+    const ids = await lookupDemoIds(admin, organizationId);
+    if (ids.homeIds.size) await seedDemoMaintenanceRequests(admin, organizationId, ids);
+  } catch {
+    // Missing rows are a gap in the demo story, not a reason to fail the page.
+  }
+  try {
+    const result = await seedLiveManagerOpportunities({ supabase: admin, organizationId, organizationName: DEMO_ORG_NAME, origin });
+    return result.openJobIds;
+  } catch {
+    return [] as string[];
+  }
+}
+
 /**
  * Seed (or top up) one organization with the complete demo data set. Returns what was inserted.
  * Throws only when the core portfolio (owners, tenants, homes, leases, vendors) cannot be written.
@@ -461,40 +560,11 @@ export async function seedDemoWorkspace(admin: Admin, organizationId: string): P
   });
 
   // ----- Maintenance board + the one job already awarded to a vendor ---------------------------
-  const maintenanceIds = new Map<string, string>();
+  let maintenanceIds = new Map<string, string>();
   await seedOptional(report, "maintenance_requests", async () => {
-    for (const [index, row] of initialMaintenance.entries()) {
-      const homeId = homeIds.get(row.homeId);
-      if (!homeId) continue;
-      const existing = await admin.from("maintenance_requests").select("id").eq("organization_id", organizationId).eq("home_id", homeId).eq("title", row.title).maybeSingle();
-      if (existing.error) throw new Error(existing.error.message);
-      if (existing.data) { maintenanceIds.set(row.id, existing.data.id); continue; }
-      const tenant = demoTenants.find((item) => item.name === row.tenant);
-      const openedAt = hoursAgo((index + 1) * 36);
-      const inserted = await admin
-        .from("maintenance_requests")
-        .insert({
-          organization_id: organizationId,
-          home_id: homeId,
-          tenant_id: tenant ? tenantIds.get(tenant.id) ?? null : null,
-          vendor_id: row.vendorId ? vendorIds.get(row.vendorId) ?? null : null,
-          title: row.title,
-          description: row.note,
-          priority: row.priority.toLowerCase(),
-          status: row.status.toLowerCase(),
-          diagnosis: { summary: row.note, source: "seed" },
-          estimated_cost_cents: Math.round(row.estimate * 100),
-          approved_cost_cents: row.status === "Scheduled" ? Math.round(row.estimate * 100) : null,
-          owner_approval_required: row.status === "Authorize",
-          opened_at: openedAt,
-          updated_at: openedAt,
-        })
-        .select("id")
-        .single();
-      if (inserted.error || !inserted.data) throw new Error(inserted.error?.message || "no row returned");
-      maintenanceIds.set(row.id, inserted.data.id);
-      bump(report, "maintenance_requests");
-    }
+    const result = await seedDemoMaintenanceRequests(admin, organizationId, { homeIds, tenantIds, vendorIds });
+    maintenanceIds = result.ids;
+    bump(report, "maintenance_requests", result.created);
   });
 
   await seedOptional(report, "vendor_job_sites", async () => {
