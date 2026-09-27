@@ -1280,6 +1280,12 @@ button:disabled {
 }
 .finStats {
   margin-bottom: 16px;
+  grid-template-columns: repeat(auto-fit, minmax(170px, 1fr));
+}
+.pnl > div.muted span,
+.pnl > div.muted strong {
+  color: var(--muted);
+  font-weight: 600;
 }
 .finFilters {
   display: flex;
@@ -2953,7 +2959,7 @@ a.statLink:hover {
   font-weight: 800;
 }
 .opTable.properties .opTr {
-  grid-template-columns: 1.8fr repeat(5, 0.8fr);
+  grid-template-columns: 1.8fr repeat(6, 0.8fr);
 }
 .opTable.closings .opTr {
   grid-template-columns: 1.4fr repeat(4, 0.9fr) 24px;

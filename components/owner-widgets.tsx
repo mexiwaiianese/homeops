@@ -69,6 +69,10 @@ export function KpiWidget({ id, snapshot }: { id: string; snapshot: PortfolioSna
       return <Kpi label="Expense ratio" value={pct(pnl.opexRatio)} tone={pnl.opexRatio <= 0.4 ? "good" : pnl.opexRatio <= 0.55 ? "neutral" : "warn"} sub="Operating expenses ÷ income" />;
     case "kpi_maintenance_per_door":
       return <Kpi label="Maintenance per door" value={moneyCents(snapshot.maintenancePerDoor)} sub={`${moneyCents(snapshot.variables.maintenance * 100)} total · ${snapshot.months} mo`} />;
+    case "kpi_expected_repairs": {
+      const expected = Math.round(snapshot.variables.maintenance_estimates * 100);
+      return <Kpi label="Expected repairs" value={moneyCents(expected)} tone={expected ? "warn" : "good"} sub={expected ? `${snapshot.openMaintenance.length} open request${snapshot.openMaintenance.length === 1 ? "" : "s"} · ${moneyCents(Math.round(snapshot.variables.net_after_estimates * 100))} net to you after they post` : "No open work on these properties"} />;
+    }
     case "kpi_reserve":
       return <Kpi label="Reserve on hand" value={moneyCents(snapshot.reserveBalance)} tone={snapshot.reserveBalance >= snapshot.reserveFloor ? "good" : "warn"} sub={`Floor ${moneyCents(snapshot.reserveFloor)} · ${moneyCents(snapshot.depositsHeld)} deposits held`} />;
     default:
@@ -204,7 +208,7 @@ export function PropertiesTable({ properties, onFocus }: { properties: PropertyR
   return (
     <div className="opTableWrap">
       <div className="opTable properties">
-        <div className="opTr head"><span>Property</span><span>Income</span><span>Operating</span><span>NOI</span><span>Margin</span><span>Collected</span></div>
+        <div className="opTr head"><span>Property</span><span>Income</span><span>Operating</span><span>NOI</span><span>Margin</span><span>Collected</span><span>Expected</span></div>
         {properties.map((row) => (
           <button type="button" className="opTr" key={row.home.id} onClick={() => onFocus(row.home.id)}>
             <span><strong>{row.home.address1}</strong><small>{PROPERTY_TYPES[row.home.type]} · {row.home.occupied ? row.home.tenantName || "Leased" : "Vacant"}</small></span>
@@ -213,6 +217,7 @@ export function PropertiesTable({ properties, onFocus }: { properties: PropertyR
             <span className={row.noi >= 0 ? "good" : "negative"}><strong>{moneyCents(row.noi)}</strong></span>
             <span>{pct(row.margin)}</span>
             <span>{pct(row.collectionRate)}</span>
+            <span className={row.expectedRepairs ? "negative" : ""}>{row.expectedRepairs ? `−${moneyCents(row.expectedRepairs)}` : "—"}</span>
           </button>
         ))}
       </div>

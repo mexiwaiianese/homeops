@@ -103,6 +103,8 @@ export async function openLiveAuction(input: {
   neededBy?: string | null;
   origin: string;
   userId?: string;
+  /** False when seeding demo data: invites are recorded but no email or SMS goes out. */
+  notify?: boolean;
 }) {
   const { data: existing } = await input.supabase
     .from("vendor_bid_opportunities")
@@ -199,6 +201,13 @@ export async function openLiveAuction(input: {
       .select()
       .single();
     if (inviteError || !invite) continue;
+    if (input.notify === false) {
+      await input.supabase.from("vendor_bid_invites").update({
+        notified_at: new Date().toISOString(),
+        delivery_error: "Demo seed: invite recorded, no message sent",
+      }).eq("id", invite.id);
+      continue;
+    }
     const url = bidUrl(invite.token, input.origin);
     const delivery = await notifyAuctionInvite({
       email: destination.email,
@@ -229,4 +238,52 @@ export async function openLiveAuction(input: {
     metadata: { opportunityId: opportunity.id, budgetCents: input.budgetCents, neededBy },
   });
   return { opportunityId: opportunity.id, created: true };
+}
+
+/**
+ * Property-manager board seed for a live organization: open a reverse auction for every approved,
+ * unassigned request that does not have one yet. Idempotent, so it is safe to run on every load of
+ * a demo sandbox. Returns the maintenance request ids with an open auction afterwards.
+ */
+export async function seedLiveManagerOpportunities(input: {
+  supabase: SupabaseClient;
+  organizationId: string;
+  organizationName: string;
+  origin: string;
+}) {
+  const [{ data: requests, error }, { data: existing }] = await Promise.all([
+    input.supabase
+      .from("maintenance_requests")
+      .select("id, home_id, title, description, priority, estimated_cost_cents, approved_cost_cents, service_category_id")
+      .eq("organization_id", input.organizationId)
+      .eq("status", "authorize")
+      .is("vendor_id", null),
+    input.supabase.from("vendor_bid_opportunities").select("maintenance_request_id, status").eq("organization_id", input.organizationId),
+  ]);
+  if (error) throw new Error(error.message);
+  const covered = new Set((existing ?? []).map((row) => row.maintenance_request_id as string));
+  const created: string[] = [];
+  for (const job of requests ?? []) {
+    if (covered.has(job.id)) continue;
+    try {
+      const budget = job.approved_cost_cents ?? job.estimated_cost_cents ?? null;
+      const result = await openLiveAuction({
+        supabase: input.supabase,
+        organizationId: input.organizationId,
+        organizationName: input.organizationName,
+        job,
+        budgetCents: budget && budget > 0 ? budget : null,
+        origin: input.origin,
+        notify: false,
+      });
+      if (result.created) created.push(job.id);
+    } catch {
+      // One request that cannot open an auction should not block the rest of the board.
+    }
+  }
+  const openJobIds = [
+    ...(existing ?? []).filter((row) => row.status === "open").map((row) => row.maintenance_request_id as string),
+    ...created,
+  ];
+  return { created, openJobIds: [...new Set(openJobIds)] };
 }

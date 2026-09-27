@@ -1,5 +1,6 @@
-import { homes, initialMaintenance, owners, tenants } from "@/lib/data";
+import { homes, owners, tenants } from "@/lib/data";
 import { booksHomes, listDemoEntries, syncDemoLedgerFromCharges } from "@/lib/books-demo";
+import { listDemoMaintenance } from "@/lib/maintenance-demo";
 import { listDemoCharges } from "@/lib/rent-demo";
 import type { BookEntry } from "@/lib/books";
 import {
@@ -73,7 +74,8 @@ export function demoOwnerHomes(ownerId: string, entries: BookEntry[]): OwnerHome
 }
 
 export function demoOwnerMaintenance(homeIds: string[]): OwnerMaintenance[] {
-  return initialMaintenance
+  // Same in-memory board the manager works from, so approvals and closings show up for the owner.
+  return listDemoMaintenance()
     .filter((row) => homeIds.includes(row.homeId))
     .map((row) => ({
       id: row.id,

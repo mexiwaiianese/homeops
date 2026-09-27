@@ -19,9 +19,10 @@ import { seedDemoOperatingHistory } from "@/lib/demo-ledger";
 import { listingNetworks } from "@/lib/listing-networks";
 import { DEFAULT_ORG_SETTINGS } from "@/lib/org-settings";
 import { currentRentPeriod } from "@/lib/rent";
+import { seedLiveManagerOpportunities } from "@/lib/vendor-auction-live";
 import { vendors as demoVendors } from "@/lib/vendor-demo";
 import { demoProspects } from "@/lib/vendor-prospect-demo";
-import { prospectFingerprint } from "@/lib/vendor-prospects";
+import { appBaseUrl, prospectFingerprint } from "@/lib/vendor-prospects";
 import { buildVendorFingerprint, normalizeVendorName } from "@/lib/vendors";
 
 export const DEMO_ORG_NAME = "HomeOps Demo Management";
@@ -515,6 +516,13 @@ export async function seedDemoWorkspace(admin: Admin, organizationId: string): P
     });
     if (error) throw new Error(error.message);
     bump(report, "vendor_job_sites");
+  });
+
+  // Every approved, unassigned request becomes an open reverse auction, so each demo vendor sees the
+  // opportunities that match its services the moment it signs in. Invites are recorded, not sent.
+  await seedOptional(report, "vendor_bid_opportunities", async () => {
+    const result = await seedLiveManagerOpportunities({ supabase: admin, organizationId, organizationName: DEMO_ORG_NAME, origin: appBaseUrl() });
+    bump(report, "vendor_bid_opportunities", result.created.length);
   });
 
   // ----- Rent collection for the current month -------------------------------------------------

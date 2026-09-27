@@ -8,7 +8,22 @@ import { listDemoCharges } from "@/lib/rent-demo";
 import { listLiveCharges } from "@/lib/rent-live";
 import { publicCharge } from "@/lib/rent";
 import { tenants } from "@/lib/data";
+import { listDemoMaintenance } from "@/lib/maintenance-demo";
 import { vendors } from "@/lib/vendor-demo";
+
+/** Open work orders whose estimates are expected spend not yet posted to the books. */
+type Commitment = {
+  id: string;
+  homeId: string;
+  title: string;
+  status: string;
+  priority: string;
+  estimateCents: number;
+  tenantName: string | null;
+  vendorName: string | null;
+};
+
+const CLOSED_STATUSES = new Set(["documented"]);
 
 export async function GET(request: Request) {
   const origin = new URL(request.url).origin;
@@ -21,6 +36,18 @@ export async function GET(request: Request) {
     syncDemoLedgerFromCharges(charges);
     const entries = listDemoEntries();
     const bills = listDemoBills();
+    const commitments: Commitment[] = listDemoMaintenance()
+      .filter((row) => !CLOSED_STATUSES.has(row.status.toLowerCase()) && row.estimate > 0)
+      .map((row) => ({
+        id: row.id,
+        homeId: row.homeId,
+        title: row.title,
+        status: row.status,
+        priority: row.priority,
+        estimateCents: Math.round(row.estimate * 100),
+        tenantName: row.tenant || null,
+        vendorName: row.vendorName || null,
+      }));
     return NextResponse.json({
       mode: "demo",
       period,
@@ -30,22 +57,40 @@ export async function GET(request: Request) {
       vendors: vendors.map((row) => ({ id: row.id, name: row.name })),
       entries,
       bills,
+      commitments,
       charges: charges.map((row) => publicCharge(row, origin)),
       transactions: intelligenceRows(entries, homes),
       statements: buildOwnerStatements({ owners, homes, entries, periodStart: period.periodStart, periodEnd: period.periodEnd }),
     });
   }
   if (!user || !organizationId) return NextResponse.json({ mode: "auth" }, { status: 401 });
-  const [homeRows, ownerRows, tenantRows, vendorRows, bills, charges] = await Promise.all([
+  const [homeRows, ownerRows, tenantRows, vendorRows, maintenanceRows, bills, charges] = await Promise.all([
     supabase.from("homes").select("id,address1,city,state,property_code,owner_id,reserve_balance_cents").eq("organization_id", organizationId).order("address1"),
     supabase.from("owners").select("id,full_name,email,minimum_reserve_cents,disbursement_day").eq("organization_id", organizationId),
     supabase.from("tenants").select("id,full_name,email").eq("organization_id", organizationId),
     supabase.from("vendors").select("id,name").eq("organization_id", organizationId),
+    supabase.from("maintenance_requests").select("id,home_id,title,status,priority,estimated_cost_cents,approved_cost_cents,tenants(full_name),vendors(name)").eq("organization_id", organizationId).neq("status", "documented"),
     listLiveBills(supabase, organizationId),
     listLiveCharges(supabase, organizationId),
   ]);
   const err = homeRows.error || ownerRows.error || tenantRows.error;
   if (err) return NextResponse.json({ error: err.message }, { status: 500 });
+  const commitments: Commitment[] = (maintenanceRows.data ?? [])
+    .map((row: any) => {
+      const tenant = Array.isArray(row.tenants) ? row.tenants[0] : row.tenants;
+      const vendor = Array.isArray(row.vendors) ? row.vendors[0] : row.vendors;
+      return {
+        id: row.id,
+        homeId: row.home_id,
+        title: row.title,
+        status: String(row.status || "").replace(/^\w/, (c: string) => c.toUpperCase()),
+        priority: String(row.priority || "normal").replace(/^\w/, (c: string) => c.toUpperCase()),
+        estimateCents: row.approved_cost_cents ?? row.estimated_cost_cents ?? 0,
+        tenantName: tenant?.full_name ?? null,
+        vendorName: vendor?.name ?? null,
+      };
+    })
+    .filter((row) => row.estimateCents > 0);
   await syncLiveLedgerFromCharges(supabase, organizationId, charges);
   const entries = await listLiveEntries(supabase, organizationId);
   const homes = (homeRows.data ?? []).map((row) => ({
@@ -73,6 +118,7 @@ export async function GET(request: Request) {
     vendors: (vendorRows.data ?? []).map((row) => ({ id: row.id, name: row.name })),
     entries,
     bills,
+    commitments,
     charges: charges.map((row) => publicCharge(row, origin)),
     transactions: intelligenceRows(entries, homes),
     statements: buildOwnerStatements({ owners, homes, entries, periodStart: period.periodStart, periodEnd: period.periodEnd }),

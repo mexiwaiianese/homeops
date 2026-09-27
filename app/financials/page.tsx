@@ -25,6 +25,17 @@ type Charge = {
   status: string;
   payUrl: string;
 };
+// Open work orders. Their estimates are expected spend that has not posted to the books yet.
+type Commitment = {
+  id: string;
+  homeId: string;
+  title: string;
+  status: string;
+  priority: string;
+  estimateCents: number;
+  tenantName: string | null;
+  vendorName: string | null;
+};
 
 const money = (c: number) => moneyCents(c);
 const pct = (n: number) => `${Math.round(n * 100)}%`;
@@ -75,6 +86,7 @@ export default function BooksPage() {
   const [vendors, setVendors] = useState<Array<{ id: string; name: string }>>([]);
   const [entries, setEntries] = useState<BookEntry[]>([]);
   const [bills, setBills] = useState<VendorBill[]>([]);
+  const [commitments, setCommitments] = useState<Commitment[]>([]);
   const [charges, setCharges] = useState<Charge[]>([]);
   const [tx, setTx] = useState<Tx[]>([]);
   const [period, setPeriod] = useState(currentMonth());
@@ -107,6 +119,7 @@ export default function BooksPage() {
     setVendors(b.vendors || []);
     setEntries(b.entries || []);
     setBills(b.bills || []);
+    setCommitments(b.commitments || []);
     setCharges(b.charges || []);
     setTx(b.transactions || []);
     setSelectedHome((x) => x || b.homes?.[0]?.id || "");
@@ -139,6 +152,11 @@ export default function BooksPage() {
   const openBills = bills.filter((row) => row.status === "open");
   const statement = statements.find((row) => row.owner.id === selectedOwner) || statements[0];
   const dueToOwners = statements.reduce((sum, row) => sum + row.dueToOwner, 0);
+  const expectedFor = (homeIds: string[]) => commitments.filter((row) => homeIds.includes(row.homeId));
+  const sumExpected = (rows: Commitment[]) => rows.reduce((sum, row) => sum + row.estimateCents, 0);
+  const expectedAll = sumExpected(commitments);
+  const ownerCommitments = statement ? expectedFor(statement.doors.map((home) => home.id)) : [];
+  const propertyCommitments = property ? expectedFor([property.home.id]) : [];
 
   async function createBill(event: FormEvent) {
     event.preventDefault();
@@ -282,6 +300,7 @@ export default function BooksPage() {
               <div className="stat"><span>Operating out</span><div className="statValue">{money(statements.reduce((s, row) => s + row.operating, 0))}</div></div>
               <div className="stat"><span>Due to owners</span><div className={`statValue ${dueToOwners ? "good" : ""}`}>{money(dueToOwners)}</div><small>After capex and draws already recorded</small></div>
               <div className="stat"><span>Open bills</span><div className={`statValue ${openBills.length ? "warn" : "good"}`}>{openBills.length}</div><small>{money(openBills.reduce((s, row) => s + row.amountCents, 0))} not yet posted</small></div>
+              <div className="stat"><span>Expected repairs</span><div className={`statValue ${expectedAll ? "warn" : "good"}`}>{money(expectedAll)}</div><small>{commitments.length} open work order{commitments.length === 1 ? "" : "s"} · estimates, not yet billed</small></div>
             </div>
             <div className="propertyPicker">
               <div><p className="eyebrow">OWNER STATEMENT</p><h2>{statement.owner.name}</h2></div>
@@ -294,6 +313,7 @@ export default function BooksPage() {
               <div className="stat"><span>Capex</span><div className="statValue">{money(statement.capital)}</div></div>
               <div className="stat"><span>Already sent</span><div className="statValue">{money(statement.disbursed)}</div></div>
               <div className="stat"><span>Due this period</span><div className={`statValue ${statement.belowReserve ? "warn" : "good"}`}>{money(statement.dueToOwner)}</div><small>{statement.belowReserve ? `Below ${money(statement.reserveFloor)} reserve floor` : `Reserve floor ${money(statement.reserveFloor)}`}</small></div>
+              <div className="stat"><span>Expected repairs</span><div className={`statValue ${ownerCommitments.length ? "warn" : "good"}`}>{money(sumExpected(ownerCommitments))}</div><small>{ownerCommitments.length ? `${money(statement.dueToOwner - sumExpected(ownerCommitments))} due after they post` : "No open work on these doors"}</small></div>
             </div>
             <div className="intelGrid">
               <div className="panel">
@@ -302,9 +322,10 @@ export default function BooksPage() {
                   {statement.doors.map((home) => {
                     const income = statement.rows.filter((row) => row.homeId === home.id && row.flowType === "income").reduce((s, row) => s + row.amountCents, 0);
                     const expense = statement.rows.filter((row) => row.homeId === home.id && row.flowType === "expense" && row.kind !== "capital").reduce((s, row) => s + row.amountCents, 0);
+                    const expected = sumExpected(expectedFor([home.id]));
                     return (
                       <div key={home.id}>
-                        <span><strong>{home.address1}</strong><small>{money(income)} in · {money(expense)} operating</small></span>
+                        <span><strong>{home.address1}</strong><small>{money(income)} in · {money(expense)} operating{expected ? ` · ${money(expected)} expected` : ""}</small></span>
                         <b className={income - expense >= 0 ? "income" : "expense"}>{money(income - expense)}</b>
                       </div>
                     );
@@ -312,6 +333,19 @@ export default function BooksPage() {
                   {!statement.doors.length && <div className="empty">No doors assigned to this owner.</div>}
                 </div>
               </div>
+              {ownerCommitments.length > 0 && (
+                <div className="panel">
+                  <PanelTitle eyebrow="EXPECTED" title="Open work not yet billed" aside={<span className="pill">{ownerCommitments.length} open</span>} />
+                  <div className="compactLedger">
+                    {ownerCommitments.map((row) => (
+                      <div key={row.id}>
+                        <span><strong>{row.title}</strong><small>{homes.find((home) => home.id === row.homeId)?.address1 || "Door"} · {row.status}{row.tenantName ? ` · reported by ${row.tenantName}` : ""}{row.vendorName ? ` · ${row.vendorName}` : " · out for bids"}</small></span>
+                        <b className="expense">−{money(row.estimateCents)}</b>
+                      </div>
+                    ))}
+                  </div>
+                </div>
+              )}
               <div className="panel">
                 <PanelTitle eyebrow="RECORD" title="Owner cash" />
                 <form className="formGrid" onSubmit={ownerMove}>
@@ -348,6 +382,7 @@ export default function BooksPage() {
               <div className="stat"><span>Operating</span><div className="statValue">{money(property.operatingExpenses)}</div></div>
               <div className="stat"><span>NOI</span><div className={`statValue ${property.noi >= 0 ? "good" : "warn"}`}>{money(property.noi)}</div></div>
               <div className="stat"><span>Capex</span><div className="statValue">{money(property.capitalExpenses)}</div></div>
+              <div className="stat"><span>Expected repairs</span><div className={`statValue ${propertyCommitments.length ? "warn" : "good"}`}>{money(sumExpected(propertyCommitments))}</div><small>{propertyCommitments.length ? `${propertyCommitments.length} open · NOI ${money(property.noi - sumExpected(propertyCommitments))} after they post` : "No open work on this door"}</small></div>
             </div>
             <div className="intelGrid">
               <div className="panel">
@@ -359,6 +394,10 @@ export default function BooksPage() {
                     return <div key={cat}><span>{cat}</span><strong>−{money(spend)}</strong></div>;
                   })}
                   <div className="total"><span>Net operating income</span><strong>{money(property.noi)}</strong></div>
+                  {propertyCommitments.map((row) => (
+                    <div key={row.id} className="muted"><span>Expected · {row.title}{row.tenantName ? ` (${row.tenantName})` : ""}</span><strong>−{money(row.estimateCents)}</strong></div>
+                  ))}
+                  {propertyCommitments.length > 0 && <div className="total"><span>NOI after expected repairs</span><strong>{money(property.noi - sumExpected(propertyCommitments))}</strong></div>}
                 </div>
               </div>
               <div className="panel">

@@ -98,6 +98,9 @@ export default function HomeOps() {
         if (mappedHomes.length) { setHomes(mappedHomes); setSelectedHome(mappedHomes[0].id); }
         if (mappedTenants.length) setTenants(mappedTenants);
         if (mappedMaintenance.length) setMaintenance(mappedMaintenance);
+        if (Array.isArray(body.openAuctionJobIds)) {
+          setOpenAuctions(Object.fromEntries(body.openAuctionJobIds.map((id: string) => [id, true])));
+        }
       })
       .catch(() => setBackendMode("error"));
     fetch("/api/rent/charges")

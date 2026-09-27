@@ -301,15 +301,18 @@ export type PropertyResult = {
   noi: number;
   margin: number;
   collectionRate: number;
+  /** Estimates on open maintenance for this property: expected spend not yet on the books. */
+  expectedRepairs: number;
 };
 
-export function buildPropertyResults(rows: BookEntry[], homes: OwnerHome[], months: number): PropertyResult[] {
+export function buildPropertyResults(rows: BookEntry[], homes: OwnerHome[], months: number, openMaintenance: OwnerMaintenance[] = []): PropertyResult[] {
   return homes
     .map((home) => {
       const pnl = buildProfitAndLoss(rows.filter((row) => row.homeId === home.id));
       const scheduled = home.rentCents * Math.max(1, months);
       const rent = sumKinds(rows.filter((row) => row.homeId === home.id), ["rent_income"]);
-      return { home, income: pnl.income, operating: pnl.operating, capital: pnl.capital, noi: pnl.noi, margin: pnl.margin, collectionRate: scheduled ? Math.min(1.25, rent / scheduled) : 0 };
+      const expectedRepairs = openMaintenance.filter((row) => row.homeId === home.id).reduce((sum, row) => sum + row.estimateCents, 0);
+      return { home, income: pnl.income, operating: pnl.operating, capital: pnl.capital, noi: pnl.noi, margin: pnl.margin, collectionRate: scheduled ? Math.min(1.25, rent / scheduled) : 0, expectedRepairs };
     })
     .sort((a, b) => b.noi - a.noi);
 }
@@ -415,6 +418,7 @@ export function buildSnapshot(input: {
   const rentOutstanding = homes.reduce((sum, home) => sum + home.rentOutstandingCents, 0);
   const homeIds = new Set(homes.map((home) => home.id));
   const openMaintenance = input.maintenance.filter((row) => homeIds.has(row.homeId) && row.status !== "Documented" && row.status !== "documented");
+  const expectedRepairs = openMaintenance.reduce((sum, row) => sum + row.estimateCents, 0);
   const doors = homes.length;
   const perDoor = (value: number) => (doors ? value / doors : 0);
 
@@ -450,7 +454,8 @@ export function buildSnapshot(input: {
     deposits_held: depositsHeld / 100,
     rent_outstanding: rentOutstanding / 100,
     open_maintenance: openMaintenance.length,
-    maintenance_estimates: openMaintenance.reduce((sum, row) => sum + row.estimateCents, 0) / 100,
+    maintenance_estimates: expectedRepairs / 100,
+    net_after_estimates: (cash.netToOwner - expectedRepairs) / 100,
     prior_income: prior.income / 100,
     prior_noi: prior.noi / 100,
     prior_operating_expenses: prior.operating / 100,
@@ -471,7 +476,7 @@ export function buildSnapshot(input: {
     cash,
     prior,
     series: buildMonthlySeries(rows, range),
-    properties: buildPropertyResults(rows, homes, months),
+    properties: buildPropertyResults(rows, homes, months, openMaintenance),
     occupancy: variables.occupancy,
     scheduledRent,
     collectionRate: variables.collection_rate,
@@ -524,7 +529,8 @@ export const METRIC_VARIABLES: Array<{ name: string; description: string; unit: 
   { name: "deposits_held", description: "Security deposits held", unit: "dollars" },
   { name: "rent_outstanding", description: "Rent currently owed by tenants", unit: "dollars" },
   { name: "open_maintenance", description: "Open maintenance requests", unit: "count" },
-  { name: "maintenance_estimates", description: "Sum of estimates on open maintenance", unit: "dollars" },
+  { name: "maintenance_estimates", description: "Sum of estimates on open maintenance (expected repairs not yet on the books)", unit: "dollars" },
+  { name: "net_after_estimates", description: "net_to_owner - maintenance_estimates", unit: "dollars" },
   { name: "prior_income", description: "Income in the same-length prior period", unit: "dollars" },
   { name: "prior_noi", description: "NOI in the prior period", unit: "dollars" },
   { name: "prior_operating_expenses", description: "Operating expenses in the prior period", unit: "dollars" },
@@ -633,6 +639,7 @@ export const WIDGETS: WidgetSpec[] = [
   { id: "kpi_collection_rate", title: "Collection rate", size: "small", group: "numbers" },
   { id: "kpi_opex_ratio", title: "Expense ratio", size: "small", group: "numbers" },
   { id: "kpi_maintenance_per_door", title: "Maintenance per door", size: "small", group: "numbers" },
+  { id: "kpi_expected_repairs", title: "Expected repairs", size: "small", group: "numbers" },
   { id: "kpi_reserve", title: "Reserve on hand", size: "small", group: "numbers" },
   { id: "chart_trend", title: "Income vs. expenses by month", size: "wide", group: "charts" },
   { id: "chart_expense_mix", title: "Where the money went", size: "wide", group: "charts" },
