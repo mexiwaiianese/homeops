@@ -85,20 +85,118 @@ export async function runLiveAutobid(supabase: SupabaseClient, opportunityId: st
   }
 }
 
+type AuctionJob = {
+  id: string;
+  home_id: string;
+  title: string;
+  description?: string | null;
+  priority?: string | null;
+  estimated_cost_cents?: number | null;
+  approved_cost_cents?: number | null;
+  service_category_id?: string | null;
+};
+
+/**
+ * Invite every approved vendor whose services fit the job and whose notification rules accept it.
+ * Vendors in `alreadyInvited` are skipped, so this can top up an auction that is already open.
+ * Returns the number of invites written.
+ */
+async function inviteMatchingVendors(input: {
+  supabase: SupabaseClient;
+  organizationId: string;
+  organizationName: string;
+  opportunityId: string;
+  job: AuctionJob;
+  budgetCents: number | null;
+  neededBy: string;
+  home: { city?: string | null; state?: string | null } | null;
+  origin: string;
+  notify?: boolean;
+  alreadyInvited: Set<string>;
+}) {
+  const { data: vendorRows } = await input.supabase
+    .from("vendors")
+    .select("*,vendor_credentials(*),vendor_services(*),vendor_owner_preferences(*),vendor_property_preferences(*),vendor_contacts(*)")
+    .eq("organization_id", input.organizationId);
+
+  let invited = 0;
+  for (const vendor of vendorRows ?? []) {
+    if (input.alreadyInvited.has(vendor.id)) continue;
+    const { data: eligibilityRpc, error: eligibilityError } = await input.supabase.rpc("vendor_eligibility", {
+      v_id: vendor.id,
+      p_home_id: input.job.home_id,
+      p_service_category_id: input.job.service_category_id,
+    });
+    const eligibility = eligibilityError
+      ? explainVendorEligibility(vendor, { homeId: input.job.home_id, serviceCategoryId: input.job.service_category_id })
+      : { ...explainVendorEligibility(vendor, { homeId: input.job.home_id, serviceCategoryId: input.job.service_category_id }), ...eligibilityRpc };
+    if (!eligibility.eligible) continue;
+    const services = [vendor.trade, ...((vendor.vendor_services ?? []).map((row: any) => row.specialty).filter(Boolean))];
+    if (!input.job.service_category_id && !serviceFits({ ...vendor, services }, input.job.title)) continue;
+
+    if (await vendorPortalTablesReady(input.supabase)) {
+      const gate = await liveBidGate(input.supabase, {
+        vendorId: vendor.id,
+        homeId: input.job.home_id,
+        title: input.job.title,
+        budgetCents: input.budgetCents,
+        neededBy: input.neededBy,
+        city: input.home?.city,
+        state: input.home?.state,
+        emergency: String(input.job.priority || "").toLowerCase() === "emergency",
+        vendor: { trade: vendor.trade, emergency_available: vendor.emergency_available, services },
+      });
+      if (gate.notificationReason) continue;
+    }
+
+    const destination = vendorDestination(vendor);
+    const { data: invite, error: inviteError } = await input.supabase
+      .from("vendor_bid_invites")
+      .insert({
+        organization_id: input.organizationId,
+        opportunity_id: input.opportunityId,
+        vendor_id: vendor.id,
+        channel: destination.email ? "email" : destination.phone ? "sms" : null,
+        sent_to: destination.email || destination.phone,
+        status: "invited",
+      })
+      .select()
+      .single();
+    if (inviteError || !invite) continue;
+    invited += 1;
+    if (input.notify === false) {
+      await input.supabase.from("vendor_bid_invites").update({
+        notified_at: new Date().toISOString(),
+        delivery_error: "Demo seed: invite recorded, no message sent",
+      }).eq("id", invite.id);
+      continue;
+    }
+    const url = bidUrl(invite.token, input.origin);
+    const delivery = await notifyAuctionInvite({
+      email: destination.email,
+      phone: destination.phone,
+      organizationName: input.organizationName,
+      vendorName: vendor.name,
+      title: input.job.title,
+      url,
+      budgetCents: input.budgetCents,
+      neededBy: input.neededBy,
+    });
+    await input.supabase.from("vendor_bid_invites").update({
+      notified_at: new Date().toISOString(),
+      delivery_error: delivery.sent ? null : delivery.error || "Link generated; email/SMS not configured",
+      channel: delivery.channel,
+      sent_to: delivery.sentTo,
+    }).eq("id", invite.id);
+  }
+  return invited;
+}
+
 export async function openLiveAuction(input: {
   supabase: SupabaseClient;
   organizationId: string;
   organizationName: string;
-  job: {
-    id: string;
-    home_id: string;
-    title: string;
-    description?: string | null;
-    priority?: string | null;
-    estimated_cost_cents?: number | null;
-    approved_cost_cents?: number | null;
-    service_category_id?: string | null;
-  };
+  job: AuctionJob;
   budgetCents: number | null;
   neededBy?: string | null;
   origin: string;
@@ -148,84 +246,19 @@ export async function openLiveAuction(input: {
     .single();
   if (error || !opportunity) throw new Error(error?.message || "Could not open auction");
 
-  const { data: vendorRows } = await input.supabase
-    .from("vendors")
-    .select("*,vendor_credentials(*),vendor_services(*),vendor_owner_preferences(*),vendor_property_preferences(*),vendor_contacts(*)")
-    .eq("organization_id", input.organizationId);
-
-  for (const vendor of vendorRows ?? []) {
-    const { data: eligibilityRpc, error: eligibilityError } = await input.supabase.rpc("vendor_eligibility", {
-      v_id: vendor.id,
-      p_home_id: input.job.home_id,
-      p_service_category_id: input.job.service_category_id,
-    });
-    const eligibility = eligibilityError
-      ? explainVendorEligibility(vendor, { homeId: input.job.home_id, serviceCategoryId: input.job.service_category_id })
-      : { ...explainVendorEligibility(vendor, { homeId: input.job.home_id, serviceCategoryId: input.job.service_category_id }), ...eligibilityRpc };
-    if (!eligibility.eligible) continue;
-    if (!input.job.service_category_id && !serviceFits({
-      ...vendor,
-      services: [vendor.trade, ...((vendor.vendor_services ?? []).map((row: any) => row.specialty).filter(Boolean))],
-    }, input.job.title)) continue;
-
-    if (await vendorPortalTablesReady(input.supabase)) {
-      const gate = await liveBidGate(input.supabase, {
-        vendorId: vendor.id,
-        homeId: input.job.home_id,
-        title: input.job.title,
-        budgetCents: input.budgetCents,
-        neededBy,
-        city: home?.city,
-        state: home?.state,
-        emergency: String(input.job.priority || "").toLowerCase() === "emergency",
-        vendor: {
-          trade: vendor.trade,
-          emergency_available: vendor.emergency_available,
-          services: [vendor.trade, ...((vendor.vendor_services ?? []).map((row: any) => row.specialty).filter(Boolean))],
-        },
-      });
-      if (gate.notificationReason) continue;
-    }
-
-    const destination = vendorDestination(vendor);
-    const { data: invite, error: inviteError } = await input.supabase
-      .from("vendor_bid_invites")
-      .insert({
-        organization_id: input.organizationId,
-        opportunity_id: opportunity.id,
-        vendor_id: vendor.id,
-        channel: destination.email ? "email" : destination.phone ? "sms" : null,
-        sent_to: destination.email || destination.phone,
-        status: "invited",
-      })
-      .select()
-      .single();
-    if (inviteError || !invite) continue;
-    if (input.notify === false) {
-      await input.supabase.from("vendor_bid_invites").update({
-        notified_at: new Date().toISOString(),
-        delivery_error: "Demo seed: invite recorded, no message sent",
-      }).eq("id", invite.id);
-      continue;
-    }
-    const url = bidUrl(invite.token, input.origin);
-    const delivery = await notifyAuctionInvite({
-      email: destination.email,
-      phone: destination.phone,
-      organizationName: input.organizationName,
-      vendorName: vendor.name,
-      title: input.job.title,
-      url,
-      budgetCents: input.budgetCents,
-      neededBy,
-    });
-    await input.supabase.from("vendor_bid_invites").update({
-      notified_at: new Date().toISOString(),
-      delivery_error: delivery.sent ? null : delivery.error || "Link generated; email/SMS not configured",
-      channel: delivery.channel,
-      sent_to: delivery.sentTo,
-    }).eq("id", invite.id);
-  }
+  await inviteMatchingVendors({
+    supabase: input.supabase,
+    organizationId: input.organizationId,
+    organizationName: input.organizationName,
+    opportunityId: opportunity.id,
+    job: input.job,
+    budgetCents: input.budgetCents,
+    neededBy,
+    home,
+    origin: input.origin,
+    notify: input.notify,
+    alreadyInvited: new Set<string>(),
+  });
 
   await runLiveAutobid(input.supabase, opportunity.id);
   await input.supabase.from("activity_events").insert({
@@ -260,19 +293,42 @@ export async function seedLiveManagerOpportunities(input: {
       .is("vendor_id", null),
     input.supabase
       .from("vendor_bid_opportunities")
-      .select("id, maintenance_request_id, status, vendor_bids!opportunity_id(id)")
+      .select("id, maintenance_request_id, status, budget_cents, needed_by, city, state, vendor_bid_invites(vendor_id), vendor_bids!opportunity_id(id)")
       .eq("organization_id", input.organizationId),
   ]);
   if (error) throw new Error(error.message);
   const covered = new Set((existing ?? []).map((row) => row.maintenance_request_id as string));
   const created: string[] = [];
-  // Open auctions that never received a bid (opened before autobid worked in live mode) get their autobids now.
+
+  // Auctions that are already open: invite any matching vendor that was missed (matching rules have
+  // loosened since the auction opened) and place autobids where none exist yet.
+  const requestById = new Map((requests ?? []).map((job) => [job.id as string, job]));
   for (const row of existing ?? []) {
-    if (row.status !== "open" || ((row.vendor_bids as unknown[] | null) ?? []).length > 0) continue;
+    if (row.status !== "open") continue;
     try {
-      await runLiveAutobid(input.supabase, row.id as string);
+      const job = requestById.get(row.maintenance_request_id as string);
+      const invitedVendorIds = new Set(((row.vendor_bid_invites as Array<{ vendor_id: string }> | null) ?? []).map((invite) => invite.vendor_id));
+      let added = 0;
+      if (job) {
+        added = await inviteMatchingVendors({
+          supabase: input.supabase,
+          organizationId: input.organizationId,
+          organizationName: input.organizationName,
+          opportunityId: row.id as string,
+          job,
+          budgetCents: (row.budget_cents as number | null) ?? null,
+          neededBy: (row.needed_by as string | null) || new Date(Date.now() + 48 * 60 * 60 * 1000).toISOString(),
+          home: { city: row.city as string | null, state: row.state as string | null },
+          origin: input.origin,
+          notify: false,
+          alreadyInvited: invitedVendorIds,
+        });
+      }
+      if (added > 0 || ((row.vendor_bids as unknown[] | null) ?? []).length === 0) {
+        await runLiveAutobid(input.supabase, row.id as string);
+      }
     } catch {
-      // Autobid is best effort during self-heal.
+      // Topping up an open auction is best effort during self-heal.
     }
   }
   for (const job of requests ?? []) {

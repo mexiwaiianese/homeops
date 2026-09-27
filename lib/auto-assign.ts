@@ -33,15 +33,17 @@ export function serviceFits(vendor: AutoAssignCandidate, title?: string) {
   const hay = `${vendor.trade ?? ""} ${(vendor.services ?? []).join(" ")}`.toLowerCase();
   const text = (title ?? "").toLowerCase();
   if (!text || !hay) return true;
+  // The vendor side is a prefix match on purpose: "Plumbing", "Heating", "Electrical", "Roofing",
+  // "Locksmith" and "Restoration" all need to count, so no trailing word boundary there.
   const pairs: Array<[RegExp, RegExp]> = [
-    [/\b(drywall|patch|paint|handyman|general)\b/, /\b(general|handyman|maintenance|drywall)\b/],
-    [/water heater|\b(plumb|leak|disposal|drain|toilet)\b/, /\b(plumb|water)\b/],
-    [/\b(heat|furnace|hvac|ac|air)\b/, /\b(hvac|heat|furnace|air)\b/],
-    [/\b(electric|outlet|breaker|panel)\b/, /\belectric\b/],
-    [/\b(roof|gutter)\b/, /\broof\b/],
-    [/\b(pest|bug|rodent)\b/, /\bpest\b/],
-    [/\b(lock|rekey)\b/, /\block\b/],
-    [/\b(flood|restore)\b|water damage/, /\b(restor|water)\b/],
+    [/\b(drywall|patch|paint|handyman|general)\b/, /\b(general|handyman|maintenance|drywall|paint)/],
+    [/water heater|\b(plumb|leak|disposal|drain|toilet|faucet|sink)\b/, /\b(plumb|water)/],
+    [/\b(heat|furnace|hvac|ac|air|cooling)\b/, /\b(hvac|heat|furnace|air|cool)/],
+    [/\b(electric|outlet|breaker|panel)\b/, /\belectric/],
+    [/\b(roof|gutter)\b/, /\broof/],
+    [/\b(pest|bug|rodent)\b/, /\bpest/],
+    [/\b(lock|rekey)\b/, /\block/],
+    [/\b(flood|restore)\b|water damage/, /\b(restor|water)/],
   ];
   const matched = pairs.find(([need]) => need.test(text));
   if (!matched) return true;
