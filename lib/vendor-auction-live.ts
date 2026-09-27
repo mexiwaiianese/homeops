@@ -15,7 +15,7 @@ function vendorDestination(vendor: { email?: string | null; phone?: string | nul
 export async function runLiveAutobid(supabase: SupabaseClient, opportunityId: string) {
   const { data: opportunity } = await supabase
     .from("vendor_bid_opportunities")
-    .select("*, vendor_bids(*), vendor_bid_invites(*, vendors(id,name,email,phone,minimum_trip_charge_cents,hourly_rate_cents,trade))")
+    .select("*, vendor_bids!opportunity_id(*), vendor_bid_invites(*, vendors(id,name,email,phone,minimum_trip_charge_cents,hourly_rate_cents,trade))")
     .eq("id", opportunityId)
     .single();
   if (!opportunity || opportunity.status !== "open") return;
@@ -258,11 +258,23 @@ export async function seedLiveManagerOpportunities(input: {
       .eq("organization_id", input.organizationId)
       .eq("status", "authorize")
       .is("vendor_id", null),
-    input.supabase.from("vendor_bid_opportunities").select("maintenance_request_id, status").eq("organization_id", input.organizationId),
+    input.supabase
+      .from("vendor_bid_opportunities")
+      .select("id, maintenance_request_id, status, vendor_bids!opportunity_id(id)")
+      .eq("organization_id", input.organizationId),
   ]);
   if (error) throw new Error(error.message);
   const covered = new Set((existing ?? []).map((row) => row.maintenance_request_id as string));
   const created: string[] = [];
+  // Open auctions that never received a bid (opened before autobid worked in live mode) get their autobids now.
+  for (const row of existing ?? []) {
+    if (row.status !== "open" || ((row.vendor_bids as unknown[] | null) ?? []).length > 0) continue;
+    try {
+      await runLiveAutobid(input.supabase, row.id as string);
+    } catch {
+      // Autobid is best effort during self-heal.
+    }
+  }
   for (const job of requests ?? []) {
     if (covered.has(job.id)) continue;
     try {

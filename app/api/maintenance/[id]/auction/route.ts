@@ -20,7 +20,7 @@ export async function GET(_: Request, { params }: { params: Promise<{ id: string
   if (!user || !organizationId) return NextResponse.json({ error: "Authentication required" }, { status: 401 });
   const { data, error } = await supabase
     .from("vendor_bid_opportunities")
-    .select("*, vendor_bid_invites(*, vendors(id,name,email,phone)), vendor_bids(*, vendors(id,name))")
+    .select("*, vendor_bid_invites(*, vendors(id,name,email,phone)), vendor_bids!opportunity_id(*, vendors(id,name))")
     .eq("maintenance_request_id", id)
     .eq("organization_id", organizationId)
     .maybeSingle();

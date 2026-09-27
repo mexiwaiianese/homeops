@@ -40,7 +40,7 @@ export async function GET(request: Request) {
 
   const { data: invites, error } = await actor.admin
     .from("vendor_bid_invites")
-    .select("token, status, vendor_bid_opportunities(*, vendor_bids(*))")
+    .select("token, status, vendor_bid_opportunities(*, vendor_bids!opportunity_id(*))")
     .eq("vendor_id", actor.vendorId);
   if (error) return NextResponse.json({ error: error.message }, { status: 400 });
   const opportunities = [];

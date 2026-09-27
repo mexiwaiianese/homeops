@@ -24,7 +24,7 @@ export async function ensureLiveJobSite(input: {
 
   const { data: opportunity } = await input.supabase
     .from("vendor_bid_opportunities")
-    .select("id, starts_at, vendor_bid_invites(vendor_id, notified_at, viewed_at), vendor_bids(vendor_id, submitted_at)")
+    .select("id, starts_at, vendor_bid_invites(vendor_id, notified_at, viewed_at), vendor_bids!opportunity_id(vendor_id, submitted_at)")
     .eq("maintenance_request_id", input.jobId)
     .maybeSingle();
   const invite = (opportunity?.vendor_bid_invites ?? []).find((row: { vendor_id: string }) => row.vendor_id === input.vendorId);

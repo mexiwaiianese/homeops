@@ -123,7 +123,7 @@ export async function GET(request: Request, { params }: { params: Promise<{ toke
   if (!admin) return NextResponse.json({ error: "Bidding is unavailable until the backend is connected." }, { status: 503 });
   const { data: invite } = await admin
     .from("vendor_bid_invites")
-    .select("*, vendors(name), vendor_bid_opportunities(*, vendor_bids(*))")
+    .select("*, vendors(name), vendor_bid_opportunities(*, vendor_bids!opportunity_id(*))")
     .eq("token", token)
     .maybeSingle();
   if (!invite) return NextResponse.json({ error: "This bid link is invalid." }, { status: 404 });
