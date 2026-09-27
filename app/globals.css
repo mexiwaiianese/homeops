@@ -916,6 +916,36 @@ button:disabled {
   font-size: 13px;
   color: var(--muted);
 }
+.intakeCard > a.bidBack {
+  display: inline-block;
+  margin: 0 0 12px;
+  text-align: left;
+  font-size: 13px;
+  font-weight: 600;
+  color: var(--muted);
+}
+.intakeCard > a.bidBack:hover { color: var(--ink); }
+.intakeCard > button.crewBack {
+  display: inline-block;
+  width: auto;
+  margin: 0 0 12px;
+  padding: 0;
+  border: 0;
+  background: none;
+  text-align: left;
+  font-size: 13px;
+  font-weight: 600;
+  color: var(--muted);
+  cursor: pointer;
+}
+.intakeCard > button.crewBack:hover { color: var(--ink); }
+.crewJobList .credential > div { min-width: 0; }
+.crewJobList .credential > button { flex-shrink: 0; width: auto; min-height: 44px; padding: 0 16px; }
+.crewJobList .crewJobActive { background: #f2f9f7; }
+.crewActions { display: flex; flex-direction: column; gap: 8px; align-items: stretch; flex-shrink: 0; }
+.crewActions .primary,
+.crewActions .secondaryBtn { width: auto; min-height: 40px; padding: 0 14px; font-size: 13px; }
+.credential > div > span.crewLinkWarn { color: #b45309; }
 .outcomeBanner {
   margin: 4px 0 16px;
   padding: 14px 16px;

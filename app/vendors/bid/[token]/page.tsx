@@ -119,6 +119,7 @@ export default function VendorBidPage() {
     <main className="intakeShell">
       <section className="intakeCard">
         <BrandLockup artwork="lockup" />
+        <a className="bidBack" href="/vendors/desk">← Back to jobs</a>
         {status === "error" ? (
           <div className="successPanel">
             <p className="eyebrow">LINK NOT VALID</p>
