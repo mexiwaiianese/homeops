@@ -10,7 +10,7 @@ import { isPersonaLoginEnabled } from "@/lib/persona-login";
 export const dynamic = "force-dynamic";
 
 export const metadata: Metadata = {
-  title: "Persona login · HomeOps",
+  title: "Persona login · portonOS",
   robots: { index: false, follow: false },
 };
 
@@ -20,7 +20,7 @@ export default async function PersonaLoginPage({ searchParams }: { searchParams:
   return (
     <OperatorGate nextPath="/dev/personas" error={error} title="Persona switcher">
       <main className="intakeShell">
-        <PersonaLoginPanel appName="HomeOps" signInHref="/login" />
+        <PersonaLoginPanel appName="portonOS" signInHref="/login" />
       </main>
     </OperatorGate>
   );

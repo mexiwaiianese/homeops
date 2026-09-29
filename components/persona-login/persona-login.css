@@ -1,11 +1,11 @@
 /* Persona login panel. Self-contained; uses app CSS variables when present with safe fallbacks. */
 
 .plPanel {
-  --pl-ink: var(--ink, #14211b);
-  --pl-muted: var(--muted, #6b746f);
-  --pl-line: var(--line, #e2e6e2);
-  --pl-accent: var(--teal, #008c99);
-  --pl-primary: var(--green, #2f7a52);
+  --pl-ink: var(--ink, #0a241c);
+  --pl-muted: var(--muted, #5c675f);
+  --pl-line: var(--line, #e3ddd2);
+  --pl-accent: var(--teal, #647c64);
+  --pl-primary: var(--green, #0a241c);
   --pl-surface: #fff;
   width: min(640px, 100%);
   margin: 0 auto;
@@ -21,7 +21,8 @@
   margin: 6px 0 8px;
   font-size: 28px;
   letter-spacing: -0.04em;
-  font-family: var(--font-display, inherit);
+  font-family: var(--font-display, "Cormorant Garamond", Georgia, serif);
+  font-weight: 500;
   line-height: 1.15;
 }
 .plEyebrow {
@@ -85,7 +86,7 @@
 }
 .plUnlock input:focus {
   border-color: var(--pl-accent);
-  box-shadow: 0 0 0 3px rgba(0, 140, 153, 0.12);
+  box-shadow: 0 0 0 3px rgba(100, 124, 100, 0.22);
 }
 
 .plGroup { margin-top: 22px; }
@@ -217,11 +218,11 @@
 
 /* Compact per-group picker embedded under a real sign-in form */
 .plQuick {
-  --pl-ink: var(--ink, #14211b);
-  --pl-muted: var(--muted, #6b746f);
-  --pl-line: var(--line, #e2e6e2);
-  --pl-accent: var(--teal, #008c99);
-  --pl-primary: var(--green, #2f7a52);
+  --pl-ink: var(--ink, #0a241c);
+  --pl-muted: var(--muted, #5c675f);
+  --pl-line: var(--line, #e3ddd2);
+  --pl-accent: var(--teal, #647c64);
+  --pl-primary: var(--green, #0a241c);
   margin-top: 24px;
   color: var(--pl-ink);
   font-size: 14px;
@@ -264,7 +265,7 @@
 }
 .plUnlock-row input:focus {
   border-color: var(--pl-accent);
-  box-shadow: 0 0 0 3px rgba(0, 140, 153, 0.12);
+  box-shadow: 0 0 0 3px rgba(100, 124, 100, 0.22);
 }
 .plUnlock-row .plPrimary { width: auto; margin: 0; }
 .plQuick .plEmpty { margin-top: 0; }

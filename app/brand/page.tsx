@@ -3,11 +3,11 @@ import BrandMark from "@/components/brand-mark";
 import BrandIcon, { type BrandIconName } from "@/components/brand-icon";
 
 const colors = [
-  { name: "Navy", hex: "#1A3E62", token: "--navy" },
-  { name: "Teal", hex: "#008C99", token: "--teal" },
-  { name: "Paper", hex: "#F3F4F6", token: "--bg" },
-  { name: "White", hex: "#FFFFFF", token: "--card" },
-  { name: "Coral", hex: "#E65A4F", token: "--red" },
+  { name: "Forest", hex: "#0A241C", token: "--forest" },
+  { name: "Sage", hex: "#647C64", token: "--sage" },
+  { name: "Gold", hex: "#C1915A", token: "--gold" },
+  { name: "Cream", hex: "#F3D8B1", token: "--cream" },
+  { name: "Paper", hex: "#F4F1EA", token: "--bg" },
 ];
 
 const icons: Array<{ name: BrandIconName; label: string }> = [
@@ -22,31 +22,29 @@ export default function BrandPage() {
   return (
     <main className="brandKit">
       <section className="brandKitHero">
-        <p className="eyebrow">HOMEOPS IDENTITY</p>
-        <BrandLockup artwork="lockup" />
-        <p className="brandKitLead">Navy for the house. Teal for the work that moves it forward. Built for people who run properties—not a marketplace.</p>
+        <p className="eyebrow">PORTONOS IDENTITY</p>
+        <BrandLockup artwork="stacked" />
+        <p className="brandKitLead">Forest for the door. Sage for the work behind it. Gold for the handle you actually turn.</p>
       </section>
 
       <section className="brandKitGrid">
         <article className="panel">
           <p className="eyebrow">LOCKUP</p>
           <h2>Primary logo</h2>
-          <img className="brandOfficial" src="/brand/homeops-lockup-light.png" alt="HomeOps horizontal lockup" />
+          <img className="brandOfficial stacked" src="/brand/portonos-lockup.png" alt="portonOS lockup" />
           <div className="brandSpecimen dark">
-            <BrandLockup artwork="lockup" />
+            <BrandLockup artwork="wordmark" />
           </div>
         </article>
         <article className="panel">
           <p className="eyebrow">MARK</p>
-          <h2>App icon</h2>
+          <h2>Door</h2>
           <div className="brandMarkRow">
             <BrandMark />
-            <span className="brandMark brandMarkLg">
-              <img src="/brand/homeops-app-icon.png" alt="" width={64} height={64} />
-            </span>
-            <p>Use the supplied app icon at small sizes: favicon, app icon, avatars. Do not redraw it.</p>
+            <img className="brandDoor" src="/brand/portonos-mark.png" alt="" />
+            <p>Use the supplied door at small sizes: favicon, app icon, collapsed navigation. Do not redraw it.</p>
           </div>
-          <img className="brandOfficial stacked" src="/brand/homeops-lockup-stacked.png" alt="HomeOps stacked lockup" />
+          <img className="brandOfficial" src="/brand/portonos-wordmark.png" alt="portonOS wordmark" />
         </article>
       </section>
 
@@ -66,9 +64,11 @@ export default function BrandPage() {
 
       <section className="panel">
         <p className="eyebrow">TYPE</p>
-        <h2>Plus Jakarta Sans + Inter</h2>
-        <img className="brandOfficial wordmarkBoard" src="/brand/homeops-wordmark-tagline.png" alt="HomeOps wordmark with Rental Home OS tagline" />
-        <p>Logo and display: Plus Jakarta Sans Bold / SemiBold / Medium. Product UI: Inter Regular, Italic, and Medium. Ops is always teal.</p>
+        <h2>Cormorant Garamond + Montserrat Light</h2>
+        <img className="brandOfficial wordmarkBoard" src="/brand/portonos-wordmark.png" alt="portonOS wordmark with tagline" />
+        <p className="brandSerifSample">Everything behind every door.</p>
+        <p className="brandSansSample">Montserrat Light — the operating desk</p>
+        <p>Display and headlines: Cormorant Garamond. Product UI: Montserrat Light (300). The wordmark is the supplied artwork.</p>
       </section>
 
       <section className="panel">
@@ -82,12 +82,6 @@ export default function BrandPage() {
             </div>
           ))}
         </div>
-      </section>
-
-      <section className="panel">
-        <p className="eyebrow">SOURCE BOARD</p>
-        <h2>Official artwork</h2>
-        <img className="brandBoard" src="/brand/homeops-brand-board.jpg" alt="HomeOps brand board" />
       </section>
     </main>
   );

@@ -92,7 +92,7 @@ export default function TenantPayPage() {
             <p className="eyebrow">RENT PAYMENT</p>
             <h1>{moneyCents(charge.remainingCents)}</h1>
             <p>{charge.address} · due {new Date(`${charge.dueOn}T12:00:00`).toLocaleDateString()} · {charge.kind.replace("_", " ")}</p>
-            <p className="summary">Pay inside HomeOps. Stripe processes the card or bank debit; this page is the receipt and Autopay setup surface.</p>
+            <p className="summary">Pay inside portonOS. Stripe processes the card or bank debit; this page is the receipt and Autopay setup surface.</p>
             {message && <div className="notice">{message}</div>}
             {clientSecret && publishableKey ? (
               <StripePayForm publishableKey={publishableKey} clientSecret={clientSecret} onPaid={() => { setMode("paid"); load(); }} />

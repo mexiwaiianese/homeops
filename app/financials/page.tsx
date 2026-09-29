@@ -240,7 +240,7 @@ export default function BooksPage() {
 
   async function importRows() {
     if (!mapping.date || (!mapping.amount && !mapping.debit && !mapping.credit)) { setMsg("Map a date and either amount or debit/credit columns first."); return; }
-    if (mode !== "live") { setMsg("Import mapping is ready. Connect Supabase to persist a historical QuickBooks export. HomeOps is already the live books."); return; }
+    if (mode !== "live") { setMsg("Import mapping is ready. Connect Supabase to persist a historical QuickBooks export. portonOS is already the live books."); return; }
     setBusy("import");
     const r = await fetch("/api/financial/imports", { method: "POST", headers: { "Content-Type": "application/json" }, body: JSON.stringify({ fileName, mapping, rows }) });
     const b = await r.json();
@@ -271,7 +271,7 @@ export default function BooksPage() {
           <small>PROPERTY BOOKS</small>
           <strong>{homes.length} doors</strong>
           <span>{money(dueToOwners)} due to owners this period</span>
-          <span className={`mode ${mode}`}>{mode === "live" ? "● Live HomeOps books" : mode === "demo" ? "○ Demo books" : `Backend status: ${mode}`}</span>
+          <span className={`mode ${mode}`}>{mode === "live" ? "● Live portonOS books" : mode === "demo" ? "○ Demo books" : `Backend status: ${mode}`}</span>
         </div>
       </aside>
       <section className="finContent">
@@ -279,7 +279,7 @@ export default function BooksPage() {
           <div>
             <p className="eyebrow">BOOKS</p>
             <h1>Cash by door, owner, and tenant</h1>
-            <p>HomeOps is the books. Rent posts when it is collected. Bills post when you mark them paid. Owner draws are recorded here; the bank still moves the money.</p>
+            <p>portonOS is the books. Rent posts when it is collected. Bills post when you mark them paid. Owner draws are recorded here; the bank still moves the money.</p>
           </div>
           <div className="headerActions">
             <label className="periodSelectLabel">Period
@@ -572,7 +572,7 @@ export default function BooksPage() {
         {view === "migrate" && (
           <div className="panel">
             <PanelTitle eyebrow="OPTIONAL" title="Bring in old QuickBooks rows" />
-            <p className="summary">HomeOps is already the operating books. Use this only to load historical QBO CSV so Insights has prior months. It does not replace rent collection or bills.</p>
+            <p className="summary">portonOS is already the operating books. Use this only to load historical QBO CSV so Insights has prior months. It does not replace rent collection or bills.</p>
             <button className="secondaryBtn" onClick={() => setShowImport(true)}>Map a QuickBooks export</button>
           </div>
         )}
@@ -581,7 +581,7 @@ export default function BooksPage() {
         <div className="modalShade">
           <div className="modal importModal">
             <div className="modalHead"><div><p className="eyebrow">HISTORICAL IMPORT</p><h2>Map a QBO export once</h2></div><button className="closeBtn" onClick={() => setShowImport(false)}>×</button></div>
-            <p className="summary">Unmatched rows go to Insights → Review. New rent and bills should be entered in HomeOps, not re-imported.</p>
+            <p className="summary">Unmatched rows go to Insights → Review. New rent and bills should be entered in portonOS, not re-imported.</p>
             <label className="dropZone">Choose CSV<input type="file" accept=".csv,text/csv" onChange={(e) => chooseFile(e.target.files?.[0])} /><strong>{fileName || "Choose CSV file"}</strong><span>{rows.length ? `${rows.length} rows detected` : "Optional migration only"}</span></label>
             {headers.length > 0 && (
               <div className="mappingGrid">

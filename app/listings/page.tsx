@@ -116,7 +116,7 @@ export default function ListingsPage() {
     const body = await response.json();
     setBusy("");
     if (!response.ok) { setToast(body.error || "Could not save listing"); return; }
-    setToast("Listing saved in HomeOps");
+    setToast("Listing saved in portonOS");
     await load();
   }
 
@@ -228,7 +228,7 @@ export default function ListingsPage() {
           <div>
             <p className="eyebrow">ILS SYNDICATION</p>
             <h1>Manage listings here, syndicate out there.</h1>
-            <p>HomeOps is the source of truth. Zillow, Apartments.com, Rent.com, Realtor.com, and Zumper pull from hosted feeds after they approve HomeOps as a partner. There is no public scrape-and-post API.</p>
+            <p>portonOS is the source of truth. Zillow, Apartments.com, Rent.com, Realtor.com, and Zumper pull from hosted feeds after they approve portonOS as a partner. There is no public scrape-and-post API.</p>
           </div>
         </header>
         <div className="stats finStats">

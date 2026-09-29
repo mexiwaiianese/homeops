@@ -9,7 +9,7 @@ import { isPersonaLoginEnabled } from "@/lib/persona-login";
 export const dynamic = "force-dynamic";
 
 export const metadata: Metadata = {
-  title: "Invoice notes · HomeOps",
+  title: "Invoice notes · portonOS",
   robots: { index: false, follow: false },
 };
 

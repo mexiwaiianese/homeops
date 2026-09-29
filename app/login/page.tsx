@@ -17,19 +17,19 @@ export default function LoginPage() {
     const supabase = createBrowserClient(projectUrl!, publishableKey!);
     const redirectTo = `${window.location.origin}/auth/callback`;
     const { error } = await supabase.auth.signInWithOtp({ email, options: { emailRedirectTo: redirectTo } });
-    setMessage(error ? error.message : "Check your email for the HomeOps sign-in link.");
+    setMessage(error ? error.message : "Check your email for the portonOS sign-in link.");
   }
 
   return (
     <main className="loginShell">
       <section className="loginBrand">
-        <img className="loginBrandMark" src="/brand/homeops-lockup-dark.png" alt="HomeOps" />
-        <p className="eyebrow">RENTAL HOME OS</p>
+        <img className="loginBrandMark" src="/brand/portonos-mark.png" alt="portonOS" />
+        <p className="eyebrow">EVERYTHING BEHIND EVERY DOOR</p>
         <h1>Sign in to run the portfolio.</h1>
         <p>Maintenance, approved vendors, and owner rules live in one operating desk—not a public marketplace.</p>
       </section>
       <form className="loginCard" onSubmit={signIn}>
-        <img className="loginLockup" src="/brand/homeops-lockup-light.png" alt="" />
+        <img className="loginLockup" src="/brand/portonos-wordmark.png" alt="" />
         <p className="eyebrow">MANAGER ACCESS</p>
         <h2>Email a sign-in link</h2>
         <p>No password to remember. We’ll send a magic link to your inbox.</p>

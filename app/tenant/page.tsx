@@ -199,7 +199,7 @@ function BalancePanel({ data, onChanged, onToast }: { data: Overview; onChanged:
       )}
       {paying && clientSecret && data.publishableKey && (
         <div className="stripeBox">
-          <p className="summary">Paying {money(paying.remainingCents)} for {kindLabel(paying.kind).toLowerCase()} due {day(paying.dueOn)}. Stripe processes the payment; HomeOps keeps the receipt. This method is saved for next time.</p>
+          <p className="summary">Paying {money(paying.remainingCents)} for {kindLabel(paying.kind).toLowerCase()} due {day(paying.dueOn)}. Stripe processes the payment; portonOS keeps the receipt. This method is saved for next time.</p>
           <StripePayForm publishableKey={data.publishableKey} clientSecret={clientSecret} onPaid={finishStripe} buttonLabel={`Pay ${money(paying.remainingCents)}`} />
           <button className="textBtn" onClick={() => { setPaying(null); setClientSecret(null); }}>Cancel</button>
         </div>

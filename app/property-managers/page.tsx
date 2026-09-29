@@ -7,7 +7,7 @@ export default function PropertyManagersPage() {
         <BrandLockup artwork="lockup" />
         <p className="eyebrow">PROPERTY MANAGERS</p>
         <h1>Run the work from one desk.</h1>
-        <p>HomeOps is for small property managers and landlords. The invoice you just opened is one bill. The desk is the rest of the work around it.</p>
+        <p>portonOS is for small property managers and landlords. The invoice you just opened is one bill. The desk is the rest of the work around it.</p>
         <ul className="planList">
           <li>Tenant requests open on the property, with the person who reported them.</li>
           <li>Send the job to vendors who do that work and compare their bids.</li>

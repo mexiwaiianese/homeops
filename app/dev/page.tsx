@@ -13,7 +13,7 @@ import { personaUnlockCookie, verifyUnlockCookie } from "@/lib/persona-login/gat
 export const dynamic = "force-dynamic";
 
 export const metadata: Metadata = {
-  title: "Operator tools · HomeOps",
+  title: "Operator tools · portonOS",
   robots: { index: false, follow: false },
 };
 

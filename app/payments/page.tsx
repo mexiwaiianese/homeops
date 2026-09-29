@@ -68,7 +68,7 @@ export default function PaymentsPage() {
 
   async function copyLink(url: string) {
     await navigator.clipboard.writeText(url);
-    setMessage("Pay link copied. Tenants can open it without a HomeOps login.");
+    setMessage("Pay link copied. Tenants can open it without a portonOS login.");
   }
 
   async function generate() {
@@ -87,7 +87,7 @@ export default function PaymentsPage() {
     const body = await response.json();
     setBusy("");
     if (!response.ok) { setMessage(body.error || "Could not record payment"); return; }
-    setMessage("Cash/check recorded in HomeOps and posted to Books.");
+    setMessage("Cash/check recorded in portonOS and posted to Books.");
     await load();
   }
 
@@ -132,7 +132,7 @@ export default function PaymentsPage() {
           <div>
             <p className="eyebrow">RENT COLLECTION</p>
             <h1>{period || "This month"}</h1>
-            <p>Charges live in HomeOps. Stripe only processes the card or ACH. Paid rent posts into Books.</p>
+            <p>Charges live in portonOS. Stripe only processes the card or ACH. Paid rent posts into Books.</p>
           </div>
           <div className="headerActions">
             {mode === "auth" && <a className="secondaryBtn" href="/login">Sign in</a>}
@@ -143,7 +143,7 @@ export default function PaymentsPage() {
         <div className="stats finStats">
           <div className="stat"><span>Outstanding</span><div className={`statValue ${summary.dueCents ? "warn" : "good"}`}>{moneyCents(summary.dueCents)}</div><small>{summary.dueCount} open charges</small></div>
           <div className="stat"><span>Collected this board</span><div className="statValue good">{moneyCents(summary.paidCents)}</div><small>{summary.paidCount} paid in full</small></div>
-          <div className="stat"><span>Processor</span><div className="statValue">{stripe ? "Stripe" : "Demo"}</div><small>Pay page stays in HomeOps</small></div>
+          <div className="stat"><span>Processor</span><div className="statValue">{stripe ? "Stripe" : "Demo"}</div><small>Pay page stays in portonOS</small></div>
         </div>
         <div className="intelTabs">
           {(["due", "paid", "all"] as const).map((key) => (

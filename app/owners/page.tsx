@@ -357,7 +357,7 @@ export default function OwnerPortalPage() {
           />
 
           <footer className="opFoot">
-            Figures come from the books your manager keeps in HomeOps: rent posts when collected, bills post when paid. Security deposits are held for tenants and are not counted as your income. {data.owner.managerName ? `Managed by ${data.owner.managerName}.` : ""}
+            Figures come from the books your manager keeps in portonOS: rent posts when collected, bills post when paid. Security deposits are held for tenants and are not counted as your income. {data.owner.managerName ? `Managed by ${data.owner.managerName}.` : ""}
           </footer>
         </div>
       )}

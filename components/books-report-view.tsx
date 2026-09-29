@@ -57,7 +57,7 @@ export default function BooksReportView({
           <div>
             <p className="eyebrow">OWNER AND TAX PACKET</p>
             <h1>{report.year} cash reports</h1>
-            <p>HomeOps cash books for {report.start} through {report.end}. This is a worksheet for the manager, owner, and CPA. It is not a filed tax return.</p>
+            <p>portonOS cash books for {report.start} through {report.end}. This is a worksheet for the manager, owner, and CPA. It is not a filed tax return.</p>
           </div>
         </header>
       )}
@@ -129,7 +129,7 @@ export default function BooksReportView({
               {report.scheduleE.map((row) => <option key={row.homeId} value={row.homeId}>{row.address}</option>)}
             </select>
           </div>
-          <p className="summary">{sheet.address} · {sheet.ownerName}. Line numbers follow Form 1040 Schedule E Part I. HomeOps does not file this form.</p>
+          <p className="summary">{sheet.address} · {sheet.ownerName}. Line numbers follow Form 1040 Schedule E Part I. portonOS does not file this form.</p>
           <div className="finTable seTable">
             <div className="finTr finHead"><span>Line</span><span>Category</span><span>Amount</span></div>
             {sheet.lines.map((line) => (

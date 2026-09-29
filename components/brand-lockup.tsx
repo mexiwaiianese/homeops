@@ -1,7 +1,7 @@
 const artworkSrc = {
-  lockup: "/brand/homeops-lockup-light.png",
-  stacked: "/brand/homeops-lockup-stacked.png",
-  wordmark: "/brand/homeops-wordmark-tagline.png",
+  lockup: "/brand/portonos-wordmark.png",
+  stacked: "/brand/portonos-lockup.png",
+  wordmark: "/brand/portonos-wordmark.png",
 } as const;
 
 type BrandLockupProps = {
@@ -18,8 +18,8 @@ export default function BrandLockup({
   const classes = ["brand", "brandLockup", className].filter(Boolean).join(" ");
   const inner = (
     <>
-      <img className="brandArtwork brandLockupImg" src={artworkSrc[artwork]} alt="HomeOps" />
-      <img className="brandMarkImg" src="/brand/homeops-app-icon.png" alt="" />
+      <img className="brandArtwork brandLockupImg" src={artworkSrc[artwork]} alt="portonOS" />
+      <img className="brandMarkImg" src="/brand/portonos-mark.png" alt="" />
     </>
   );
   if (href) {

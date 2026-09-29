@@ -109,7 +109,7 @@ export default function RecruitmentBoard() {
         </div>
         <span className="pill">Independents first</span>
       </div>
-      <p className="summary">HomeOps looks for owner-operators with real public proof—not national brands or 1,000-review call centers. Invite ranking peaks around 25–90 reviews, skips franchises, and never writes that score onto dispatch scorecards.</p>
+      <p className="summary">portonOS looks for owner-operators with real public proof—not national brands or 1,000-review call centers. Invite ranking peaks around 25–90 reviews, skips franchises, and never writes that score onto dispatch scorecards.</p>
       <div className="vendorFilters">
         <input value={city} onChange={(e) => setCity(e.target.value)} placeholder="City" />
         <input value={state} onChange={(e) => setState(e.target.value)} placeholder="ST" />

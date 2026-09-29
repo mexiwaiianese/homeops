@@ -60,7 +60,7 @@ export default function OwnerLoginPage() {
         <BrandLockup artwork="lockup" />
         <p className="eyebrow">OWNER PORTAL</p>
         <h1>See how your properties are doing.</h1>
-        <p>Cash to you, NOI, occupancy, closed statements, and answers to your own questions — for the properties your manager runs in HomeOps.</p>
+        <p>Cash to you, NOI, occupancy, closed statements, and answers to your own questions — for the properties your manager runs in portonOS.</p>
 
         <div className="opProviders">
           <button type="button" className="opProviderBtn" onClick={() => void signInWithProvider("google")} disabled={Boolean(busy)}>

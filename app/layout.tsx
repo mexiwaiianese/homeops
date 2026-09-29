@@ -1,31 +1,34 @@
 import type { Metadata } from "next";
-import { Inter, Plus_Jakarta_Sans } from "next/font/google";
+import { Cormorant_Garamond, Montserrat } from "next/font/google";
 import "./globals.css";
 
-const inter = Inter({
+const montserrat = Montserrat({
   subsets: ["latin"],
+  weight: "300",
   variable: "--font-ui",
+  display: "swap",
 });
 
-const jakarta = Plus_Jakarta_Sans({
+const cormorant = Cormorant_Garamond({
   subsets: ["latin"],
+  weight: ["400", "500", "600"],
   variable: "--font-display",
-  weight: ["500", "600", "700", "800"],
+  display: "swap",
 });
 
 export const metadata: Metadata = {
-  title: "HomeOps",
-  description: "Rental Home OS",
+  title: "portonOS",
+  description: "Everything behind every door.",
   icons: {
-    icon: "/brand/homeops-app-icon.png",
-    apple: "/brand/homeops-app-icon.png",
+    icon: "/brand/portonos-mark.png",
+    apple: "/brand/portonos-mark.png",
   },
 };
 
 export default function RootLayout({ children }: Readonly<{ children: React.ReactNode }>) {
   return (
-    <html lang="en" className={`${inter.variable} ${jakarta.variable}`}>
-      <body className={inter.className}>{children}</body>
+    <html lang="en" className={`${montserrat.variable} ${cormorant.variable}`}>
+      <body className={montserrat.className}>{children}</body>
     </html>
   );
 }

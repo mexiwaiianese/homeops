@@ -1,25 +1,32 @@
 :root {
-  --navy: #1a3e62;
-  --teal: #008c99;
-  --coral: #e65a4f;
-  --bg: #f3f4f6;
+  --forest: #0a241c;
+  --sage: #647c64;
+  --gold: #c1915a;
+  --cream: #f3d8b1;
+  --ivory: #fdfcf8;
+  --navy: #0a241c;
+  --teal: #647c64;
+  --coral: #8f3a32;
+  --bg: #f4f1ea;
   --card: #fff;
-  --ink: #1a3e62;
-  --muted: #5c6b78;
-  --line: #e2e6eb;
-  --green: #1a3e62;
-  --green2: #e5f4f6;
-  --red: #e65a4f;
-  --red2: #fdecea;
-  --amber: #c47a22;
-  --amber2: #fbf0df;
-  --nav: #1a3e62;
-  --brand-navy: #1a3e62;
-  --brand-teal: #008c99;
-  --brand-paper: #f3f4f6;
-  --brand-coral: #e65a4f;
-  --brand-mist: #e8eef4;
-  --brand-night: #1a3e62;
+  --ink: #0a241c;
+  --muted: #5c675f;
+  --line: #e3ddd2;
+  --green: #0a241c;
+  --green2: #e7ede4;
+  --red: #8f3a32;
+  --red2: #f8e8e4;
+  --amber: #c1915a;
+  --amber2: #f8eedc;
+  --nav: #0a241c;
+  --brand-navy: #0a241c;
+  --brand-teal: #647c64;
+  --brand-paper: #f4f1ea;
+  --brand-coral: #c1915a;
+  --brand-mist: #e7ede4;
+  --brand-night: #0a241c;
+  --brand-gold: #c1915a;
+  --brand-cream: #f3d8b1;
 }
 * {
   box-sizing: border-box;
@@ -28,15 +35,29 @@ body {
   margin: 0;
   background: var(--bg);
   color: var(--ink);
+  font-weight: 300;
+  font-synthesis: none;
   font-family:
     var(--font-ui),
-    Inter,
+    Montserrat,
     ui-sans-serif,
     system-ui,
     -apple-system,
     BlinkMacSystemFont,
     "Segoe UI",
     sans-serif;
+}
+h1,
+h2,
+h3 {
+  font-family: var(--font-display), "Cormorant Garamond", Georgia, serif;
+  font-weight: 500;
+}
+button,
+input,
+select,
+textarea {
+  font-family: inherit;
 }
 .shell {
   min-height: 100vh;
@@ -48,7 +69,7 @@ body {
   top: 0;
   height: 100vh;
   background: var(--nav);
-  color: #f3f4f6;
+  color: #f4f1ea;
   padding: 28px 18px;
   display: flex;
   flex-direction: column;
@@ -74,7 +95,8 @@ body {
 .brandMark img {
   width: 100%;
   height: 100%;
-  object-fit: cover;
+  object-fit: contain;
+  background: var(--ivory);
   display: block;
 }
 .wordmark {
@@ -84,7 +106,7 @@ body {
   min-width: 0;
 }
 .wordmarkName {
-  font-family: var(--font-display), "Plus Jakarta Sans", Inter, sans-serif;
+  font-family: var(--font-display), "Cormorant Garamond", Georgia, serif;
   display: block;
   font-size: 18px;
   font-weight: 700;
@@ -101,14 +123,14 @@ body {
   font-size: 10px;
   font-weight: 500;
   letter-spacing: 0.01em;
-  color: #9bb8c4;
+  color: #c5d4c6;
   line-height: 1.2;
 }
 .nav {
   width: 100%;
   border: 0;
   background: transparent;
-  color: #c5d4de;
+  color: #d7e2d6;
   padding: 9px 10px;
   border-radius: 10px;
   text-align: left;
@@ -121,7 +143,7 @@ body {
 }
 .nav:hover,
 .nav.active {
-  background: #143250;
+  background: #16352a;
   color: #fff;
 }
 .navIcon,
@@ -143,17 +165,18 @@ body {
 }
 .brandMarkImg {
   display: none;
-  width: 40px;
-  height: 40px;
-  border-radius: 11px;
-  object-fit: cover;
+  width: 62px;
+  height: 62px;
+  border-radius: 14px;
+  object-fit: contain;
+  background: var(--ivory);
   flex-shrink: 0;
 }
 .sidebar .brand,
 .finSide .brand {
   flex-shrink: 0;
   overflow: hidden;
-  background: #fff;
+  background: var(--ivory);
   border-radius: 12px;
   padding: 8px 10px;
   margin: 0 0 18px;
@@ -168,15 +191,15 @@ body {
 }
 .nav b {
   margin-left: auto;
-  background: #d76b5d;
-  color: #fff;
+  background: var(--gold);
+  color: var(--forest);
   border-radius: 20px;
   padding: 2px 7px;
   font-size: 11px;
 }
 .portfolio {
   margin-top: auto;
-  border-top: 1px solid #2a5270;
+  border-top: 1px solid #1e3d30;
   padding: 18px 8px 0;
   display: flex;
   flex-direction: column;
@@ -191,7 +214,7 @@ body {
 }
 .portfolio span {
   font-size: 11px;
-  color: #9bb8c4;
+  color: #c5d4c6;
 }
 .content {
   padding: 34px 42px 60px;
@@ -211,8 +234,8 @@ body {
 .authCard h1 {
   margin: 5px 0 0;
   font-size: 32px;
-  letter-spacing: -0.04em;
-  font-family: var(--font-display), "Plus Jakarta Sans", Inter, sans-serif;
+  letter-spacing: -0.02em;
+  font-family: var(--font-display), "Cormorant Garamond", Georgia, serif;
 }
 .primary {
   border: 0;
@@ -245,8 +268,9 @@ body {
   color: var(--muted);
 }
 .statValue {
-  font-size: 26px;
-  font-weight: 800;
+  font-family: var(--font-display), "Cormorant Garamond", Georgia, serif;
+  font-size: 32px;
+  font-weight: 500;
   margin: 8px 0 3px;
 }
 .statValue.warn {
@@ -755,9 +779,9 @@ button:disabled {
   cursor: pointer;
 }
 .backendBanner {
-  border: 1px solid #b7dbe0;
-  background: #e5f4f6;
-  color: #1a3e62;
+  border: 1px solid #c5d4c4;
+  background: #e7ede4;
+  color: #0a241c;
   border-radius: 12px;
   padding: 12px 15px;
   margin-bottom: 16px;
@@ -773,7 +797,7 @@ button:disabled {
   font-size: 10px !important;
 }
 .mode.live {
-  color: #7ed4dc !important;
+  color: #e4c48a !important;
 }
 .mode.demo,
 .mode.auth {
@@ -1019,7 +1043,7 @@ button:disabled {
 }
 .outcomeBanner.won {
   background: var(--green2);
-  border-color: #b7e0dc;
+  border-color: #c5d4c4;
 }
 .outcomeBanner.won strong {
   color: var(--teal);
@@ -1034,7 +1058,7 @@ button:disabled {
   display: grid;
   place-items: center;
   padding: 24px;
-  background: linear-gradient(145deg, #e8eef4, #f3f4f6);
+  background: linear-gradient(145deg, #e7ede4, #f4f1ea);
 }
 .loginShell {
   min-height: 100vh;
@@ -1047,29 +1071,31 @@ button:disabled {
   flex-direction: column;
   justify-content: center;
   padding: 56px 48px;
-  color: #f3f4f6;
+  color: #f4f1ea;
 }
 .loginBrandMark {
   display: block;
-  width: min(240px, 100%);
+  width: min(280px, 78%);
   height: auto;
-  margin-bottom: 36px;
+  margin-bottom: 28px;
+  background: var(--ivory);
+  border-radius: 18px;
 }
 .loginBrand .eyebrow {
-  color: #7ed4dc;
+  color: #e4c48a;
 }
 .loginBrand h1 {
   margin: 8px 0 12px;
-  font-family: var(--font-display), "Plus Jakarta Sans", Inter, sans-serif;
+  font-family: var(--font-display), "Cormorant Garamond", Georgia, serif;
   font-size: clamp(28px, 4vw, 40px);
-  letter-spacing: -0.04em;
+  letter-spacing: -0.02em;
   line-height: 1.15;
   color: #fff;
 }
 .loginBrand p:not(.eyebrow) {
   max-width: 420px;
   margin: 0;
-  color: #c5d4de;
+  color: #d7e2d6;
   font-size: 15px;
   line-height: 1.6;
 }
@@ -1079,12 +1105,12 @@ button:disabled {
   justify-content: center;
   min-height: 100vh;
   padding: 48px 40px;
-  background: #fff;
-  box-shadow: -24px 0 60px rgba(16, 38, 62, 0.18);
+  background: var(--ivory);
+  box-shadow: -24px 0 60px rgba(10, 36, 28, 0.22);
 }
 .loginLockup {
   display: block;
-  width: min(220px, 100%);
+  width: min(280px, 100%);
   height: auto;
   margin-bottom: 28px;
 }
@@ -1093,9 +1119,9 @@ button:disabled {
 }
 .loginCard h2 {
   margin: 6px 0 8px;
-  font-family: var(--font-display), "Plus Jakarta Sans", Inter, sans-serif;
+  font-family: var(--font-display), "Cormorant Garamond", Georgia, serif;
   font-size: 28px;
-  letter-spacing: -0.04em;
+  letter-spacing: -0.02em;
   color: var(--navy);
 }
 .loginCard > p {
@@ -1123,7 +1149,7 @@ button:disabled {
   color: var(--ink);
 }
 .loginCard input:focus {
-  outline: 2px solid rgba(0, 140, 153, 0.28);
+  outline: 2px solid rgba(100, 124, 100, 0.35);
   border-color: var(--teal);
 }
 .loginCard .primary {
@@ -1178,7 +1204,7 @@ button:disabled {
 .authCard h1,
 .intakeCard h1 {
   font-size: 30px;
-  letter-spacing: -0.04em;
+  letter-spacing: -0.02em;
   margin: 5px 0 8px;
 }
 .authCard > p,
@@ -1278,7 +1304,7 @@ button:disabled {
   top: 0;
   height: 100vh;
   background: var(--nav);
-  color: #f3f4f6;
+  color: #f4f1ea;
   padding: 28px 18px;
   display: flex;
   flex-direction: column;
@@ -1293,7 +1319,7 @@ button:disabled {
   gap: 4px;
 }
 .finNav {
-  color: #c5d4de;
+  color: #d7e2d6;
   text-decoration: none;
   padding: 9px 10px;
   border-radius: 10px;
@@ -1305,7 +1331,7 @@ button:disabled {
 }
 .finNav:hover,
 .finNav.active {
-  background: #143250;
+  background: #16352a;
   color: #fff;
 }
 .finNav.active .navIcon {
@@ -1321,7 +1347,7 @@ button:disabled {
   text-align: left;
   width: 100%;
   margin-top: 6px;
-  color: #9bb8c4;
+  color: #c5d4c6;
 }
 .signOutNav:hover {
   color: #fff;
@@ -1349,7 +1375,7 @@ button:disabled {
 .finHeader h1 {
   margin: 5px 0 6px;
   font-size: 32px;
-  letter-spacing: -0.04em;
+  letter-spacing: -0.02em;
 }
 .finHeader p:not(.eyebrow) {
   margin: 0;
@@ -1369,7 +1395,7 @@ button:disabled {
 .finFilters {
   display: flex;
   gap: 5px;
-  background: #e8eef4;
+  background: #e7ede4;
   border-radius: 9px;
   padding: 4px;
 }
@@ -1882,7 +1908,7 @@ button:disabled {
   color: var(--muted);
 }
 .periodSelect{border:1px solid var(--line);background:#fff;color:var(--ink);padding:10px 11px;border-radius:10px;font:inherit;font-size:11px;font-weight:700}.costClass{display:inline-flex;padding:4px 7px;border-radius:20px;font-size:9px}.costClass.operating{background:var(--green2);color:var(--green)}.costClass.capital{background:var(--amber2);color:var(--amber)}
-.intelTabs{display:flex;gap:5px;overflow:auto;background:#e8eef4;border-radius:12px;padding:5px;margin-bottom:16px}.intelTabs button{white-space:nowrap;border:0;background:transparent;color:#69726c;padding:9px 13px;border-radius:8px;font-size:11px;font-weight:800;cursor:pointer}.intelTabs button.active{background:#fff;color:var(--ink);box-shadow:0 1px 5px rgba(0,0,0,.08)}.intelGrid{display:grid;grid-template-columns:1fr 1fr;gap:16px}.insightList{display:flex;flex-direction:column;gap:9px}.insight{display:grid;grid-template-columns:5px 1fr;gap:12px;text-align:left;border:1px solid var(--line);background:#fafbf9;border-radius:11px;padding:13px}.insight>span{border-radius:4px;background:var(--teal)}.insight.critical>span{background:var(--red)}.insight.watch>span{background:var(--amber)}.insight strong{font-size:13px}.insight p{font-size:11px;color:var(--muted);line-height:1.5;margin:4px 0 0}.barList{display:flex;flex-direction:column;gap:13px}.barRow{display:grid;grid-template-columns:1.25fr 1fr 75px;gap:12px;align-items:center}.barRow strong,.barRow span{display:block}.barRow strong{font-size:12px}.barRow span{font-size:10px;color:var(--muted);margin-top:3px}.barRow>b{text-align:right;font-size:12px}.barTrack{height:7px;background:#edf0ec;border-radius:10px;overflow:hidden}.barTrack i{display:block;height:100%;background:#668b73;border-radius:10px}.propertyLink{width:100%;border-left:0;border-right:0;border-bottom:0;background:#fff;text-align:left;color:inherit;cursor:pointer}.propertyLink:hover{background:#f6f8f5}.portfolioTr.intelHead,.propertyLink{grid-template-columns:1.7fr repeat(4,.7fr)}.goodText{color:var(--green)!important}.badText{color:var(--red)!important}.propertyPicker{display:flex;justify-content:space-between;align-items:center;margin:4px 0 16px}.propertyPicker h2{margin:3px 0 0}.propertyPicker select{min-width:280px;border:1px solid var(--line);background:#fff;border-radius:10px;padding:11px;font:inherit;font-size:12px}.pnl>div,.compactLedger>div,.monthlyTable>div{display:flex;justify-content:space-between;gap:12px;padding:12px 4px;border-top:1px solid var(--line);font-size:12px}.pnl>div:first-child,.compactLedger>div:first-child,.monthlyTable>div:first-child{border-top:0}.pnl .total{font-size:14px;font-weight:800;border-top:2px solid #d8ddd9}.compactLedger span strong,.compactLedger span small{display:block}.compactLedger span small{color:var(--muted);font-size:10px;margin-top:3px}.compactLedger .income{color:var(--green)}.serviceTable{overflow:auto}.serviceTr{min-width:560px;display:grid;grid-template-columns:1.5fr repeat(4,.7fr);gap:10px;padding:12px 5px;border-top:1px solid var(--line);font-size:12px;align-items:center}.serviceTr.head{border:0;color:#858d88;font-size:9px;font-weight:800;text-transform:uppercase}.serviceTr span small{display:block;color:var(--muted);font-size:10px;margin-top:3px}.vendorCards{display:flex;flex-direction:column;gap:9px}.vendorCard{border:1px solid var(--line);border-radius:11px;padding:13px}.vendorCard>div:first-child{display:flex;justify-content:space-between}.vendorCard>div:first-child span{font-size:10px;color:var(--muted)}.vendorCard>b{display:block;font-size:19px;margin:8px 0}.vendorMeta{display:flex;gap:12px;color:var(--muted);font-size:10px}.trendChart{height:270px;display:flex;gap:18px;align-items:stretch;padding:15px 10px 0;overflow:auto}.trendMonth{min-width:80px;flex:1;display:flex;flex-direction:column;align-items:center;gap:5px}.trendMonth>strong{font-size:10px}.trendMonth>span{font-size:9px}.trendBars{height:210px;width:100%;display:flex;gap:5px;align-items:flex-end;justify-content:center;border-bottom:1px solid var(--line)}.trendBars i{width:min(27px,35%);border-radius:5px 5px 0 0}.revenueBar{background:#56866a}.expenseBar{background:#d29a59}.chartLegend{display:flex;justify-content:center;gap:18px;margin-top:12px;font-size:10px;color:var(--muted)}.chartLegend i{display:inline-block;width:9px;height:9px;border-radius:2px;margin-right:5px}.revenueKey{background:#56866a}.expenseKey{background:#d29a59}.monthlyTable>div{display:grid;grid-template-columns:.6fr 1fr 1fr .7fr;align-items:center}.monthlyTable span{color:var(--muted);font-size:11px}
+.intelTabs{display:flex;gap:5px;overflow:auto;background:#e7ede4;border-radius:12px;padding:5px;margin-bottom:16px}.intelTabs button{white-space:nowrap;border:0;background:transparent;color:#69726c;padding:9px 13px;border-radius:8px;font-size:11px;font-weight:800;cursor:pointer}.intelTabs button.active{background:#fff;color:var(--ink);box-shadow:0 1px 5px rgba(0,0,0,.08)}.intelGrid{display:grid;grid-template-columns:1fr 1fr;gap:16px}.insightList{display:flex;flex-direction:column;gap:9px}.insight{display:grid;grid-template-columns:5px 1fr;gap:12px;text-align:left;border:1px solid var(--line);background:#fafbf9;border-radius:11px;padding:13px}.insight>span{border-radius:4px;background:var(--teal)}.insight.critical>span{background:var(--red)}.insight.watch>span{background:var(--amber)}.insight strong{font-size:13px}.insight p{font-size:11px;color:var(--muted);line-height:1.5;margin:4px 0 0}.barList{display:flex;flex-direction:column;gap:13px}.barRow{display:grid;grid-template-columns:1.25fr 1fr 75px;gap:12px;align-items:center}.barRow strong,.barRow span{display:block}.barRow strong{font-size:12px}.barRow span{font-size:10px;color:var(--muted);margin-top:3px}.barRow>b{text-align:right;font-size:12px}.barTrack{height:7px;background:#edf0ec;border-radius:10px;overflow:hidden}.barTrack i{display:block;height:100%;background:#647c64;border-radius:10px}.propertyLink{width:100%;border-left:0;border-right:0;border-bottom:0;background:#fff;text-align:left;color:inherit;cursor:pointer}.propertyLink:hover{background:#f6f8f5}.portfolioTr.intelHead,.propertyLink{grid-template-columns:1.7fr repeat(4,.7fr)}.goodText{color:var(--green)!important}.badText{color:var(--red)!important}.propertyPicker{display:flex;justify-content:space-between;align-items:center;margin:4px 0 16px}.propertyPicker h2{margin:3px 0 0}.propertyPicker select{min-width:280px;border:1px solid var(--line);background:#fff;border-radius:10px;padding:11px;font:inherit;font-size:12px}.pnl>div,.compactLedger>div,.monthlyTable>div{display:flex;justify-content:space-between;gap:12px;padding:12px 4px;border-top:1px solid var(--line);font-size:12px}.pnl>div:first-child,.compactLedger>div:first-child,.monthlyTable>div:first-child{border-top:0}.pnl .total{font-size:14px;font-weight:800;border-top:2px solid #d8ddd9}.compactLedger span strong,.compactLedger span small{display:block}.compactLedger span small{color:var(--muted);font-size:10px;margin-top:3px}.compactLedger .income{color:var(--green)}.serviceTable{overflow:auto}.serviceTr{min-width:560px;display:grid;grid-template-columns:1.5fr repeat(4,.7fr);gap:10px;padding:12px 5px;border-top:1px solid var(--line);font-size:12px;align-items:center}.serviceTr.head{border:0;color:#858d88;font-size:9px;font-weight:800;text-transform:uppercase}.serviceTr span small{display:block;color:var(--muted);font-size:10px;margin-top:3px}.vendorCards{display:flex;flex-direction:column;gap:9px}.vendorCard{border:1px solid var(--line);border-radius:11px;padding:13px}.vendorCard>div:first-child{display:flex;justify-content:space-between}.vendorCard>div:first-child span{font-size:10px;color:var(--muted)}.vendorCard>b{display:block;font-size:19px;margin:8px 0}.vendorMeta{display:flex;gap:12px;color:var(--muted);font-size:10px}.trendChart{height:270px;display:flex;gap:18px;align-items:stretch;padding:15px 10px 0;overflow:auto}.trendMonth{min-width:80px;flex:1;display:flex;flex-direction:column;align-items:center;gap:5px}.trendMonth>strong{font-size:10px}.trendMonth>span{font-size:9px}.trendBars{height:210px;width:100%;display:flex;gap:5px;align-items:flex-end;justify-content:center;border-bottom:1px solid var(--line)}.trendBars i{width:min(27px,35%);border-radius:5px 5px 0 0}.revenueBar{background:#647c64}.expenseBar{background:#c1915a}.chartLegend{display:flex;justify-content:center;gap:18px;margin-top:12px;font-size:10px;color:var(--muted)}.chartLegend i{display:inline-block;width:9px;height:9px;border-radius:2px;margin-right:5px}.revenueKey{background:#647c64}.expenseKey{background:#c1915a}.monthlyTable>div{display:grid;grid-template-columns:.6fr 1fr 1fr .7fr;align-items:center}.monthlyTable span{color:var(--muted);font-size:11px}
 @media(max-width:1000px){.intelGrid{grid-template-columns:1fr}.barRow{grid-template-columns:1.2fr 1fr 75px}}@media(max-width:700px){.intelTabs{margin-left:-14px;margin-right:-14px;border-radius:0}.intelGrid{grid-template-columns:1fr}.propertyPicker{align-items:stretch;flex-direction:column;gap:10px}.propertyPicker select{min-width:0}.barRow{grid-template-columns:1fr 65px}.barTrack{display:none}.vendorMeta{flex-wrap:wrap}.trendChart{padding-left:0;padding-right:0}.monthlyTable>div{grid-template-columns:1fr 1fr}.serviceTr{min-width:520px}}
 
 .recruitTable{overflow:auto;margin-top:12px}
@@ -1946,7 +1972,7 @@ button:disabled {
   padding: 0;
 }
 .brandSpecimen.dark .brand {
-  background: #f3f4f6;
+  background: var(--ivory);
   border-radius: 14px;
   padding: 10px 12px;
   display: inline-flex;
@@ -2001,7 +2027,35 @@ button:disabled {
   background: #fff;
 }
 .brandOfficial.stacked {
-  max-width: 220px;
+  max-width: 280px;
+}
+.brandKitHero .brandArtwork {
+  max-width: 280px;
+}
+.brandDoor {
+  width: 120px;
+  height: auto;
+  border-radius: 16px;
+  background: var(--ivory);
+}
+.brandKit .brandSerifSample {
+  font-family: var(--font-display), "Cormorant Garamond", Georgia, serif;
+  font-weight: 500;
+  font-size: 40px;
+  line-height: 1.05;
+  letter-spacing: -0.02em;
+  color: var(--ink);
+  margin: 18px 0 8px;
+  max-width: none;
+}
+.brandKit .brandSansSample {
+  margin: 0 0 12px;
+  font-size: 13px;
+  font-weight: 300;
+  letter-spacing: 0.16em;
+  text-transform: uppercase;
+  color: var(--sage);
+  max-width: none;
 }
 .brandIconGrid {
   display: grid;
@@ -2090,7 +2144,7 @@ a.primary {
   display: grid;
   place-items: center;
   background: var(--green2);
-  border: 1px solid #b7e0dc;
+  border: 1px solid #c5d4c4;
   border-radius: 10px;
   font-weight: 700;
   color: var(--navy);
@@ -2309,8 +2363,8 @@ a.statLink:hover {
   top: 0;
   z-index: 20;
   background: var(--nav);
-  color: #f3f4f6;
-  border-bottom: 1px solid #143250;
+  color: #f4f1ea;
+  border-bottom: 1px solid #16352a;
 }
 .opTopInner {
   max-width: 1240px;
@@ -2323,7 +2377,7 @@ a.statLink:hover {
 .opBrand {
   padding: 6px 8px;
   margin: 0;
-  background: #fff;
+  background: var(--ivory);
   border-radius: 10px;
   flex-shrink: 0;
 }
@@ -2344,7 +2398,7 @@ a.statLink:hover {
 }
 .opTopMeta span {
   font-size: 11px;
-  color: #9bb8c4;
+  color: #c5d4c6;
 }
 .opTopActions {
   margin-left: auto;
@@ -2352,8 +2406,8 @@ a.statLink:hover {
   gap: 8px;
 }
 .opBtn {
-  border: 1px solid #2a5270;
-  background: #143250;
+  border: 1px solid #1e3d30;
+  background: #16352a;
   color: #fff;
   padding: 9px 14px;
   border-radius: 10px;
@@ -2499,7 +2553,7 @@ a.statLink:hover {
 
 /* Ask panel */
 .opAsk {
-  background: linear-gradient(135deg, #1a3e62 0%, #17506a 100%);
+  background: linear-gradient(135deg, #0a241c 0%, #1e4034 100%);
   color: #fff;
   border-radius: 16px;
   padding: 16px 18px;
@@ -2510,7 +2564,7 @@ a.statLink:hover {
   font-size: 10px;
   letter-spacing: 0.12em;
   font-weight: 800;
-  color: #9bd4db;
+  color: #e4c48a;
   margin-bottom: 8px;
 }
 .opAskRow {
@@ -2549,7 +2603,7 @@ a.statLink:hover {
   font-size: 11px;
 }
 .opAsk .opHint {
-  color: #bfd6dc;
+  color: #c5d4c6;
 }
 .opAsk .opNotice.error {
   margin: 10px 0 0;
@@ -2584,7 +2638,7 @@ a.statLink:hover {
 .opAskValue strong {
   font-size: 30px;
   letter-spacing: -0.03em;
-  font-family: var(--font-display), "Plus Jakarta Sans", Inter, sans-serif;
+  font-family: var(--font-display), "Cormorant Garamond", Georgia, serif;
 }
 .opAskValue small {
   font-size: 10px;
@@ -2785,11 +2839,11 @@ a.statLink:hover {
   font-weight: 700;
 }
 .opKpiValue {
-  font-size: 28px;
-  font-weight: 800;
-  letter-spacing: -0.03em;
+  font-size: 32px;
+  font-weight: 500;
+  letter-spacing: -0.02em;
   margin: 6px 0 2px;
-  font-family: var(--font-display), "Plus Jakarta Sans", Inter, sans-serif;
+  font-family: var(--font-display), "Cormorant Garamond", Georgia, serif;
   color: var(--ink);
   overflow-wrap: anywhere;
 }
@@ -2849,7 +2903,7 @@ a.statLink:hover {
   fill: var(--teal);
 }
 .opBarExpense {
-  fill: #d29a59;
+  fill: #c1915a;
 }
 .opNoiLine {
   fill: none;
@@ -2882,7 +2936,7 @@ a.statLink:hover {
   background: var(--teal);
 }
 .opLegend i.expense {
-  background: #d29a59;
+  background: #c1915a;
 }
 .opLegend i.noi {
   background: var(--navy);
@@ -2918,7 +2972,7 @@ a.statLink:hover {
 .opMixTrack i {
   display: block;
   height: 100%;
-  background: #d29a59;
+  background: #c1915a;
   border-radius: 8px;
 }
 .opMixTrack i.capital {
@@ -3073,7 +3127,7 @@ a.statLink:hover {
 .opSegment {
   display: inline-flex;
   gap: 4px;
-  background: #e8eef4;
+  background: #e7ede4;
   border-radius: 10px;
   padding: 4px;
 }
@@ -3334,7 +3388,7 @@ a.statLink:hover {
 .tenantShell {
   min-height: 100vh;
   padding: 24px 16px 64px;
-  background: linear-gradient(145deg, #e8eef4, #f3f4f6);
+  background: linear-gradient(145deg, #e7ede4, #f4f1ea);
   display: flex;
   justify-content: center;
   align-items: flex-start;
@@ -3354,8 +3408,8 @@ a.statLink:hover {
 .tenantCard h1 {
   margin: 4px 0 2px;
   font-size: 30px;
-  letter-spacing: -0.04em;
-  font-family: var(--font-display), "Plus Jakarta Sans", Inter, sans-serif;
+  letter-spacing: -0.02em;
+  font-family: var(--font-display), "Cormorant Garamond", Georgia, serif;
 }
 .tenantAddress {
   margin: 0 0 18px;
@@ -3392,9 +3446,10 @@ a.statLink:hover {
 }
 .balanceAmount {
   display: block;
-  font-size: 38px;
-  font-weight: 800;
-  letter-spacing: -0.04em;
+  font-family: var(--font-display), "Cormorant Garamond", Georgia, serif;
+  font-size: 42px;
+  font-weight: 500;
+  letter-spacing: -0.02em;
   color: var(--red);
   line-height: 1;
 }
@@ -3785,7 +3840,7 @@ a.statLink:hover {
     min-height: 44px;
     padding: 10px 12px;
     border-radius: 10px;
-    background: #e8eef4;
+    background: #e7ede4;
     color: var(--navy);
     text-decoration: none;
   }

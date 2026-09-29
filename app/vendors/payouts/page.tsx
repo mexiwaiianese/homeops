@@ -81,7 +81,7 @@ export default function VendorPayoutPage() {
     <VendorPortalFrame
       eyebrow="PAYOUT ACCOUNT"
       title="Bank account for job payments."
-      lede="Review the account HomeOps pays, replace it, or confirm it. When Stripe is connected, the bank details are entered in Stripe and only the bank name and last four digits come back here."
+      lede="Review the account portonOS pays, replace it, or confirm it. When Stripe is connected, the bank details are entered in Stripe and only the bank name and last four digits come back here."
     >
       {message && <div className="notice">{message}</div>}
       <div className="miniStats vendorMini">
@@ -107,7 +107,7 @@ export default function VendorPayoutPage() {
                 body: JSON.stringify({ action: "confirm", paymentMethodId }),
               }).then(async (r) => {
                 const body = await r.json();
-                if (!r.ok) { setMessage(body.error || "Stripe saved the bank, but HomeOps could not read it back."); return; }
+                if (!r.ok) { setMessage(body.error || "Stripe saved the bank, but portonOS could not read it back."); return; }
                 setMessage("Stripe confirmed this bank account for payouts.");
                 setSecret("");
                 apply(body);
