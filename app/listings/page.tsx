@@ -312,6 +312,7 @@ export default function ListingsPage() {
                   <label className="span2">Description<textarea rows={5} {...field("description")} /></label>
                 </div>
                 <div className="sectionTitle"><h3>Syndicate to</h3></div>
+                <p className="summary">Each published posting includes the apply link as a hyperlink and again as text the applicant can copy.</p>
                 <div className="chipRow">
                   {connections.map((connection) => (
                     <label className="miniCheck" key={connection.network}>

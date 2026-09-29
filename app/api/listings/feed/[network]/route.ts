@@ -1,6 +1,10 @@
+import { randomBytes } from "crypto";
 import { NextResponse } from "next/server";
+import { applyPath } from "@/lib/applications";
+import { demoApplyTokenFor } from "@/lib/application-demo";
 import { findDemoConnectionByToken, publishedDemoListingsFor } from "@/lib/listing-demo";
-import { listingNetwork, renderFeed, type ListingNetworkId } from "@/lib/listing-networks";
+import { listingNetwork, renderFeed, type ListingNetworkId, type RentalListing } from "@/lib/listing-networks";
+import { appOrigin } from "@/lib/rent";
 import { createSupabaseAdminClient } from "@/lib/supabase/admin";
 
 export async function GET(request: Request, { params }: { params: Promise<{ network: string }> }) {
@@ -14,7 +18,11 @@ export async function GET(request: Request, { params }: { params: Promise<{ netw
   if (demo) {
     if (demo.network !== network) return NextResponse.json({ error: "Token does not match this network." }, { status: 403 });
     if (demo.status === "disconnected") return NextResponse.json({ error: "This listing network is disconnected." }, { status: 409 });
-    const feed = renderFeed(spec, publishedDemoListingsFor(network as ListingNetworkId));
+    const origin = appOrigin(request);
+    const feed = renderFeed(spec, publishedDemoListingsFor(network as ListingNetworkId).map((listing) => ({
+      ...listing,
+      applyUrl: `${origin}${applyPath(demoApplyTokenFor(listing.id))}`,
+    })));
     return new NextResponse(feed.body, { headers: { "Content-Type": feed.contentType, "Cache-Control": "no-store" } });
   }
 
@@ -28,9 +36,15 @@ export async function GET(request: Request, { params }: { params: Promise<{ netw
   const { data: rows } = ids.length
     ? await admin.from("rental_listings").select("*, homes(address1, city, state, postal_code)").in("id", ids)
     : { data: [] };
-  const listings = (rows ?? []).map((row: any) => {
+  const origin = appOrigin(request);
+  const listings = await Promise.all((rows ?? []).map(async (row: any) => {
     const home = Array.isArray(row.homes) ? row.homes[0] : row.homes;
-    return {
+    let token = row.apply_token as string | null;
+    if (!token) {
+      token = randomBytes(18).toString("hex");
+      await admin.from("rental_listings").update({ apply_token: token }).eq("id", row.id);
+    }
+    const listing: RentalListing = {
       id: row.id,
       homeId: row.home_id,
       address: home?.address1 || "",
@@ -51,8 +65,10 @@ export async function GET(request: Request, { params }: { params: Promise<{ netw
       status: row.status,
       photos: Array.isArray(row.photos) ? row.photos : [],
       updatedAt: row.updated_at,
+      applyUrl: `${origin}${applyPath(token)}`,
     };
-  });
+    return listing;
+  }));
   const feed = renderFeed(spec, listings);
   return new NextResponse(feed.body, { headers: { "Content-Type": feed.contentType, "Cache-Control": "no-store" } });
 }

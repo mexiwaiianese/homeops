@@ -3,6 +3,7 @@ import {
   listingNetworks,
   pushUrlFor,
   listingNetwork,
+  listingCanonical,
   type ListingConnection,
   type ListingNetworkId,
   type ListingPublication,
@@ -153,7 +154,7 @@ export function disconnectDemoNetwork(networkId: ListingNetworkId) {
   return { connection: current };
 }
 
-export async function publishDemoListing(listingId: string, networks: ListingNetworkId[]) {
+export async function publishDemoListing(listingId: string, networks: ListingNetworkId[], applyUrl?: string | null) {
   seedIfNeeded();
   const listing = store.listings.get(listingId);
   if (!listing) return { error: "Listing not found", status: 404 as const };
@@ -182,7 +183,7 @@ export async function publishDemoListing(listingId: string, networks: ListingNet
         const response = await fetch(push, {
           method: "POST",
           headers: { "Content-Type": "application/json" },
-          body: JSON.stringify({ network: networkId, listing }),
+          body: JSON.stringify({ network: networkId, listing: listingCanonical({ ...listing, applyUrl }) }),
         });
         if (!response.ok) {
           status = "error";

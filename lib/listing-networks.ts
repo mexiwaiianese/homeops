@@ -37,6 +37,7 @@ export type RentalListing = {
   status: ListingStatus;
   photos: string[];
   updatedAt: string;
+  applyUrl?: string | null;
 };
 
 export type ListingPublication = {
@@ -119,7 +120,25 @@ export function xmlEscape(value: string | number | null | undefined) {
     .replaceAll('"', "&quot;");
 }
 
+function hrefEscape(url: string) {
+  return url.replaceAll("&", "&amp;").replaceAll('"', "&quot;").replaceAll("<", "").replaceAll(">", "");
+}
+
+function cdata(value: string) {
+  return `<![CDATA[${value.replaceAll("]]>", "]]]]><![CDATA[>")}]]>`;
+}
+
+/** Description applicants see: the manager's copy, the apply URL as text, and the same URL as a link. */
+export function postingBody(listing: RentalListing) {
+  const url = listing.applyUrl?.trim() || "";
+  const base = (listing.description || "").replace(/\n\nApply online:[\s\S]*$/, "").trim();
+  if (!url) return base;
+  const link = `<a href="${hrefEscape(url)}">${url}</a>`;
+  return `${base ? `${base}\n\n` : ""}Apply online: ${url}\n\n${link}`;
+}
+
 export function listingCanonical(listing: RentalListing) {
+  const url = listing.applyUrl?.trim() || null;
   return {
     id: listing.id,
     homeId: listing.homeId,
@@ -130,7 +149,9 @@ export function listingCanonical(listing: RentalListing) {
       postalCode: listing.postalCode,
     },
     headline: listing.headline,
-    description: listing.description,
+    description: postingBody(listing),
+    applicationUrl: url,
+    applicationLinkHtml: url ? `<a href="${hrefEscape(url)}">${url}</a>` : null,
     rent: listing.rentCents / 100,
     deposit: listing.depositCents / 100,
     availableOn: listing.availableOn,
@@ -155,7 +176,9 @@ export function zillowXml(listings: RentalListing[]) {
       <state>${xmlEscape(listing.state)}</state>
       <zip>${xmlEscape(listing.postalCode)}</zip>
       <title>${xmlEscape(listing.headline)}</title>
-      <description>${xmlEscape(listing.description)}</description>
+      <description>${cdata(postingBody(listing))}</description>
+      <website>${xmlEscape(listing.applyUrl)}</website>
+      <applicationUrl>${xmlEscape(listing.applyUrl)}</applicationUrl>
       <price>${listing.rentCents / 100}</price>
       <deposit>${listing.depositCents / 100}</deposit>
       <bedrooms>${listing.bedrooms}</bedrooms>
@@ -187,6 +210,8 @@ export function mitsXml(listings: RentalListing[], networkName: string) {
       <Information>
         <StructureType>${xmlEscape(listing.propertyType)}</StructureType>
         <UnitCount>1</UnitCount>
+        <Website>${xmlEscape(listing.applyUrl)}</Website>
+        <ApplicationURL>${xmlEscape(listing.applyUrl)}</ApplicationURL>
       </Information>
       <Address>
         <AddressLine1>${xmlEscape(listing.address)}</AddressLine1>
@@ -207,7 +232,7 @@ export function mitsXml(listings: RentalListing[], networkName: string) {
         <Deposit DepositType="Deposit">${listing.depositCents / 100}</Deposit>
       </Floorplan>
       <Amenity>
-        <Description>${xmlEscape(listing.description)}</Description>
+        <Description>${cdata(postingBody(listing))}</Description>
       </Amenity>
       <PetPolicy>
         <Comment>${xmlEscape(listing.petPolicy)}</Comment>

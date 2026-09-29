@@ -1,5 +1,5 @@
 import type { SupabaseClient } from "@supabase/supabase-js";
-import { listingNetworks, pushUrlFor, listingNetwork, type ListingNetworkId, type RentalListing } from "@/lib/listing-networks";
+import { listingCanonical, listingNetworks, pushUrlFor, listingNetwork, type ListingNetworkId, type RentalListing } from "@/lib/listing-networks";
 
 function mapListing(row: any, home?: any): RentalListing {
   return {
@@ -84,6 +84,7 @@ export async function publishLiveListing(
   organizationId: string,
   listingId: string,
   networks: ListingNetworkId[],
+  applyUrl?: string | null,
 ) {
   const { data: row } = await supabase
     .from("rental_listings")
@@ -111,7 +112,7 @@ export async function publishLiveListing(
           const response = await fetch(push, {
             method: "POST",
             headers: { "Content-Type": "application/json" },
-            body: JSON.stringify({ network: networkId, listing }),
+            body: JSON.stringify({ network: networkId, listing: listingCanonical({ ...listing, applyUrl }) }),
           });
           if (!response.ok) {
             status = "error";
