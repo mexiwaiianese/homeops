@@ -8,11 +8,14 @@ import type { TenantPaymentMethod, TenantPublic } from "@/lib/tenant-portal";
 type LoginToken = { token: string; tenantId: string; expiresAt: number; consumedAt: number | null };
 type Session = { id: string; tenantId: string; expiresAt: number };
 
+type ExtraTenant = { id: string; name: string; email: string; phone: string; home: string; city: string; homeId: string };
+
 type Store = {
   loginTokens: Map<string, LoginToken>;
   sessions: Map<string, Session>;
   paymentMethods: Map<string, TenantPaymentMethod[]>;
   stripeCustomers: Map<string, string>;
+  extraTenants: Map<string, ExtraTenant>;
 };
 
 const store: Store =
@@ -21,6 +24,7 @@ const store: Store =
     sessions: new Map(),
     paymentMethods: new Map(),
     stripeCustomers: new Map(),
+    extraTenants: new Map(),
   });
 
 export const LOGIN_TOKEN_TTL_MS = 15 * 60 * 1000;
@@ -38,7 +42,30 @@ function digits(value?: string | null) {
   return d.length === 11 && d.startsWith("1") ? d.slice(1) : d;
 }
 
+function extraTenants() {
+  store.extraTenants ??= new Map();
+  return store.extraTenants;
+}
+
+export function registerDemoPortalTenant(input: ExtraTenant) {
+  extraTenants().set(input.id, input);
+  return input;
+}
+
 export function demoTenantPublic(tenantId: string): TenantPublic | null {
+  const extra = extraTenants().get(tenantId);
+  if (extra) {
+    return {
+      id: extra.id,
+      name: extra.name,
+      email: extra.email,
+      phone: extra.phone,
+      address: extra.home,
+      city: extra.city,
+      homeId: extra.homeId,
+      mode: "demo",
+    };
+  }
   const tenant = tenants.find((row) => row.id === tenantId);
   if (!tenant) return null;
   const home = homes.find((row) => row.tenantId === tenant.id);
@@ -57,9 +84,16 @@ export function demoTenantPublic(tenantId: string): TenantPublic | null {
 export function findDemoTenantByContact(contact: string) {
   const trimmed = contact.trim().toLowerCase();
   if (!trimmed) return null;
-  if (trimmed.includes("@")) return tenants.find((row) => row.email.toLowerCase() === trimmed) || null;
+  const extras = [...extraTenants().values()];
+  if (trimmed.includes("@")) {
+    const extra = extras.find((row) => row.email.toLowerCase() === trimmed);
+    if (extra) return { id: extra.id, name: extra.name, email: extra.email, phone: extra.phone, home: extra.home };
+    return tenants.find((row) => row.email.toLowerCase() === trimmed) || null;
+  }
   const wanted = digits(trimmed);
   if (wanted.length !== 10) return null;
+  const extra = extras.find((row) => digits(row.phone) === wanted);
+  if (extra) return { id: extra.id, name: extra.name, email: extra.email, phone: extra.phone, home: extra.home };
   return tenants.find((row) => digits(row.phone) === wanted) || null;
 }
 

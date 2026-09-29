@@ -38,6 +38,7 @@ type Listing = {
   petPolicy: string;
   leaseTerm: string;
   status: string;
+  applyUrl?: string | null;
 };
 
 type Publication = {
@@ -211,6 +212,7 @@ export default function ListingsPage() {
         <nav>
           <a className="finNav" href="/"><BrandIcon name="listing" className="navIcon" />Operations</a>
           <a className="finNav active" href="/listings"><BrandIcon name="listing" className="navIcon" />Listings</a>
+          <a className="finNav" href="/applications"><BrandIcon name="applications" className="navIcon" />Applications</a>
           <a className="finNav" href="/payments"><BrandIcon name="rent" className="navIcon" />Payments</a>
           <a className="finNav" href="/financials"><BrandIcon name="rent" className="navIcon" />Books</a>
           <a className="finNav" href="/vendors"><BrandIcon name="applications" className="navIcon" />Approved Vendors</a>
@@ -324,6 +326,7 @@ export default function ListingsPage() {
                   ))}
                 </div>
                 <div className="modalActions">
+                  <button className="secondaryBtn" disabled={Boolean(busy) || !selected.applyUrl} onClick={() => void copy(selected.applyUrl || undefined).then(() => setToast("Apply link copied"))}>Copy apply link</button>
                   <button className="secondaryBtn" disabled={Boolean(busy)} onClick={() => void saveListing()}>Save listing</button>
                   <button className="secondaryBtn" disabled={Boolean(busy)} onClick={() => void unpublish()}>Unpublish</button>
                   <button className="primary" disabled={Boolean(busy)} onClick={() => void publish()}>{busy === "publish" ? "Publishing…" : "Publish to selected networks"}</button>

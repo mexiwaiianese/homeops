@@ -1,6 +1,6 @@
 import { NextResponse } from "next/server";
 import { getAuthedContext } from "@/lib/backend";
-import { tenants as demoTenants } from "@/lib/data";
+import { demoTenantPublic } from "@/lib/tenant-demo";
 import { appOrigin } from "@/lib/rent";
 import { requestTenantLoginLink } from "@/lib/tenant-auth";
 
@@ -15,7 +15,7 @@ export async function POST(request: Request, { params }: { params: Promise<{ id:
   const { supabase, user, organizationId } = await getAuthedContext();
 
   if (!supabase) {
-    if (!demoTenants.some((row) => row.id === id)) return NextResponse.json({ error: "Tenant not found" }, { status: 404 });
+    if (!demoTenantPublic(id)) return NextResponse.json({ error: "Tenant not found" }, { status: 404 });
     const result = await requestTenantLoginLink({ tenantId: id, preferredChannel: channel, origin: appOrigin(request) });
     return NextResponse.json({ mode: "demo", ...result });
   }

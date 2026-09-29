@@ -92,7 +92,7 @@ A submitted request is written to `maintenance_requests` with status `diagnose` 
 
 ## Deliberately deferred
 
-- applicant screening
+- automated credit pulls (applications are collected at `/apply/[token]` and reviewed at `/applications`; record results manually, or set `SCREENING_REQUEST_URL`)
 - renters insurance
 - banking / bank reconciliation
 - full double-entry general ledger

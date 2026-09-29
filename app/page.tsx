@@ -257,6 +257,7 @@ export default function HomeOps() {
           ))}
         </nav>
         <a className="nav" href="/listings" style={{textDecoration:"none"}}><BrandIcon name="listing" className="navIcon" />Listings</a>
+        <a className="nav" href="/applications" style={{textDecoration:"none"}}><BrandIcon name="applications" className="navIcon" />Applications</a>
         <a className="nav" href="/payments" style={{textDecoration:"none"}}><BrandIcon name="rent" className="navIcon" />Payments</a>
         <a className="nav" href="/financials" style={{textDecoration:"none"}}><BrandIcon name="rent" className="navIcon" />Books</a>
         <a className="nav" href="/vendors" style={{textDecoration:"none"}}><BrandIcon name="applications" className="navIcon" />Approved Vendors</a>

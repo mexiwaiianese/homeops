@@ -24,6 +24,21 @@ export async function POST(request: Request) {
     return NextResponse.json({ received: true, ignored: event.type });
   }
   const intent = event.data.object as { id: string; amount: number; payment_method_types?: string[]; metadata?: Record<string, string>; latest_charge?: string };
+  const applicationId = intent.metadata?.applicationId;
+  if (applicationId && !intent.metadata?.chargeId) {
+    if (event.type !== "payment_intent.succeeded") return NextResponse.json({ received: true, ignored: event.type });
+    const { getDemoApplication, markDemoApplicationFee } = await import("@/lib/application-demo");
+    if (getDemoApplication(applicationId)) {
+      markDemoApplicationFee(applicationId, "paid", intent.id);
+      return NextResponse.json({ received: true, mode: "demo", applicationId });
+    }
+    const adminForFee = createSupabaseAdminClient();
+    if (!adminForFee) return NextResponse.json({ received: true, stored: false });
+    const { markLiveApplicationFee } = await import("@/lib/application-live");
+    await markLiveApplicationFee(adminForFee, applicationId, "paid", intent.id);
+    return NextResponse.json({ received: true, mode: "live", applicationId });
+  }
+
   const chargeId = intent.metadata?.chargeId;
   if (!chargeId) return NextResponse.json({ received: true, unmatched: true });
 

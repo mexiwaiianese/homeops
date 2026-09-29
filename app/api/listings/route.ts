@@ -1,5 +1,8 @@
 import { NextResponse } from "next/server";
 import { getAuthedContext } from "@/lib/backend";
+import { applyPath } from "@/lib/applications";
+import { demoApplyTokenFor } from "@/lib/application-demo";
+import { ensureLiveApplyToken } from "@/lib/application-live";
 import { homesWithoutListing, listDemoConnections, listDemoListings, listDemoPublications, upsertDemoListing } from "@/lib/listing-demo";
 import { listingNetworks } from "@/lib/listing-networks";
 import { ensureLiveConnections, listLiveListings, upsertLiveListing } from "@/lib/listing-live";
@@ -25,7 +28,10 @@ export async function GET(request: Request) {
   if (!supabase) {
     return NextResponse.json({
       mode: "demo",
-      listings: listDemoListings(),
+      listings: listDemoListings().map((row) => ({
+        ...row,
+        applyUrl: `${originOf(request)}${applyPath(demoApplyTokenFor(row.id))}`,
+      })),
       publications: listDemoPublications(),
       connections: withFeedUrls(request, listDemoConnections()),
       availableHomes: homesWithoutListing(),
@@ -39,9 +45,14 @@ export async function GET(request: Request) {
     supabase.from("homes").select("id,address1,city,state,monthly_rent_cents").eq("organization_id", organizationId),
   ]);
   const used = new Set(listings.map((row) => row.homeId));
+  const origin = originOf(request);
+  const withLinks = await Promise.all(listings.map(async (row) => {
+    const token = await ensureLiveApplyToken(supabase, organizationId, row.id);
+    return { ...row, applyUrl: token ? `${origin}${applyPath(token)}` : null };
+  }));
   return NextResponse.json({
     mode: "live",
-    listings,
+    listings: withLinks,
     publications: publications ?? [],
     connections: withFeedUrls(request, (connections as any[]).map((row) => ({
       network: row.network,
