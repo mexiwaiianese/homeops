@@ -2,12 +2,15 @@
 
 import { useState } from "react";
 import { createBrowserClient } from "@supabase/ssr";
+import { googleAuthEnabled } from "@/lib/google-auth";
 
 export default function OperatorGoogleLogin({ nextPath, error }: { nextPath: string; error?: string }) {
   const [message, setMessage] = useState(error === "not-admin" ? "That Google account cannot open these tools." : "");
   const [busy, setBusy] = useState(false);
   const projectUrl = process.env.NEXT_PUBLIC_SUPABASE_PROJECT_URL || process.env.NEXT_PUBLIC_SUPABASE_URL;
   const publishableKey = process.env.NEXT_PUBLIC_SUPABASE_PUBLISHABLE_KEY || process.env.NEXT_PUBLIC_SUPABASE_ANON_KEY;
+
+  if (!googleAuthEnabled) return null;
 
   async function signIn() {
     if (!projectUrl || !publishableKey) {

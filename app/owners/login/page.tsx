@@ -6,6 +6,7 @@ import { createBrowserClient } from "@supabase/ssr";
 import BrandLockup from "@/components/brand-lockup";
 import PersonaQuickLogin from "@/components/persona-login/persona-quick-login";
 import { owners as demoOwners } from "@/lib/data";
+import { googleAuthEnabled } from "@/lib/google-auth";
 
 type Provider = "google" | "apple";
 
@@ -41,6 +42,7 @@ export default function OwnerLoginPage() {
   // Google / Apple use Supabase OAuth. The provider must be enabled in the Supabase dashboard
   // and /auth/callback added as a redirect URL. First sign-in links to the owner by verified email.
   async function signInWithProvider(provider: Provider) {
+    if (provider === "google" && !googleAuthEnabled) return;
     if (!configured) { setMessage(`Demo mode: ${provider === "google" ? "Google" : "Apple"} sign-in needs Supabase. Choose a demo owner below.`); return; }
     setBusy(provider);
     const supabase = createBrowserClient(projectUrl!, publishableKey!);
@@ -63,10 +65,12 @@ export default function OwnerLoginPage() {
         <p>Cash to you, NOI, occupancy, closed statements, and answers to your own questions — for the properties your manager runs in portonOS.</p>
 
         <div className="opProviders">
-          <button type="button" className="opProviderBtn" onClick={() => void signInWithProvider("google")} disabled={Boolean(busy)}>
-            <GoogleMark />
-            {busy === "google" ? "Opening Google…" : "Continue with Google"}
-          </button>
+          {googleAuthEnabled && (
+            <button type="button" className="opProviderBtn" onClick={() => void signInWithProvider("google")} disabled={Boolean(busy)}>
+              <GoogleMark />
+              {busy === "google" ? "Opening Google…" : "Continue with Google"}
+            </button>
+          )}
           <button type="button" className="opProviderBtn apple" onClick={() => void signInWithProvider("apple")} disabled={Boolean(busy)}>
             <AppleMark />
             {busy === "apple" ? "Opening Apple…" : "Continue with Apple"}
@@ -81,7 +85,7 @@ export default function OwnerLoginPage() {
           <button className="primary" type="submit" disabled={!email || Boolean(busy)}>{busy === "email" ? "Sending…" : "Email me a sign-in link"}</button>
         </form>
         {message && <div className="notice">{message}</div>}
-        <p className="opHint">Use the same email address your property manager has on file. Google and Apple sign-in link to that address the first time you use them.</p>
+        <p className="opHint">Use the same email address your property manager has on file. Apple sign-in links to that address the first time you use it.</p>
 
         <PersonaQuickLogin group="owner" title="Open as an owner">
           {!configured && (

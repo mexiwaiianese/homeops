@@ -1,4 +1,5 @@
 import { getAuthedContext } from "@/lib/backend";
+import { googleAuthEnabled } from "@/lib/google-auth";
 
 /** The only Google account that may open operator tools. */
 export const OPERATOR_ADMIN_EMAIL = "nathan@dbx.dev";
@@ -12,6 +13,7 @@ type AuthLike = {
 
 /** True only for a confirmed Google sign-in whose email is the operator admin. */
 export function isOperatorAdmin(user: AuthLike) {
+  if (!googleAuthEnabled) return false;
   if (!user?.email || !user.email_confirmed_at || user.email.toLowerCase() !== OPERATOR_ADMIN_EMAIL) return false;
   const providers = [user.app_metadata?.provider, ...(user.identities ?? []).map((identity) => identity.provider)];
   return providers.includes("google");

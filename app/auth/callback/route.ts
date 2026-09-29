@@ -1,4 +1,5 @@
 import { NextResponse } from "next/server";
+import { googleAuthEnabled } from "@/lib/google-auth";
 import { isOperatorAdmin } from "@/lib/operator-admin";
 import { createSupabaseServerClient } from "@/lib/supabase/server";
 
@@ -11,7 +12,7 @@ export async function GET(request: Request) {
   if (code) await supabase?.auth.exchangeCodeForSession(code);
 
   // Operator tools accept one Google account. Any other Google sign-in aimed at /dev is dropped.
-  if (safeNext.startsWith("/dev") && supabase) {
+  if (googleAuthEnabled && safeNext.startsWith("/dev") && supabase) {
     const { data } = await supabase.auth.getUser();
     if (!isOperatorAdmin(data.user)) {
       await supabase.auth.signOut();
