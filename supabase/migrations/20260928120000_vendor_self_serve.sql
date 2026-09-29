@@ -44,3 +44,25 @@ create table if not exists vendor_self_invoices (
 
 alter table vendor_self_signups enable row level security;
 alter table vendor_self_invoices enable row level security;
+
+-- Safe if an earlier copy of this migration already ran without these columns.
+alter table vendor_self_signups add column if not exists promo_code text;
+alter table vendor_self_signups drop constraint if exists vendor_self_signups_monthly_cents_check;
+alter table vendor_self_signups add constraint vendor_self_signups_monthly_cents_check check (monthly_cents >= 0);
+alter table vendor_self_invoices add column if not exists project_key text;
+
+-- Editable note shown on the invoice link page while the PDF renders. One row per audience.
+-- Edited from /dev/invoice-ads. Images are stored inline as data URLs.
+create table if not exists invoice_ads (
+  audience text primary key check (audience in ('manager', 'vendor')),
+  eyebrow text,
+  headline text not null,
+  html text not null default '',
+  image_url text,
+  image_alt text,
+  cta_label text,
+  cta_url text,
+  updated_at timestamptz not null default now()
+);
+
+alter table invoice_ads enable row level security;

@@ -37,7 +37,7 @@ export async function PUT(request: Request) {
   const admin = createSupabaseAdminClient();
   if (admin) {
     const error = await saveLiveInvoiceAd(admin, ad);
-    if (error) return NextResponse.json({ error: `${error}. Run supabase/migrations/20260928150000_invoice_ads.sql.` }, { status: 400 });
+    if (error) return NextResponse.json({ error: `${error}. Run supabase/migrations/20260928120000_vendor_self_serve.sql.` }, { status: 400 });
   } else {
     saveDemoInvoiceAd(ad);
   }
