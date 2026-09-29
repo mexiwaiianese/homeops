@@ -70,6 +70,7 @@ export default function VendorLoginPage() {
             </>
           )}
         </PersonaQuickLogin>
+        <a href="/vendors/signup">Create a vendor account · $19/mo</a>
         <a href="/login">Property manager sign-in</a>
         <a href="/tenant/login">Tenant portal sign-in</a>
       </section>

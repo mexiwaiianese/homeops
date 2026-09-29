@@ -2,12 +2,14 @@
 
 import { usePathname } from "next/navigation";
 import BrandLockup from "@/components/brand-lockup";
+import NavToggle from "@/components/nav-toggle";
 import { leavePersona } from "@/lib/persona-sign-out-client";
 
 const links = [
   ["/vendors/desk", "Jobs"],
   ["/vendors/settings", "Bid settings"],
   ["/vendors/crew", "Crew"],
+  ["/vendors/invoices", "Invoices"],
   ["/vendors/receivables", "Receivables"],
   ["/vendors/payouts", "Bank account"],
 ];
@@ -27,15 +29,20 @@ export default function VendorPortalFrame({
   return (
     <main className="intakeShell vendorPortal">
       <section className="intakeCard jobCard">
+        <div className="vendorDesk" data-menu>
         <div className="deskHead">
           <BrandLockup artwork="lockup" />
-          <button className="textBtn" onClick={() => void leavePersona("/api/vendors/session", "/vendors/login")}>Sign out</button>
+          <div className="deskHeadTools">
+            <NavToggle />
+            <button className="textBtn" onClick={() => void leavePersona("/api/vendors/session", "/vendors/login")}>Sign out</button>
+          </div>
         </div>
         <nav className="vendorDeskNav">
           {links.map(([href, label]) => (
             <a key={href} href={href} className={pathname === href ? "active" : ""}>{label}</a>
           ))}
         </nav>
+        </div>
         <p className="eyebrow">{eyebrow}</p>
         <h1>{title}</h1>
         {lede && <p className="summary">{lede}</p>}

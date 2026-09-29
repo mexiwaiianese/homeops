@@ -946,6 +946,55 @@ button:disabled {
 .crewActions .primary,
 .crewActions .secondaryBtn { width: auto; min-height: 40px; padding: 0 14px; font-size: 13px; }
 .credential > div > span.crewLinkWarn { color: #b45309; }
+.planGrid { display: grid; gap: 10px; margin: 12px 0 4px; }
+.planCard { display: block; border: 1px solid var(--line); border-radius: 12px; padding: 12px 14px; cursor: pointer; }
+.planCard.on { border-color: var(--teal, #1f6f78); background: #f2f9f7; }
+.intakeCard label.planCard { display: block; font-weight: 400; }
+.planCard .planPick { display: flex; align-items: center; gap: 8px; margin: 0; color: var(--ink); font-size: inherit; }
+.intakeCard .planCard input[type="checkbox"] { width: 16px; height: 16px; margin: 0; flex-shrink: 0; }
+.planCard strong { display: inline; }
+.planCard > span:not(.planPick) { display: block; color: var(--muted); font-size: 12px; margin-top: 2px; }
+.planList { margin: 8px 0 0; padding-left: 18px; font-size: 13px; line-height: 1.45; font-weight: 400; }
+.promoRow { display: flex; gap: 8px; align-items: center; }
+.promoRow input { flex: 1; text-transform: uppercase; }
+.intakeCard .promoRow .secondaryBtn { width: auto; margin: 0; min-height: 44px; padding: 0 16px; white-space: nowrap; }
+.promoApplied { margin: -8px 0 8px; font-size: 13px; color: var(--ink); }
+.promoApplied s { color: var(--muted); font-weight: 400; margin-left: 8px; }
+.promoApplied em { color: var(--muted); font-style: normal; font-size: 12px; }
+.projectPick { display: flex; flex-direction: column; gap: 6px; }
+.projectPick select { width: 100%; border: 1px solid #d9ddd9; background: #fff; padding: 11px 12px; border-radius: 9px; font: inherit; color: var(--ink); }
+.platformMatch { margin: 0 0 12px; font-size: 13px; color: var(--muted); }
+.invoiceAdLink { display: inline-flex; margin-top: 8px; text-decoration: none; }
+.invoiceAdImage { display: block; width: 100%; max-height: 320px; object-fit: cover; border-radius: 12px; margin: 4px 0 12px; }
+.invoiceAdBody { color: var(--ink); font-size: 14px; line-height: 1.55; }
+.invoiceAdBody p { margin: 0 0 10px; }
+.invoiceAdBody ul, .invoiceAdBody ol { margin: 8px 0 0; padding-left: 18px; font-size: 13px; line-height: 1.45; }
+.invoiceAdBody img { max-width: 100%; border-radius: 10px; }
+.invoiceAdMore { display: inline-block; margin-top: 10px; font-size: 13px; font-weight: 700; color: var(--green); }
+.invoiceAdActions { display: flex; gap: 10px; margin-top: 18px; }
+.invoiceAdActions .primary, .invoiceAdActions .secondaryBtn { flex: 1; min-height: 44px; margin: 0; }
+.invoiceAdActions .primary:disabled { background: #c7cfca; color: #fff; cursor: not-allowed; }
+.invoiceAdTrack { height: 4px; background: #e6ece9; border-radius: 4px; overflow: hidden; margin-top: 14px; }
+.invoiceAdTrack span { display: block; height: 100%; width: 0; background: var(--teal, #1f6f78); animation-name: invoiceAdFill; animation-timing-function: linear; animation-fill-mode: forwards; }
+.invoiceAdTrack.indeterminate span { width: 40%; animation: invoiceAdSlide 1.2s ease-in-out infinite; }
+@keyframes invoiceAdFill { to { width: 100%; } }
+@keyframes invoiceAdSlide { 0% { transform: translateX(-100%); } 100% { transform: translateX(260%); } }
+.pdfSheet { width: 100%; }
+.pdfSheet.preload { position: absolute; width: 1px; height: 1px; overflow: hidden; opacity: 0; pointer-events: none; }
+.pdfPages { display: flex; flex-direction: column; gap: 14px; align-items: center; background: #eef1ef; padding: 14px; border-radius: 12px; }
+.pdfPage { display: block; width: 100%; max-width: 820px; height: auto; background: #fff; box-shadow: 0 6px 24px rgba(24, 48, 37, 0.12); border-radius: 4px; }
+.invoiceSheet { width: min(900px, 100%); }
+.adEditorGrid { display: grid; grid-template-columns: 1fr 1fr; gap: 24px; align-items: start; }
+.adEditorGrid textarea { min-height: 220px; font-family: ui-monospace, SFMono-Regular, Menlo, Consolas, monospace; font-size: 12px; }
+.adPreview { border: 1px solid var(--line); border-radius: 20px; padding: 30px; background: #fff; position: sticky; top: 20px; }
+.devMenu { display: grid; gap: 10px; margin-top: 8px; }
+.devMenu a.primary { display: block; text-align: center; text-decoration: none; }
+.adTabs { display: flex; gap: 8px; margin: 0 0 16px; }
+.adTabs button { border: 1px solid var(--line); background: #fff; padding: 8px 14px; border-radius: 999px; font-weight: 700; cursor: pointer; }
+.adTabs button.on { background: var(--ink); color: #fff; border-color: var(--ink); }
+.adImageRow { display: flex; gap: 10px; align-items: center; flex-wrap: wrap; }
+.adImageRow img { width: 96px; height: 64px; object-fit: cover; border-radius: 8px; border: 1px solid var(--line); }
+@media (max-width: 860px) { .adEditorGrid { grid-template-columns: 1fr; } .adPreview { position: static; } }
 .outcomeBanner {
   margin: 4px 0 16px;
   padding: 14px 16px;
@@ -3591,4 +3640,207 @@ a.statLink:hover {
 }
 .vendorDeskNav a.active {
   text-decoration: underline;
+}
+.deskHeadTools {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  margin-left: auto;
+}
+.navToggle {
+  display: none;
+  width: 44px;
+  height: 44px;
+  border: 0;
+  border-radius: 10px;
+  background: transparent;
+  color: #fff;
+  align-items: center;
+  justify-content: center;
+  cursor: pointer;
+  flex-shrink: 0;
+}
+.navToggleBars,
+.navToggleBars::before,
+.navToggleBars::after {
+  display: block;
+  width: 18px;
+  height: 2px;
+  border-radius: 2px;
+  background: currentColor;
+  position: relative;
+}
+.navToggleBars::before,
+.navToggleBars::after {
+  content: "";
+  position: absolute;
+  left: 0;
+}
+.navToggleBars::before {
+  top: -6px;
+}
+.navToggleBars::after {
+  top: 6px;
+}
+.menu-open .navToggleBars {
+  background: transparent;
+}
+.menu-open .navToggleBars::before {
+  top: 0;
+  transform: rotate(45deg);
+}
+.menu-open .navToggleBars::after {
+  top: 0;
+  transform: rotate(-45deg);
+}
+
+/* Phone: the horizontal top nav collapses behind the menu button. */
+@media (max-width: 700px) {
+  .navToggle {
+    display: inline-flex;
+  }
+  .sidebar,
+  .finSide {
+    position: sticky;
+    top: 0;
+    z-index: 40;
+    height: auto;
+    display: grid;
+    grid-template-columns: minmax(0, 1fr) auto;
+    align-items: center;
+    overflow: visible;
+    padding: 8px 10px;
+    gap: 4px 8px;
+  }
+  .sidebar > :not(.brand):not(.navToggle),
+  .finSide > :not(.brand):not(.navToggle) {
+    display: none;
+  }
+  .sidebar .brand,
+  .finSide .brand {
+    justify-content: flex-start;
+    width: auto;
+    min-width: 0;
+    margin: 0;
+  }
+  .sidebar.menu-open,
+  .finSide.menu-open {
+    align-items: stretch;
+    padding-bottom: 14px;
+  }
+  .sidebar.menu-open > :not(.brand):not(.navToggle),
+  .finSide.menu-open > :not(.brand):not(.navToggle) {
+    display: flex;
+    grid-column: 1 / -1;
+    width: 100%;
+    min-width: 0;
+  }
+  .sidebar.menu-open > nav,
+  .finSide.menu-open > nav,
+  .sidebar.menu-open > .portfolio,
+  .finSide.menu-open > .portfolio {
+    flex-direction: column;
+    align-items: stretch;
+  }
+  .sidebar.menu-open nav,
+  .finSide.menu-open nav {
+    display: flex;
+    flex-direction: column;
+    gap: 2px;
+  }
+  .sidebar.menu-open .nav,
+  .sidebar.menu-open .nav:not(.active),
+  .finSide.menu-open .finNav {
+    justify-content: flex-start;
+    text-align: left;
+    font-size: 15px;
+    line-height: 1.2;
+    min-height: 44px;
+    width: 100%;
+    white-space: normal;
+    padding: 10px 12px;
+  }
+  .sidebar.menu-open .portfolio,
+  .finSide.menu-open .portfolio {
+    display: flex;
+    margin-top: 8px;
+  }
+  .sidebar.menu-open .nav b {
+    display: inline-flex;
+  }
+  .vendorDeskNav {
+    display: none;
+    flex-direction: column;
+    align-items: stretch;
+    gap: 4px;
+    margin: 0;
+  }
+  .vendorDesk.menu-open .vendorDeskNav {
+    display: flex;
+    margin-top: 8px;
+  }
+  .vendorDeskNav a {
+    display: flex;
+    align-items: center;
+    min-height: 44px;
+    padding: 10px 12px;
+    border-radius: 10px;
+    background: #e8eef4;
+    color: var(--navy);
+    text-decoration: none;
+  }
+  .vendorDeskNav a.active {
+    background: var(--navy);
+    color: #fff;
+  }
+  .vendorDesk .navToggle {
+    color: var(--navy);
+    border: 1px solid var(--line);
+    background: #fff;
+  }
+  .vendorDesk .deskHead {
+    align-items: center;
+  }
+  .vendorDesk .brand {
+    min-width: 0;
+    flex: 1;
+    padding: 0;
+  }
+  .vendorDesk .brandArtwork {
+    max-width: 132px;
+  }
+  .deskHeadTools {
+    flex-shrink: 0;
+  }
+  .deskHeadTools .textBtn {
+    white-space: nowrap;
+  }
+  .opTopInner {
+    flex-wrap: wrap;
+  }
+  .opTopActions {
+    width: 100%;
+    margin-left: 0;
+  }
+  .opTopActions .opBtn {
+    flex: 1;
+    min-height: 44px;
+  }
+  .intelTabs button,
+  .finFilters button {
+    min-height: 44px;
+  }
+  .finFilters {
+    max-width: 100%;
+    overflow-x: auto;
+    flex-wrap: nowrap;
+  }
+  .finFilters button {
+    flex: 0 0 auto;
+  }
+  .headerActions,
+  .content > header,
+  .finHeader {
+    flex-wrap: wrap;
+  }
 }

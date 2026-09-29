@@ -3,6 +3,7 @@
 import { FormEvent, useEffect, useMemo, useState } from "react";
 import BrandLockup from "@/components/brand-lockup";
 import ManagerSignOut from "@/components/manager-sign-out";
+import NavToggle from "@/components/nav-toggle";
 import BrandIcon from "@/components/brand-icon";
 import { moneyCents } from "@/lib/rent";
 
@@ -110,6 +111,7 @@ export default function PaymentsPage() {
     <main className="finShell">
       <aside className="finSide">
         <BrandLockup href="/" className="finBrand" />
+        <NavToggle />
         <nav>
           <a className="finNav" href="/"><BrandIcon name="listing" className="navIcon" />Operations</a>
           <a className="finNav" href="/listings"><BrandIcon name="listing" className="navIcon" />Listings</a>

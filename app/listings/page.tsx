@@ -3,6 +3,7 @@
 import { useEffect, useState } from "react";
 import BrandLockup from "@/components/brand-lockup";
 import ManagerSignOut from "@/components/manager-sign-out";
+import NavToggle from "@/components/nav-toggle";
 import BrandIcon from "@/components/brand-icon";
 
 type Connection = {
@@ -206,6 +207,7 @@ export default function ListingsPage() {
       {toast && <div className="toast">{toast}</div>}
       <aside className="finSide">
         <BrandLockup href="/" className="finBrand" />
+        <NavToggle />
         <nav>
           <a className="finNav" href="/"><BrandIcon name="listing" className="navIcon" />Operations</a>
           <a className="finNav active" href="/listings"><BrandIcon name="listing" className="navIcon" />Listings</a>

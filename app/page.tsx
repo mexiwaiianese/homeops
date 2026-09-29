@@ -4,6 +4,7 @@ import { useEffect, useState } from "react";
 import BrandLockup from "@/components/brand-lockup";
 import BrandIcon from "@/components/brand-icon";
 import ManagerSignOut from "@/components/manager-sign-out";
+import NavToggle from "@/components/nav-toggle";
 import { homes as seedHomes, initialMaintenance, owners as seedOwners, tenants as seedTenants, type MaintenanceStatus } from "@/lib/data";
 import { parseOrgSettings } from "@/lib/org-settings";
 import SettingsModal from "@/components/settings-modal";
@@ -246,6 +247,7 @@ export default function HomeOps() {
       {toast && <div className="toast">{toast}</div>}
       <aside className="sidebar">
         <BrandLockup />
+        <NavToggle />
         <nav>
           {nav.map((item) => (
             <button key={item} className={tab === item ? "nav active" : "nav"} onClick={() => setTab(item)}>

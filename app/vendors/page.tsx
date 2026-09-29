@@ -5,6 +5,7 @@ import type { VendorApprovalStatus, VendorWorkflowStage } from "@/lib/vendors";
 import { isNetworkAdmin, managerVisibleStatuses } from "@/lib/vendors";
 import BrandLockup from "@/components/brand-lockup";
 import ManagerSignOut from "@/components/manager-sign-out";
+import NavToggle from "@/components/nav-toggle";
 import BrandIcon from "@/components/brand-icon";
 import RecruitmentBoard from "./recruitment-board";
 import VendorBiddingPanel from "@/components/vendor-bidding-panel";
@@ -187,6 +188,7 @@ export default function VendorsPage() {
       {toast && <div className="toast">{toast}</div>}
       <aside className="finSide">
         <BrandLockup href="/" className="finBrand" />
+        <NavToggle />
         <nav>
           <a className="finNav" href="/">
             <BrandIcon name="listing" className="navIcon" />

@@ -3,6 +3,7 @@
 import { FormEvent, useEffect, useMemo, useState } from "react";
 import BrandLockup from "@/components/brand-lockup";
 import ManagerSignOut from "@/components/manager-sign-out";
+import NavToggle from "@/components/nav-toggle";
 import BrandIcon from "@/components/brand-icon";
 import { BILL_KINDS, BOOK_KINDS, buildOwnerStatements, buildTenantLedgers, type BookEntry, type BooksHome, type BooksOwner, type VendorBill } from "@/lib/books";
 import { buildYearReport } from "@/lib/books-reports";
@@ -264,6 +265,7 @@ export default function BooksPage() {
     <main className="finShell">
       <aside className="finSide">
         <BrandLockup href="/" className="finBrand" />
+        <NavToggle />
         <BooksNav />
         <div className="portfolio">
           <small>PROPERTY BOOKS</small>
