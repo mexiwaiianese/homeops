@@ -76,6 +76,11 @@ export type PersonaLoginAdapter = {
    */
   currentUserEmail?(): Promise<string | null>;
   /**
+   * True when the current session is the app's operator admin (Google, fixed account).
+   * Treated like the email allowlist: the switcher opens without the shared access code.
+   */
+  operatorAdmin?(): Promise<boolean>;
+  /**
    * Optional: create demo records so personas exist on an empty backend. Exposed as
    * POST <apiBase>/seed and a "Create demo data" button when the persona list is empty, plus a
    * "Reset demo data" action that calls it with `ctx.reset = true`.

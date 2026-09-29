@@ -27,6 +27,7 @@
 import { createHash, randomBytes } from "crypto";
 import type { SupabaseClient } from "@supabase/supabase-js";
 import { getAuthedContext } from "@/lib/backend";
+import { isOperatorAdmin } from "@/lib/operator-admin";
 import { homes, owners as demoOwners, tenants as demoTenants } from "@/lib/data";
 import { resetDemoStores } from "@/lib/demo-reset";
 import { seedDemoWorkspace, summarizeSeed } from "@/lib/demo-seed-live";
@@ -390,6 +391,11 @@ export const homeopsPersonaLogin: PersonaLoginAdapter = {
   async currentUserEmail() {
     const { user } = await getAuthedContext();
     return user?.email ?? null;
+  },
+
+  async operatorAdmin() {
+    const { user } = await getAuthedContext();
+    return isOperatorAdmin(user);
   },
 
   // "Create demo data" fills gaps in the caller's sandbox without touching existing rows.
