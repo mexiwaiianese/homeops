@@ -1945,6 +1945,7 @@ button:disabled {
   width:max-content;
   max-width:50%;
   box-sizing:border-box;
+  white-space:nowrap;
 }
 .multiSelectMenu{
   position:absolute;
@@ -2002,6 +2003,26 @@ button:disabled {
 .intakeNone{font-size:12px;color:var(--muted);margin:8px 0 0}
 .intakeActions{display:flex;flex-direction:column;gap:8px;margin-top:10px}
 @media(max-width:1100px){.recruitLayout{grid-template-columns:1fr}}
+@media(max-width:700px){
+  .recruitFilters{grid-template-columns:1fr}
+  .recruitFilters .span2{grid-column:auto}
+  .recruitFilters .multiSelectToggle,
+  .multiSelectMenu{
+    width:100%;
+    max-width:100%;
+  }
+  .recruitFilters .multiSelectMenu{
+    right:0;
+    max-height:min(280px,50vh);
+  }
+  .recruitFilters .multiSelectMenu label{
+    width:100%;
+    max-width:none;
+    white-space:normal;
+  }
+  .recruitActions{flex-direction:column}
+  .recruitActions button{min-width:0;width:100%}
+}
 
 .authCard .brand,
 .intakeCard > .brand {
