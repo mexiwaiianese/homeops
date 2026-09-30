@@ -1,5 +1,6 @@
 import { NextResponse } from "next/server";
 import { getAuthedContext } from "@/lib/backend";
+import { getOperatorAdmin } from "@/lib/operator-admin";
 import { buildVendorFingerprint, isNetworkAdmin, normalizeVendorName } from "@/lib/vendors";
 import { vendors as demoVendors } from "@/lib/vendor-demo";
 
@@ -10,12 +11,13 @@ export async function GET(request: Request) {
   const status = searchParams.get("status");
   const stage = searchParams.get("stage");
 
+  const platformAdmin = (await getOperatorAdmin()).allowed;
   if (!supabase) {
     let rows = demoVendors;
     if (q) rows = rows.filter(v => [v.name, v.trade, v.city, v.state, ...v.services].join(" ").toLowerCase().includes(q));
     if (status) rows = rows.filter(v => v.approval_status === status);
     if (stage) rows = rows.filter(v => v.workflow_stage === stage);
-    return NextResponse.json({ mode: "demo", vendors: rows, role: "manager" });
+    return NextResponse.json({ mode: "demo", vendors: rows, role: "manager", platformAdmin });
   }
   if (!user || !organizationId) return NextResponse.json({ error: "Authentication required" }, { status: 401 });
 
@@ -40,7 +42,7 @@ export async function GET(request: Request) {
     supabase.from("service_categories").select("id,name").eq("active",true).order("name"),
     supabase.from("owners").select("id,full_name").eq("organization_id",organizationId).order("full_name"),
     supabase.from("homes").select("id,address1").eq("organization_id",organizationId).order("address1")]);
-  return NextResponse.json({ mode: "live", role, vendors: data ?? [], meta:{categories:categories??[],owners:owners??[],homes:homes??[]} });
+  return NextResponse.json({ mode: "live", role, platformAdmin, vendors: data ?? [], meta:{categories:categories??[],owners:owners??[],homes:homes??[]} });
 }
 
 export async function POST(request: Request) {

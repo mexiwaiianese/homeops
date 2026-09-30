@@ -82,6 +82,7 @@ export default function VendorsPage() {
     undefined,
   );
   const [role, setRole] = useState<string | null>(null);
+  const [platformAdmin, setPlatformAdmin] = useState(false);
   const [meta, setMeta] = useState<any>({
     categories: [],
     owners: [],
@@ -101,6 +102,7 @@ export default function VendorsPage() {
     }
     setMode(body.mode);
     setRole(body.role ?? (body.mode === "demo" ? "manager" : null));
+    setPlatformAdmin(Boolean(body.platformAdmin));
     const rows = (body.vendors ?? []) as VendorRow[];
     const admin = isNetworkAdmin(body.role ?? (body.mode === "demo" ? "manager" : null));
     const visible = admin ? rows : rows.filter((v) => managerVisibleStatuses.includes(v.approval_status));
@@ -232,8 +234,8 @@ export default function VendorsPage() {
             <h1>{networkAdmin ? "Trusted vendors, before marketplace growth." : "Who can take the work."}</h1>
             <p>
               {networkAdmin
-                ? "Approve, monitor, and route work using structured vendor records, verified credentials, coverage, owner rules, and operational history."
-                : "Dispatch-ready shops with coverage, credentials, rates, and job history. Network approval and vendor autobid setup stay with the network admin."}
+                ? "Approve, monitor, and add vendors. Public recruitment is a platform-admin function."
+                : "Dispatch-ready shops with coverage, credentials, rates, and job history. Adding vendors stays with the owner; recruitment stays with platform admin."}
             </p>
           </div>
           {networkAdmin && (
@@ -258,7 +260,7 @@ export default function VendorsPage() {
           <Stat label="Emergency capable" value={stats.emergency} />
         </div>
 
-        {networkAdmin && <RecruitmentBoard />}
+        {platformAdmin && <RecruitmentBoard />}
 
         {networkAdmin && (
         <section className="panel">

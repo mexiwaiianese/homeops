@@ -4,11 +4,12 @@ import { demoInviteToken, demoProspects, markDemoInvited } from "@/lib/vendor-pr
 import { inviteProspect } from "@/lib/vendor-invite";
 import { invitationUrl } from "@/lib/vendor-outreach";
 import { INDEPENDENT_INVITE_DEFAULTS, independentFitScore, isIndependentInviteCandidate, rankDiscoveredProviders, type RecruitmentTradeSlug } from "@/lib/vendor-prospects";
-import { isNetworkAdmin } from "@/lib/vendors";
+import { requirePlatformAdmin } from "@/lib/operator-admin";
 
 export async function POST(request: Request) {
-  const { supabase, user, organizationId, role } = await getAuthedContext();
-  if (supabase && !isNetworkAdmin(role)) return NextResponse.json({ error: "Network admin required" }, { status: 403 });
+  const admin = await requirePlatformAdmin();
+  if (!admin.ok) return admin.response;
+  const { supabase, user, organizationId } = await getAuthedContext();
   const body = await request.json().catch(() => ({}));
   const city = String(body.city || "Lehi").trim();
   const state = String(body.state || "UT").trim().toUpperCase().slice(0, 2);

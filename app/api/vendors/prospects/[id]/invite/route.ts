@@ -4,10 +4,12 @@ import { demoInviteToken, demoProspects, markDemoInvited } from "@/lib/vendor-pr
 import { invitationUrl } from "@/lib/vendor-outreach";
 import { inviteProspect } from "@/lib/vendor-invite";
 import { isScaledBrand } from "@/lib/vendor-prospects";
-import { isNetworkAdmin } from "@/lib/vendors";
+import { requirePlatformAdmin } from "@/lib/operator-admin";
 
 export async function POST(request: Request, { params }: { params: Promise<{ id: string }> }) {
-  const { supabase, user, organizationId, role } = await getAuthedContext();
+  const admin = await requirePlatformAdmin();
+  if (!admin.ok) return admin.response;
+  const { supabase, user, organizationId } = await getAuthedContext();
   const { id } = await params;
   const body = await request.json().catch(() => ({}));
   const requestedChannel = body.channel === "email" || body.channel === "sms" ? body.channel : "auto";
@@ -32,7 +34,6 @@ export async function POST(request: Request, { params }: { params: Promise<{ id:
     });
   }
   if (!user || !organizationId) return NextResponse.json({ error: "Authentication required" }, { status: 401 });
-  if (!isNetworkAdmin(role)) return NextResponse.json({ error: "Network admin required" }, { status: 403 });
 
   const { data: prospect } = await supabase.from("vendor_prospects").select("*").eq("id", id).eq("organization_id", organizationId).maybeSingle();
   if (!prospect) return NextResponse.json({ error: "Prospect not found" }, { status: 404 });

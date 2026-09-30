@@ -41,6 +41,7 @@ export default function LoginPage() {
         {message && <div className="notice">{message}</div>}
         <PersonaQuickLogin group="manager" title="Open as a manager" />
         <a href="/">Return to demo</a>
+        <a href="/admin/login">Platform admin sign-in</a>
         <a href="/vendors/login">Vendor desk sign-in</a>
         <a href="/owners/login">Owner portal sign-in</a>
         <a href="/tenant/login">Tenant portal sign-in</a>

@@ -27,7 +27,7 @@
 import { createHash, randomBytes } from "crypto";
 import type { SupabaseClient } from "@supabase/supabase-js";
 import { getAuthedContext } from "@/lib/backend";
-import { isOperatorAdmin } from "@/lib/operator-admin";
+import { getOperatorAdmin } from "@/lib/operator-admin";
 import { homes, owners as demoOwners, tenants as demoTenants } from "@/lib/data";
 import { resetDemoStores } from "@/lib/demo-reset";
 import { seedDemoWorkspace, summarizeSeed } from "@/lib/demo-seed-live";
@@ -348,7 +348,7 @@ async function liveSignIn(persona: Persona): Promise<PersonaSignInResult> {
   const stamp = { full_name: "Persona login", auth_user_id: signedIn.userId };
   let link: { error: { message: string } | null } = { error: null };
   if (persona.group === "manager" && meta.organizationId) {
-    // "admin" so the sandbox manager can also run network-admin actions (add vendors, invite prospects).
+    // "admin" so the sandbox manager can add and approve vendors. Recruitment stays platform-admin only.
     link = await admin.from("organization_members").upsert({ organization_id: meta.organizationId, user_id: signedIn.userId, role: "admin" }, { onConflict: "organization_id,user_id" });
   } else if (persona.group === "owner" && meta.ownerId && meta.organizationId) {
     link = await admin.from("owner_users").upsert({ organization_id: meta.organizationId, owner_id: meta.ownerId, email: meta.email, role: "owner", ...stamp }, { onConflict: "owner_id,email" });
@@ -394,8 +394,8 @@ export const homeopsPersonaLogin: PersonaLoginAdapter = {
   },
 
   async operatorAdmin() {
-    const { user } = await getAuthedContext();
-    return isOperatorAdmin(user);
+    const { allowed } = await getOperatorAdmin();
+    return allowed;
   },
 
   // "Create demo data" fills gaps in the caller's sandbox without touching existing rows.

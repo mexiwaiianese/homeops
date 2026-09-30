@@ -2,7 +2,8 @@ import { NextResponse } from "next/server";
 import { getAuthedContext } from "@/lib/backend";
 import { demoProspects, demoProspectsWithOutreach } from "@/lib/vendor-prospect-demo";
 import { discoverProvidersFromPlaces, groupDiscoveredProviders, independentFitScore, isIndependentInviteCandidate, prospectFingerprint, rankDiscoveredProviders, type RecruitmentTradeSlug } from "@/lib/vendor-prospects";
-import { normalizeVendorName, isNetworkAdmin } from "@/lib/vendors";
+import { requirePlatformAdmin } from "@/lib/operator-admin";
+import { normalizeVendorName } from "@/lib/vendors";
 
 function toRow(organizationId: string, provider: ReturnType<typeof rankDiscoveredProviders>[number], matchedVendorId: string | null, outreachStatus = "discovered") {
   return {
@@ -39,6 +40,8 @@ function toRow(organizationId: string, provider: ReturnType<typeof rankDiscovere
 }
 
 export async function GET() {
+  const admin = await requirePlatformAdmin();
+  if (!admin.ok) return admin.response;
   const { supabase, user, organizationId } = await getAuthedContext();
   if (!supabase) {
     const prospects = demoProspectsWithOutreach().map((row) => ({
@@ -105,7 +108,9 @@ export async function GET() {
 }
 
 export async function POST(request: Request) {
-  const { supabase, user, organizationId, role } = await getAuthedContext();
+  const admin = await requirePlatformAdmin();
+  if (!admin.ok) return admin.response;
+  const { supabase, user, organizationId } = await getAuthedContext();
   const body = await request.json().catch(() => ({}));
   const city = String(body.city || "Lehi").trim();
   const state = String(body.state || "UT").trim().toUpperCase().slice(0, 2);
@@ -116,7 +121,6 @@ export async function POST(request: Request) {
     return NextResponse.json({ mode: "demo", source: "demo_catalog", city, state, prospects: providers, groups: groupDiscoveredProviders(providers), discovered: providers.length });
   }
   if (!user || !organizationId) return NextResponse.json({ error: "Authentication required" }, { status: 401 });
-  if (!isNetworkAdmin(role)) return NextResponse.json({ error: "Network admin required" }, { status: 403 });
 
   const live = await discoverProvidersFromPlaces({ city, state, trades });
   const providers = live.source === "google_places" ? live.providers : rankDiscoveredProviders(demoProspects);
