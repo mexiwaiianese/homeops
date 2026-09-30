@@ -1940,13 +1940,20 @@ button:disabled {
 }
 .recruitActions{display:flex;gap:8px;flex-wrap:wrap}
 .recruitActions button{flex:1;min-width:140px}
-.multiSelect{position:relative}
+.multiSelect{position:relative;justify-self:start}
+.recruitFilters .multiSelectToggle{
+  width:max-content;
+  max-width:50%;
+  box-sizing:border-box;
+}
 .multiSelectMenu{
   position:absolute;
   z-index:8;
   top:calc(100% + 4px);
   left:0;
-  right:0;
+  right:auto;
+  width:max-content;
+  max-width:50%;
   max-height:280px;
   overflow:auto;
   background:#fff;
@@ -1958,9 +1965,33 @@ button:disabled {
   flex-direction:column;
   gap:2px;
 }
-.multiSelectMenu label{display:flex;align-items:center;gap:8px;padding:7px 8px;border-radius:8px;font-size:12px;font-weight:600;text-transform:none;letter-spacing:0;color:var(--ink);cursor:pointer}
-.multiSelectMenu label:hover{background:#f6f8f5}
-.multiSelectMenu input{width:auto;margin:0}
+.recruitFilters .multiSelectMenu label{
+  display:flex;
+  flex-direction:row;
+  justify-content:flex-start;
+  align-items:center;
+  gap:8px;
+  width:max-content;
+  max-width:100%;
+  padding:7px 8px;
+  border-radius:8px;
+  font-size:12px;
+  font-weight:600;
+  text-transform:none;
+  letter-spacing:0;
+  color:var(--ink);
+  text-align:left;
+  white-space:nowrap;
+  cursor:pointer;
+}
+.recruitFilters .multiSelectMenu label:hover{background:#f6f8f5}
+.recruitFilters .multiSelectMenu input[type="checkbox"]{
+  width:auto;
+  flex:0 0 auto;
+  margin:0;
+  padding:0;
+  align-self:center;
+}
 .recruitSide{position:sticky;top:16px}
 .intakeCardMini{border:1px solid var(--line);border-radius:12px;padding:12px;margin-top:12px;display:flex;flex-direction:column;gap:4px}
 .intakeCardMini strong{font-size:13px}
