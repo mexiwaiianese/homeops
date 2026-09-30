@@ -325,18 +325,18 @@ export default function RecruitmentBoard() {
                 const skip = inviteSkipReason({ name: row.name, rating: ratingOf(row), reviewCount: reviewsOf(row) });
                 return (
                   <div className={`recruitRow${scaled ? " isScaled" : ""}`} key={row.id || row.sourcePlaceId || row.name}>
-                    <span>
+                    <span data-label="Provider">
                       <strong>{row.name}</strong>
                       <small>{row.city || ""} {row.website ? "• website on file" : ""}</small>
                     </span>
-                    <span>{row.category_name || row.categoryName}</span>
-                    <span>
+                    <span data-label="Category">{row.category_name || row.categoryName}</span>
+                    <span data-label="Independent fit">
                       <strong>{scaled ? "Skipped" : fitOf(row)}</strong>
                       <small>{ratingOf(row) ?? "—"} · {reviewsOf(row)} reviews{skip ? ` • ${skip}` : ""}</small>
                     </span>
-                    <span><small>{row.email || row.phone || "No contact yet"}</small></span>
-                    <span className={registered ? "vendorStatus approved" : invited ? "vendorStatus conditional" : skip ? "vendorStatus skipped" : "vendorStatus"}>{registered ? "Registered" : invited ? "Invited" : skip || "Independent"}</span>
-                    <span>
+                    <span data-label="Contact"><small>{row.email || row.phone || "No contact yet"}</small></span>
+                    <span data-label="Status" className={registered ? "vendorStatus approved" : invited ? "vendorStatus conditional" : skip ? "vendorStatus skipped" : "vendorStatus"}>{registered ? "Registered" : invited ? "Invited" : skip || "Independent"}</span>
+                    <span data-label="">
                       {registered ? <b className="goodText">Confirmed</b> : scaled ? <small>Not invited</small> : <button className="secondaryBtn" disabled={busy} onClick={() => void invite(row)}>Invite</button>}
                     </span>
                   </div>
