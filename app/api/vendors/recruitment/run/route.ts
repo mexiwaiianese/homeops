@@ -1,15 +1,15 @@
 import { NextResponse } from "next/server";
-import { getAuthedContext } from "@/lib/backend";
 import { demoInviteToken, demoProspects, markDemoInvited } from "@/lib/vendor-prospect-demo";
 import { inviteProspect } from "@/lib/vendor-invite";
 import { invitationUrl } from "@/lib/vendor-outreach";
 import { INDEPENDENT_INVITE_DEFAULTS, independentFitScore, isIndependentInviteCandidate, rankDiscoveredProviders, type RecruitmentTradeSlug } from "@/lib/vendor-prospects";
 import { requirePlatformAdmin } from "@/lib/operator-admin";
+import { getPlatformCatalog } from "@/lib/platform-catalog";
 
 export async function POST(request: Request) {
   const admin = await requirePlatformAdmin();
   if (!admin.ok) return admin.response;
-  const { supabase, user, organizationId } = await getAuthedContext();
+  const catalog = await getPlatformCatalog();
   const body = await request.json().catch(() => ({}));
   const city = String(body.city || "Lehi").trim();
   const state = String(body.state || "UT").trim().toUpperCase().slice(0, 2);
@@ -21,7 +21,7 @@ export async function POST(request: Request) {
   const trades = Array.isArray(body.trades) ? body.trades as RecruitmentTradeSlug[] : undefined;
   const origin = new URL(request.url).origin;
 
-  if (!supabase) {
+  if (!catalog.ok) {
     const ranked = rankDiscoveredProviders(demoProspects.filter((row) =>
       (!trades?.length || trades.includes(row.categorySlug)) &&
       isIndependentInviteCandidate({ name: row.name, rating: row.publicRating, reviewCount: row.reviewCount, minRating, minReviews, maxReviews })
@@ -54,8 +54,8 @@ export async function POST(request: Request) {
       message: "Demo recruitment ranked public listings and generated registration links. Connect Supabase plus Places/email/SMS providers to send live invitations.",
     });
   }
-  if (!user || !organizationId) return NextResponse.json({ error: "Authentication required" }, { status: 401 });
 
+  const { admin: db, organizationId } = catalog;
   const discover = await fetch(new URL("/api/vendors/prospects", request.url), {
     method: "POST",
     headers: { "Content-Type": "application/json", cookie: request.headers.get("cookie") || "" },
@@ -64,7 +64,7 @@ export async function POST(request: Request) {
   const discovered = await discover.json();
   if (!discover.ok) return NextResponse.json({ error: discovered.error || "Discovery failed" }, { status: discover.status });
 
-  const { data: prospects, error } = await supabase
+  const { data: prospects, error } = await db
     .from("vendor_prospects")
     .select("*")
     .eq("organization_id", organizationId)
@@ -102,18 +102,17 @@ export async function POST(request: Request) {
     perCategory.set(row.category_slug, used + 1);
   }
 
-  const { data: org } = await supabase.from("organizations").select("name").eq("id", organizationId).maybeSingle();
   const invited = [];
   if (autoInvite) {
     for (const prospect of picked) {
       if (prospect.outreach_status === "invited") continue;
       const result = await inviteProspect({
-        supabase,
+        supabase: db,
         organizationId,
-        organizationName: org?.name || "HomeOps",
+        organizationName: "portonOS",
         prospect,
         requestedChannel: "auto",
-        userId: user.id,
+        userId: admin.user?.id ?? null,
         baseUrl: origin,
       });
       if (result.ok) invited.push({ name: prospect.name, category: prospect.category_name, inviteUrl: result.inviteUrl, channel: result.channel, delivered: result.delivered, deliveryError: result.deliveryError });

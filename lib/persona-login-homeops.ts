@@ -348,7 +348,7 @@ async function liveSignIn(persona: Persona): Promise<PersonaSignInResult> {
   const stamp = { full_name: "Persona login", auth_user_id: signedIn.userId };
   let link: { error: { message: string } | null } = { error: null };
   if (persona.group === "manager" && meta.organizationId) {
-    // "admin" so the sandbox manager can add and approve vendors. Recruitment stays platform-admin only.
+    // "admin" so the sandbox manager can approve pre-screened catalog vendors for the org.
     link = await admin.from("organization_members").upsert({ organization_id: meta.organizationId, user_id: signedIn.userId, role: "admin" }, { onConflict: "organization_id,user_id" });
   } else if (persona.group === "owner" && meta.ownerId && meta.organizationId) {
     link = await admin.from("owner_users").upsert({ organization_id: meta.organizationId, owner_id: meta.ownerId, email: meta.email, role: "owner", ...stamp }, { onConflict: "owner_id,email" });

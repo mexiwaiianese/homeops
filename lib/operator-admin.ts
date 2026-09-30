@@ -13,6 +13,7 @@ const LINK_MS = 20 * 60 * 1000;
 const SESSION_MAX_AGE = 14 * 24 * 60 * 60;
 
 type AuthLike = {
+  id?: string;
   email?: string | null;
   email_confirmed_at?: string | null;
 } | null | undefined;

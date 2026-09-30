@@ -1920,6 +1920,17 @@ button:disabled {
 .recruitRow strong,.recruitRow small{display:block}
 .recruitRow small{color:var(--muted);margin-top:3px}
 .recruitRow.isScaled{opacity:.62}
+.recruitLayout{display:grid;grid-template-columns:minmax(0,1fr) 320px;gap:16px;align-items:start}
+.recruitSide{position:sticky;top:16px}
+.intakeCardMini{border:1px solid var(--line);border-radius:12px;padding:12px;margin-top:12px;display:flex;flex-direction:column;gap:4px}
+.intakeCardMini strong{font-size:13px}
+.intakeCardMini small{color:var(--muted);font-size:11px}
+.intakeMatches{list-style:none;margin:8px 0 0;padding:0;display:flex;flex-direction:column;gap:6px}
+.intakeMatches label{display:flex;gap:8px;align-items:flex-start;font-size:12px}
+.intakeMatches em{display:block;font-style:normal;color:var(--muted);font-size:10px;margin-top:2px}
+.intakeNone{font-size:12px;color:var(--muted);margin:8px 0 0}
+.intakeActions{display:flex;flex-direction:column;gap:8px;margin-top:10px}
+@media(max-width:1100px){.recruitLayout{grid-template-columns:1fr}}
 
 .authCard .brand,
 .intakeCard > .brand {

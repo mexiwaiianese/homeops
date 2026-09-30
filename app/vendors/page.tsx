@@ -2,7 +2,7 @@
 
 import { useCallback, useEffect, useMemo, useState } from "react";
 import type { VendorApprovalStatus, VendorWorkflowStage } from "@/lib/vendors";
-import { isNetworkAdmin, managerVisibleStatuses } from "@/lib/vendors";
+import { isNetworkAdmin, managerVisibleStatuses, canReleaseToOrganizations } from "@/lib/vendors";
 import BrandLockup from "@/components/brand-lockup";
 import ManagerSignOut from "@/components/manager-sign-out";
 import NavToggle from "@/components/nav-toggle";
@@ -19,6 +19,8 @@ type VendorRow = {
   state?: string | null;
   workflow_stage: VendorWorkflowStage;
   approval_status: VendorApprovalStatus;
+  catalog_released?: boolean;
+  catalog_vendor_id?: string | null;
   emergency_available?: boolean;
   expected_response_minutes?: number | null;
   minimum_trip_charge_cents?: number | null;
@@ -83,12 +85,14 @@ export default function VendorsPage() {
   );
   const [role, setRole] = useState<string | null>(null);
   const [platformAdmin, setPlatformAdmin] = useState(false);
+  const [catalog, setCatalog] = useState<VendorRow[]>([]);
   const [meta, setMeta] = useState<any>({
     categories: [],
     owners: [],
     homes: [],
   });
   const networkAdmin = isNetworkAdmin(role);
+  const catalogAdmin = platformAdmin;
 
   const load = useCallback(async () => {
     const p = new URLSearchParams();
@@ -101,11 +105,13 @@ export default function VendorsPage() {
       return;
     }
     setMode(body.mode);
-    setRole(body.role ?? (body.mode === "demo" ? "manager" : null));
+    setRole(body.role ?? null);
     setPlatformAdmin(Boolean(body.platformAdmin));
     const rows = (body.vendors ?? []) as VendorRow[];
-    const admin = isNetworkAdmin(body.role ?? (body.mode === "demo" ? "manager" : null));
-    const visible = admin ? rows : rows.filter((v) => managerVisibleStatuses.includes(v.approval_status));
+    setCatalog((body.catalog ?? []) as VendorRow[]);
+    if (body.warning) setToast(body.warning);
+    const admin = Boolean(body.platformAdmin) || isNetworkAdmin(body.role);
+    const visible = Boolean(body.platformAdmin) ? rows : admin ? rows : rows.filter((v) => managerVisibleStatuses.includes(v.approval_status));
     setVendors(visible);
     setMeta(body.meta ?? { categories: [], owners: [], homes: [] });
     if (!selected && visible[0]) setSelected(visible[0].id);
@@ -168,6 +174,28 @@ export default function VendorsPage() {
     setToast("Vendor workflow updated");
   }
 
+  async function releaseVendor() {
+    if (!vendor) return;
+    if (mode === "demo") {
+      setVendors((rows) => rows.map((v) => v.id === vendor.id ? { ...v, catalog_released: true } : v));
+      setToast("Released to organizations");
+      return;
+    }
+    const r = await fetch(`/api/vendors/${vendor.id}/release`, { method: "POST" });
+    const body = await r.json();
+    if (!r.ok) { setToast(body.error || "Could not release vendor"); return; }
+    setVendors((rows) => rows.map((v) => v.id === vendor.id ? { ...v, ...body.vendor, catalog_released: true } : v));
+    setToast("Flagged for organization review");
+  }
+
+  async function adoptVendor(id: string) {
+    const r = await fetch(`/api/vendors/${id}/adopt`, { method: "POST" });
+    const body = await r.json();
+    if (!r.ok) { setToast(body.error || "Could not add this vendor"); return; }
+    setToast(body.alreadyAdopted ? "Already in this organization" : "Approved from the pre-screened catalog");
+    await load();
+  }
+
   const services = vendor
     ? (vendor.services ??
       vendor.vendor_services
@@ -223,22 +251,28 @@ export default function VendorsPage() {
               ? "● Supabase live"
               : mode === "demo"
                 ? "○ Demo mode"
-                : "Checking…"}
+                : mode === "auth"
+                  ? "Sign in required"
+                  : mode === "error"
+                    ? "Could not load"
+                    : "Checking…"}
           </span>
         </div>
       </aside>
       <section className="vendorContent">
         <header className="finHeader">
           <div>
-            <p className="eyebrow">{networkAdmin ? "APPROVED VENDOR NETWORK" : "APPROVED VENDORS"}</p>
-            <h1>{networkAdmin ? "Trusted vendors, before marketplace growth." : "Who can take the work."}</h1>
+            <p className="eyebrow">{catalogAdmin ? "PLATFORM CATALOG" : networkAdmin ? "APPROVED VENDOR NETWORK" : "APPROVED VENDORS"}</p>
+            <h1>{catalogAdmin ? "Recruit, qualify, then release." : networkAdmin ? "Review the pre-screened catalog." : "Who can take the work."}</h1>
             <p>
-              {networkAdmin
-                ? "Approve, monitor, and add vendors. Public recruitment is a platform-admin function."
-                : "Dispatch-ready shops with coverage, credentials, rates, and job history. Adding vendors stays with the owner; recruitment stays with platform admin."}
+              {catalogAdmin
+                ? "This is the portonOS vendor database. Move a shop through qualification, then release it so owners can approve it for their organization. Dispatch stays org-scoped."
+                : networkAdmin
+                  ? "Approve vendors portonOS has already qualified. You can still add a local shop; recruitment stays with platform admin."
+                  : "Dispatch-ready shops with coverage, credentials, rates, and job history. Adding vendors stays with the owner; recruitment stays with platform admin."}
             </p>
           </div>
-          {networkAdmin && (
+          {(catalogAdmin || networkAdmin) && (
             <button
               className="primary vendorAdd"
               onClick={() => setEditing(null)}
@@ -249,7 +283,7 @@ export default function VendorsPage() {
         </header>
         <div className="stats finStats">
           <Stat label="Approved / preferred" value={stats.approved} />
-          {networkAdmin ? (
+          {catalogAdmin || networkAdmin ? (
             <>
               <Stat label="Conditional" value={stats.conditional} />
               <Stat label="Renewal attention" value={stats.renewal} />
@@ -262,7 +296,31 @@ export default function VendorsPage() {
 
         {platformAdmin && <RecruitmentBoard />}
 
-        {networkAdmin && (
+        {!catalogAdmin && networkAdmin && (
+          <section className="panel">
+            <div className="panelHead">
+              <div>
+                <p className="eyebrow">PRE-SCREENED CATALOG</p>
+                <h2>Vendors qualified by portonOS</h2>
+              </div>
+              <span className="pill">{catalog.length} available</span>
+            </div>
+            <p className="summary">These shops were recruited and qualified at the platform. Approving copies them into this organization for dispatch. Tax files stay with platform admin.</p>
+            {catalog.length === 0 ? (
+              <div className="empty">No released vendors yet. Platform admin flags them after documents are reviewed.</div>
+            ) : catalog.map((row) => (
+              <div className="vendorRow" key={row.id}>
+                <div>
+                  <strong>{row.name}</strong>
+                  <span>{row.trade || "General vendor"} • {[row.city, row.state].filter(Boolean).join(", ") || "Service area not set"} • {stageLabel(row.workflow_stage)}</span>
+                </div>
+                <button className="secondaryBtn" onClick={() => void adoptVendor(row.id)}>Approve for this org</button>
+              </div>
+            ))}
+          </section>
+        )}
+
+        {(catalogAdmin || networkAdmin) && (
         <section className="panel">
           <div className="panelHead">
             <div>
@@ -292,7 +350,7 @@ export default function VendorsPage() {
             <div className="panelHead">
               <div>
                 <p className="eyebrow">DIRECTORY</p>
-                <h2>{vendors.length} vendors</h2>
+                <h2>{catalogAdmin ? "Platform catalog" : `${vendors.length} vendors`}</h2>
               </div>
             </div>
             <div className="vendorFilters">
@@ -309,8 +367,10 @@ export default function VendorsPage() {
                 <option value="preferred">Preferred</option>
                 <option value="approved">Approved</option>
                 <option value="conditional">Conditional</option>
-                {networkAdmin && <option value="suspended">Suspended</option>}
-                {networkAdmin && <option value="blocked">Blocked</option>}
+                {catalogAdmin && <option value="suspended">Suspended</option>}
+                {catalogAdmin && <option value="blocked">Blocked</option>}
+                {networkAdmin && !catalogAdmin && <option value="suspended">Suspended</option>}
+                {networkAdmin && !catalogAdmin && <option value="blocked">Blocked</option>}
               </select>
             </div>
             {vendors.map((v) => (
@@ -330,7 +390,7 @@ export default function VendorsPage() {
                   </span>
                 </div>
                 <span className={"vendorStatus " + v.approval_status}>
-                  {v.approval_status}
+                  {v.catalog_released ? "Released" : v.approval_status}
                 </span>
               </button>
             ))}
@@ -354,7 +414,8 @@ export default function VendorsPage() {
                     <span className={"vendorStatus " + vendor.approval_status}>
                       {vendor.approval_status}
                     </span>{" "}
-                    {networkAdmin && (
+                    {catalogAdmin && vendor.catalog_released && <span className="pill">Visible to orgs</span>}
+                    {(catalogAdmin || networkAdmin) && (
                       <button
                         className="textBtn"
                         onClick={() => setEditing(vendor)}
@@ -362,10 +423,15 @@ export default function VendorsPage() {
                         Edit & manage
                       </button>
                     )}
+                    {catalogAdmin && !vendor.catalog_released && canReleaseToOrganizations(vendor.workflow_stage) && (
+                      <button className="primary" onClick={() => void releaseVendor()}>
+                        Release to organizations
+                      </button>
+                    )}
                   </div>
                 </div>
                 <div className="miniStats vendorMini">
-                  {networkAdmin ? (
+                  {catalogAdmin || networkAdmin ? (
                     <div>
                       <span>Workflow</span>
                       <strong>{stageLabel(vendor.workflow_stage)}</strong>
@@ -437,7 +503,7 @@ export default function VendorsPage() {
                     ))
                   ) : (
                     <div className="empty">
-                      {networkAdmin
+                      {catalogAdmin || networkAdmin
                         ? "No credentials recorded. Approval should remain conditional until required documents are reviewed."
                         : "No credentials recorded for this vendor."}
                     </div>
@@ -463,7 +529,7 @@ export default function VendorsPage() {
           </section>
         </div>
       </section>
-      {networkAdmin && editing !== undefined && (
+      {(catalogAdmin || networkAdmin) && editing !== undefined && (
         <VendorEditor
           vendor={editing}
           mode={mode}
@@ -544,7 +610,15 @@ function VendorEditor({
       notify(b.error || "Could not save vendor");
       return;
     }
-    notify(vendor ? "Vendor updated" : "Candidate vendor created");
+    if (!vendor && b.catalogReview) {
+      notify(
+        b.catalogReview.matchCount
+          ? `Candidate saved. ${b.catalogReview.matchCount} catalog match${b.catalogReview.matchCount === 1 ? "" : "es"} sent to recruitment to merge or authorize.`
+          : "Candidate saved. Platform admin can authorize a catalog record for invitation and screening.",
+      );
+    } else {
+      notify(vendor ? "Vendor updated" : "Candidate vendor created");
+    }
     onSaved();
   }
   async function add() {

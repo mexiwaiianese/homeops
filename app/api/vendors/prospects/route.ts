@@ -1,9 +1,26 @@
 import { NextResponse } from "next/server";
-import { getAuthedContext } from "@/lib/backend";
 import { demoProspects, demoProspectsWithOutreach } from "@/lib/vendor-prospect-demo";
 import { discoverProvidersFromPlaces, groupDiscoveredProviders, independentFitScore, isIndependentInviteCandidate, prospectFingerprint, rankDiscoveredProviders, type RecruitmentTradeSlug } from "@/lib/vendor-prospects";
 import { requirePlatformAdmin } from "@/lib/operator-admin";
+import { getPlatformCatalog } from "@/lib/platform-catalog";
 import { normalizeVendorName } from "@/lib/vendors";
+
+function demoCatalogPayload() {
+  const prospects = demoProspectsWithOutreach().map((row) => ({
+    ...row,
+    invite_eligible: isIndependentInviteCandidate({
+      name: row.name,
+      rating: row.publicRating,
+      reviewCount: row.reviewCount,
+    }),
+  }));
+  return {
+    mode: "demo" as const,
+    source: "demo_catalog",
+    prospects,
+    groups: groupDiscoveredProviders(prospects),
+  };
+}
 
 function toRow(organizationId: string, provider: ReturnType<typeof rankDiscoveredProviders>[number], matchedVendorId: string | null, outreachStatus = "discovered") {
   return {
@@ -42,28 +59,12 @@ function toRow(organizationId: string, provider: ReturnType<typeof rankDiscovere
 export async function GET() {
   const admin = await requirePlatformAdmin();
   if (!admin.ok) return admin.response;
-  const { supabase, user, organizationId } = await getAuthedContext();
-  if (!supabase) {
-    const prospects = demoProspectsWithOutreach().map((row) => ({
-      ...row,
-      invite_eligible: isIndependentInviteCandidate({
-        name: row.name,
-        rating: row.publicRating,
-        reviewCount: row.reviewCount,
-      }),
-    }));
-    return NextResponse.json({
-      mode: "demo",
-      source: "demo_catalog",
-      prospects,
-      groups: groupDiscoveredProviders(prospects),
-    });
-  }
-  if (!user || !organizationId) return NextResponse.json({ error: "Authentication required" }, { status: 401 });
-  const { data, error } = await supabase
+  const catalog = await getPlatformCatalog();
+  if (!catalog.ok) return NextResponse.json(demoCatalogPayload());
+  const { data, error } = await catalog.admin
     .from("vendor_prospects")
     .select("*, vendor_invitations(id,channel,sent_to,sent_at,registered_at,token,active)")
-    .eq("organization_id", organizationId)
+    .eq("organization_id", catalog.organizationId)
     .order("public_rank_score", { ascending: false });
   if (error) return NextResponse.json({ error: error.message }, { status: 400 });
   const prospects = (data ?? []).map((row) => ({
@@ -110,24 +111,24 @@ export async function GET() {
 export async function POST(request: Request) {
   const admin = await requirePlatformAdmin();
   if (!admin.ok) return admin.response;
-  const { supabase, user, organizationId } = await getAuthedContext();
   const body = await request.json().catch(() => ({}));
   const city = String(body.city || "Lehi").trim();
   const state = String(body.state || "UT").trim().toUpperCase().slice(0, 2);
   const trades = Array.isArray(body.trades) ? body.trades as RecruitmentTradeSlug[] : undefined;
+  const catalog = await getPlatformCatalog();
 
-  if (!supabase) {
+  if (!catalog.ok) {
     const providers = rankDiscoveredProviders(demoProspects.filter((row) => !trades?.length || trades.includes(row.categorySlug)));
     return NextResponse.json({ mode: "demo", source: "demo_catalog", city, state, prospects: providers, groups: groupDiscoveredProviders(providers), discovered: providers.length });
   }
-  if (!user || !organizationId) return NextResponse.json({ error: "Authentication required" }, { status: 401 });
 
   const live = await discoverProvidersFromPlaces({ city, state, trades });
   const providers = live.source === "google_places" ? live.providers : rankDiscoveredProviders(demoProspects);
   const source = live.source === "google_places" ? "google_places" : "demo_catalog";
+  const organizationId = catalog.organizationId;
 
-  const { data: vendors } = await supabase.from("vendors").select("id,identity_fingerprint,normalized_name").eq("organization_id", organizationId);
-  const { data: existing } = await supabase.from("vendor_prospects").select("source,source_place_id,outreach_status,vendor_id").eq("organization_id", organizationId);
+  const { data: vendors } = await catalog.admin.from("vendors").select("id,identity_fingerprint,normalized_name").eq("organization_id", organizationId);
+  const { data: existing } = await catalog.admin.from("vendor_prospects").select("source,source_place_id,outreach_status,vendor_id").eq("organization_id", organizationId);
   const upserts = providers.map((provider) => {
     const fingerprint = prospectFingerprint({ name: provider.name, phone: provider.phone, email: provider.email, postalCode: provider.postalCode });
     const match = (vendors ?? []).find((vendor) => vendor.identity_fingerprint === fingerprint || vendor.normalized_name === normalizeVendorName(provider.name));
@@ -135,9 +136,9 @@ export async function POST(request: Request) {
     return toRow(organizationId, { ...provider, source }, previous?.vendor_id ?? match?.id ?? null, previous?.outreach_status || "discovered");
   });
 
-  const { data, error } = await supabase.from("vendor_prospects").upsert(upserts, { onConflict: "organization_id,source,source_place_id" }).select();
+  const { data, error } = await catalog.admin.from("vendor_prospects").upsert(upserts, { onConflict: "organization_id,source,source_place_id" }).select();
   if (error) return NextResponse.json({ error: error.message }, { status: 400 });
-  await supabase.from("vendor_outreach_events").insert((data ?? []).map((row) => ({
+  await catalog.admin.from("vendor_outreach_events").insert((data ?? []).map((row) => ({
     organization_id: organizationId,
     prospect_id: row.id,
     vendor_id: row.vendor_id,

@@ -16,6 +16,13 @@ export function isNetworkAdmin(role?: string | null) {
   return role === "owner" || role === "admin";
 }
 
+/** Stages at which platform admin may flag a catalog vendor for org review. */
+export const catalogReleaseStages: VendorWorkflowStage[] = ["documents_reviewed", "approved", "monitored"];
+
+export function canReleaseToOrganizations(stage?: string | null) {
+  return catalogReleaseStages.includes(stage as VendorWorkflowStage);
+}
+
 export const vendorStageOrder: VendorWorkflowStage[] = [
   "candidate",
   "invited",
