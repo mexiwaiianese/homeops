@@ -1,8 +1,8 @@
 import { NextResponse } from "next/server";
 import { demoProspects, demoProspectsWithOutreach } from "@/lib/vendor-prospect-demo";
-import { discoverProvidersFromPlaces, groupDiscoveredProviders, independentFitScore, isIndependentInviteCandidate, prospectFingerprint, rankDiscoveredProviders, type RecruitmentTradeSlug } from "@/lib/vendor-prospects";
+import { discoverProvidersForArea, groupDiscoveredProviders, independentFitScore, isIndependentInviteCandidate, parseOtherProviderTypes, prospectFingerprint, type DiscoveredProvider, type RecruitmentTradeSlug } from "@/lib/vendor-prospects";
 import { requirePlatformAdmin } from "@/lib/operator-admin";
-import { getPlatformCatalog } from "@/lib/platform-catalog";
+import { getPlatformCatalog, PLATFORM_CATALOG_ORG_ID } from "@/lib/platform-catalog";
 import { normalizeVendorName } from "@/lib/vendors";
 
 function demoCatalogPayload() {
@@ -22,7 +22,7 @@ function demoCatalogPayload() {
   };
 }
 
-function toRow(organizationId: string, provider: ReturnType<typeof rankDiscoveredProviders>[number], matchedVendorId: string | null, outreachStatus = "discovered") {
+function toRow(organizationId: string, provider: DiscoveredProvider, matchedVendorId: string | null, outreachStatus = "discovered") {
   return {
     organization_id: organizationId,
     source: provider.source,
@@ -64,10 +64,16 @@ export async function GET() {
   const { data, error } = await catalog.admin
     .from("vendor_prospects")
     .select("*, vendor_invitations(id,channel,sent_to,sent_at,registered_at,token,active)")
-    .eq("organization_id", catalog.organizationId)
     .order("public_rank_score", { ascending: false });
   if (error) return NextResponse.json({ error: error.message }, { status: 400 });
-  const prospects = (data ?? []).map((row) => ({
+  const collapsed = new Map<string, (typeof data)[number]>();
+  for (const row of data ?? []) {
+    const key = `${row.source || ""}:${row.source_place_id || row.normalized_name || row.id}`;
+    const current = collapsed.get(key);
+    const catalogRow = row.organization_id === catalog.organizationId || row.organization_id === PLATFORM_CATALOG_ORG_ID;
+    if (!current || catalogRow) collapsed.set(key, row);
+  }
+  const prospects = [...collapsed.values()].map((row) => ({
     ...row,
     independent_fit_score: independentFitScore({
       name: row.name,
@@ -112,19 +118,34 @@ export async function POST(request: Request) {
   const admin = await requirePlatformAdmin();
   if (!admin.ok) return admin.response;
   const body = await request.json().catch(() => ({}));
-  const city = String(body.city || "Lehi").trim();
   const state = String(body.state || "UT").trim().toUpperCase().slice(0, 2);
+  const county = String(body.county || "").trim();
+  const city = county ? "" : String(body.city || "Lehi").trim();
   const trades = Array.isArray(body.trades) ? body.trades as RecruitmentTradeSlug[] : undefined;
+  const extraQueries = parseOtherProviderTypes(body.extraQueries ?? body.otherTypes);
   const catalog = await getPlatformCatalog();
 
   if (!catalog.ok) {
-    const providers = rankDiscoveredProviders(demoProspects.filter((row) => !trades?.length || trades.includes(row.categorySlug)));
-    return NextResponse.json({ mode: "demo", source: "demo_catalog", city, state, prospects: providers, groups: groupDiscoveredProviders(providers), discovered: providers.length });
+    const area = await discoverProvidersForArea({ city, county, state, trades, extraQueries, catalog: demoProspects });
+    return NextResponse.json({
+      mode: "demo",
+      source: area.source,
+      city: area.city,
+      county: area.county,
+      place: area.place,
+      state,
+      zips: area.zips,
+      queries: area.queries,
+      warning: area.warning,
+      prospects: area.providers,
+      groups: groupDiscoveredProviders(area.providers),
+      discovered: area.providers.length,
+    });
   }
 
-  const live = await discoverProvidersFromPlaces({ city, state, trades });
-  const providers = live.source === "google_places" ? live.providers : rankDiscoveredProviders(demoProspects);
-  const source = live.source === "google_places" ? "google_places" : "demo_catalog";
+  const live = await discoverProvidersForArea({ city, county, state, trades, extraQueries, catalog: demoProspects });
+  const providers = live.providers;
+  const source = live.source;
   const organizationId = catalog.organizationId;
 
   const { data: vendors } = await catalog.admin.from("vendors").select("id,identity_fingerprint,normalized_name").eq("organization_id", organizationId);
@@ -143,14 +164,18 @@ export async function POST(request: Request) {
     prospect_id: row.id,
     vendor_id: row.vendor_id,
     event_type: "discovered",
-    notes: source,
+    notes: live.queries.join("; "),
   })));
   return NextResponse.json({
     mode: "live",
     source,
-    warning: live.source === "unavailable" ? live.error : null,
-    city,
+    warning: live.warning,
+    city: live.city,
+    county: live.county,
+    place: live.place,
     state,
+    zips: live.zips,
+    queries: live.queries,
     prospects: data ?? [],
     discovered: (data ?? []).length,
   });

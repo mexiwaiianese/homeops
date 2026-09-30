@@ -2,7 +2,7 @@ import { NextResponse } from "next/server";
 import { demoInviteToken, demoProspects, markDemoInvited } from "@/lib/vendor-prospect-demo";
 import { inviteProspect } from "@/lib/vendor-invite";
 import { invitationUrl } from "@/lib/vendor-outreach";
-import { INDEPENDENT_INVITE_DEFAULTS, independentFitScore, isIndependentInviteCandidate, rankDiscoveredProviders, type RecruitmentTradeSlug } from "@/lib/vendor-prospects";
+import { INDEPENDENT_INVITE_DEFAULTS, discoverProvidersForArea, independentFitScore, isIndependentInviteCandidate, parseOtherProviderTypes, type RecruitmentTradeSlug } from "@/lib/vendor-prospects";
 import { requirePlatformAdmin } from "@/lib/operator-admin";
 import { getPlatformCatalog } from "@/lib/platform-catalog";
 
@@ -11,21 +11,23 @@ export async function POST(request: Request) {
   if (!admin.ok) return admin.response;
   const catalog = await getPlatformCatalog();
   const body = await request.json().catch(() => ({}));
-  const city = String(body.city || "Lehi").trim();
   const state = String(body.state || "UT").trim().toUpperCase().slice(0, 2);
+  const county = String(body.county || "").trim();
+  const city = county ? "" : String(body.city || "Lehi").trim();
   const minRating = Number(body.minRating ?? INDEPENDENT_INVITE_DEFAULTS.minRating);
   const minReviews = Number(body.minReviews ?? INDEPENDENT_INVITE_DEFAULTS.minReviews);
   const maxReviews = Number(body.maxReviews ?? INDEPENDENT_INVITE_DEFAULTS.maxReviews);
   const limitPerCategory = Math.min(8, Math.max(1, Number(body.limitPerCategory ?? 3)));
   const autoInvite = body.autoInvite !== false;
   const trades = Array.isArray(body.trades) ? body.trades as RecruitmentTradeSlug[] : undefined;
+  const extraQueries = parseOtherProviderTypes(body.extraQueries ?? body.otherTypes);
   const origin = new URL(request.url).origin;
 
   if (!catalog.ok) {
-    const ranked = rankDiscoveredProviders(demoProspects.filter((row) =>
-      (!trades?.length || trades.includes(row.categorySlug)) &&
+    const area = await discoverProvidersForArea({ city, county, state, trades, extraQueries, catalog: demoProspects });
+    const ranked = area.providers.filter((row) =>
       isIndependentInviteCandidate({ name: row.name, rating: row.publicRating, reviewCount: row.reviewCount, minRating, minReviews, maxReviews })
-    ));
+    );
     const picked: typeof ranked = [];
     const perCategory = new Map<string, number>();
     if (autoInvite) {
@@ -38,7 +40,14 @@ export async function POST(request: Request) {
     }
     return NextResponse.json({
       mode: "demo",
-      source: "demo_catalog",
+      source: area.source,
+      city: area.city,
+      county: area.county,
+      place: area.place,
+      state,
+      zips: area.zips,
+      queries: area.queries,
+      warning: area.warning,
       discovered: ranked.length,
       invited: picked.map((row) => {
         const inviteUrl = invitationUrl(demoInviteToken(row.sourcePlaceId), origin);
@@ -51,7 +60,7 @@ export async function POST(request: Request) {
           delivered: false,
         };
       }),
-      message: "Demo recruitment ranked public listings and generated registration links. Connect Supabase plus Places/email/SMS providers to send live invitations.",
+      message: "Ranked independents for the ZIP codes of this city or county. Connect email/SMS to send live invitations.",
     });
   }
 
@@ -59,7 +68,7 @@ export async function POST(request: Request) {
   const discover = await fetch(new URL("/api/vendors/prospects", request.url), {
     method: "POST",
     headers: { "Content-Type": "application/json", cookie: request.headers.get("cookie") || "" },
-    body: JSON.stringify({ city, state, trades }),
+    body: JSON.stringify({ city, county, state, trades, extraQueries }),
   });
   const discovered = await discover.json();
   if (!discover.ok) return NextResponse.json({ error: discovered.error || "Discovery failed" }, { status: discover.status });
@@ -123,6 +132,12 @@ export async function POST(request: Request) {
     mode: "live",
     source: discovered.source,
     warning: discovered.warning,
+    city: discovered.city,
+    county: discovered.county,
+    place: discovered.place,
+    state,
+    zips: discovered.zips,
+    queries: discovered.queries,
     discovered: discovered.discovered,
     invited,
     publicReputationNote: "Independent-fit rank is recruitment-only. High-volume chains are skipped. This does not change dispatch eligibility or operational scorecards.",

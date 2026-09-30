@@ -1,3 +1,4 @@
+import { cityStateMatch, postalInArea, tradeQueriesForArea, zipsForRecruitmentArea } from "@/lib/area-zips";
 import { buildVendorFingerprint } from "@/lib/vendors";
 
 export const RECRUITMENT_TRADES = [
@@ -16,7 +17,7 @@ export const RECRUITMENT_TRADES = [
 export type RecruitmentTradeSlug = (typeof RECRUITMENT_TRADES)[number]["slug"];
 
 export type DiscoveredProvider = {
-  source: "google_places" | "demo_catalog";
+  source: "google_places" | "demo_catalog" | "manual";
   sourcePlaceId: string;
   name: string;
   categorySlug: RecruitmentTradeSlug;
@@ -169,99 +170,64 @@ export function appBaseUrl() {
   return (process.env.NEXT_PUBLIC_APP_URL || "http://localhost:3000").replace(/\/$/, "");
 }
 
-type PlacesSearchResult = {
-  id?: string;
-  displayName?: { text?: string };
-  formattedAddress?: string;
-  nationalPhoneNumber?: string;
-  websiteUri?: string;
-  rating?: number;
-  userRatingCount?: number;
-  googleMapsUri?: string;
-  editorialSummary?: { text?: string };
-};
-
-function parseAddress(formatted?: string, fallbackCity?: string, fallbackState?: string) {
-  const parts = (formatted ?? "").split(",").map((part) => part.trim()).filter(Boolean);
-  const postal = (formatted ?? "").match(/\b(\d{5})(?:-\d{4})?\b/)?.[1] ?? null;
-  return {
-    address1: parts[0] || null,
-    city: parts.length >= 3 ? parts[parts.length - 3] : fallbackCity || null,
-    state: fallbackState || parts.find((part) => /^[A-Z]{2}$/.test(part.split(" ")[0]))?.slice(0, 2) || null,
-    postalCode: postal,
-  };
+export function providerInTargetArea(
+  row: { city?: string | null; state?: string | null; postalCode?: string | null },
+  input: { city?: string; county?: string; state: string; zips: string[]; countyCities?: string[] },
+) {
+  if (input.zips.length && postalInArea(row.postalCode, input.zips)) return true;
+  if (input.county && input.countyCities?.length) {
+    return input.countyCities.some((name) => cityStateMatch(row, name, input.state));
+  }
+  return Boolean(input.city && cityStateMatch(row, input.city, input.state));
 }
 
-export async function discoverProvidersFromPlaces(input: {
-  city: string;
+export function parseOtherProviderTypes(value: string | string[] | null | undefined) {
+  const parts = Array.isArray(value) ? value : String(value ?? "").split(/[,;\n]+/);
+  return parts.map((part) => part.trim()).filter(Boolean);
+}
+
+export async function discoverProvidersForArea(input: {
+  city?: string;
+  county?: string;
   state: string;
   trades?: RecruitmentTradeSlug[];
-}): Promise<{ providers: DiscoveredProvider[]; source: "google_places" | "unavailable"; error?: string }> {
-  const key = process.env.GOOGLE_PLACES_API_KEY;
-  if (!key) return { providers: [], source: "unavailable", error: "GOOGLE_PLACES_API_KEY is not configured" };
-
-  const trades = RECRUITMENT_TRADES.filter((trade) => !input.trades?.length || input.trades.includes(trade.slug));
-  const providers: DiscoveredProvider[] = [];
-
-  for (const trade of trades) {
-    const response = await fetch("https://places.googleapis.com/v1/places:searchText", {
-      method: "POST",
-      headers: {
-        "Content-Type": "application/json",
-        "X-Goog-Api-Key": key,
-        "X-Goog-FieldMask":
-          "places.id,places.displayName,places.formattedAddress,places.nationalPhoneNumber,places.websiteUri,places.rating,places.userRatingCount,places.googleMapsUri,places.editorialSummary",
-      },
-      body: JSON.stringify({
-        textQuery: `${trade.query} in ${input.city}, ${input.state}`,
-        pageSize: 20,
-      }),
-    });
-    const body = await response.json().catch(() => ({}));
-    if (!response.ok) {
-      return {
-        providers: [],
-        source: "unavailable",
-        error: typeof body.error?.message === "string" ? body.error.message : "Places lookup failed",
-      };
-    }
-    for (const place of (body.places ?? []) as PlacesSearchResult[]) {
-      const name = place.displayName?.text?.trim();
-      if (!name) continue;
-      const address = parseAddress(place.formattedAddress, input.city, input.state);
-      const reviewCount = Number(place.userRatingCount ?? 0);
-      const rating = place.rating == null ? null : Number(place.rating);
-      providers.push({
-        source: "google_places",
-        sourcePlaceId: place.id || `${name}|${trade.slug}`,
-        name,
-        categorySlug: trade.slug,
-        categoryName: trade.name,
-        phone: place.nationalPhoneNumber || null,
-        email: null,
-        website: place.websiteUri || null,
-        address1: address.address1,
-        city: address.city,
-        state: address.state,
-        postalCode: address.postalCode,
-        publicRating: rating,
-        reviewCount,
-        publicRankScore: publicReputationScore({
-          rating,
-          reviewCount,
-          hasWebsite: Boolean(place.websiteUri),
-        }),
-        independentFitScore: independentFitScore({
-          name,
-          rating,
-          reviewCount,
-          hasWebsite: Boolean(place.websiteUri),
-        }),
-        mapsUrl: place.googleMapsUri || null,
-        editorialSummary: place.editorialSummary?.text || null,
-      });
-    }
-  }
-
-  return { providers: rankDiscoveredProviders(providers), source: "google_places" };
+  extraQueries?: string[];
+  catalog: DiscoveredProvider[];
+}) {
+  const city = (input.city ?? "").trim();
+  const county = (input.county ?? "").trim();
+  const state = input.state.trim().toUpperCase().slice(0, 2);
+  const area = await zipsForRecruitmentArea({ city, county, state });
+  const extras = parseOtherProviderTypes(input.extraQueries);
+  const selected = input.trades;
+  const trades =
+    selected === undefined || (selected.length === 0 && extras.length === 0)
+      ? [...RECRUITMENT_TRADES]
+      : RECRUITMENT_TRADES.filter((trade) => selected.includes(trade.slug));
+  const place = area.place || city || county;
+  const queries = tradeQueriesForArea({
+    queries: [...trades.map((trade) => trade.query), ...extras],
+    city: place,
+    state,
+    zips: area.zips,
+  });
+  const providers = rankDiscoveredProviders(
+    input.catalog.filter((row) =>
+      trades.some((trade) => trade.slug === row.categorySlug) &&
+      providerInTargetArea(row, { city, county, state, zips: area.zips, countyCities: area.cities }),
+    ),
+  );
+  return {
+    providers,
+    source: "demo_catalog" as const,
+    zips: area.zips,
+    queries,
+    place,
+    city,
+    county,
+    areaSource: area.source,
+    warning: area.zips.length
+      ? undefined
+      : `No ZIP codes found for ${place}, ${state}. Ranked by name match only.`,
+  };
 }

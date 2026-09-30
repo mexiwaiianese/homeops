@@ -21,6 +21,9 @@ type VendorRow = {
   approval_status: VendorApprovalStatus;
   catalog_released?: boolean;
   catalog_vendor_id?: string | null;
+  organization_name?: string | null;
+  in_platform_catalog?: boolean;
+  source_orgs?: string[];
   emergency_available?: boolean;
   expected_response_minutes?: number | null;
   minimum_trip_charge_cents?: number | null;
@@ -86,6 +89,15 @@ export default function VendorsPage() {
   const [role, setRole] = useState<string | null>(null);
   const [platformAdmin, setPlatformAdmin] = useState(false);
   const [catalog, setCatalog] = useState<VendorRow[]>([]);
+  const [screenedMissing, setScreenedMissing] = useState<Array<{
+    id: string;
+    name: string;
+    trade?: string | null;
+    city?: string | null;
+    state?: string | null;
+    workflow_stage?: string;
+    organization_name?: string | null;
+  }>>([]);
   const [meta, setMeta] = useState<any>({
     categories: [],
     owners: [],
@@ -109,6 +121,7 @@ export default function VendorsPage() {
     setPlatformAdmin(Boolean(body.platformAdmin));
     const rows = (body.vendors ?? []) as VendorRow[];
     setCatalog((body.catalog ?? []) as VendorRow[]);
+    setScreenedMissing(Array.isArray(body.screenedNotOnBoard) ? body.screenedNotOnBoard : []);
     if (body.warning) setToast(body.warning);
     const admin = Boolean(body.platformAdmin) || isNetworkAdmin(body.role);
     const visible = Boolean(body.platformAdmin) ? rows : admin ? rows : rows.filter((v) => managerVisibleStatuses.includes(v.approval_status));
@@ -294,6 +307,31 @@ export default function VendorsPage() {
           <Stat label="Emergency capable" value={stats.emergency} />
         </div>
 
+        {platformAdmin && screenedMissing.length > 0 && (
+          <section className="panel">
+            <div className="panelHead">
+              <div>
+                <p className="eyebrow">SCREENED, NOT ON THE BOARD</p>
+                <h2>{screenedMissing.length} qualified {screenedMissing.length === 1 ? "vendor is" : "vendors are"} not on the recruitment board</h2>
+              </div>
+            </div>
+            <p className="summary">These shops already passed documents reviewed (or later). They live in the vendor directory, not in vendor_prospects, so Discover never listed them.</p>
+            {screenedMissing.map((row) => (
+              <div className="vendorRow" key={row.id}>
+                <div>
+                  <strong>{row.name}</strong>
+                  <span>
+                    {row.trade || "General vendor"} • {[row.city, row.state].filter(Boolean).join(", ") || "Service area not set"}
+                    {row.workflow_stage ? ` • ${stageLabel(row.workflow_stage)}` : ""}
+                    {row.organization_name ? ` • ${row.organization_name}` : ""}
+                  </span>
+                </div>
+                <span className="pill">Directory only</span>
+              </div>
+            ))}
+          </section>
+        )}
+
         {platformAdmin && <RecruitmentBoard />}
 
         {!catalogAdmin && networkAdmin && (
@@ -373,7 +411,13 @@ export default function VendorsPage() {
                 {networkAdmin && !catalogAdmin && <option value="blocked">Blocked</option>}
               </select>
             </div>
-            {vendors.map((v) => (
+            {vendors.length === 0 ? (
+              <div className="empty">
+                {catalogAdmin
+                  ? "No vendor records in live Supabase yet. The platform catalog org is empty, and no organization directories were found either. Discover & rank fills the recruitment board; it does not copy demo shops into this catalog."
+                  : "No vendors match these filters."}
+              </div>
+            ) : vendors.map((v) => (
               <button
                 className={
                   vendor?.id === v.id ? "vendorRow selected" : "vendorRow"
@@ -387,6 +431,9 @@ export default function VendorsPage() {
                     {v.trade || "General vendor"} •{" "}
                     {[v.city, v.state].filter(Boolean).join(", ") ||
                       "Service area not set"}
+                    {catalogAdmin && (v.organization_name || v.source_orgs?.length)
+                      ? ` • ${v.in_platform_catalog ? "Catalog" : v.organization_name || v.source_orgs?.[0]}`
+                      : ""}
                   </span>
                 </div>
                 <span className={"vendorStatus " + v.approval_status}>

@@ -1,8 +1,13 @@
 "use client";
 
-import { useCallback, useEffect, useMemo, useState } from "react";
-import { independentFitScore, inviteSkipReason, isScaledBrand } from "@/lib/vendor-prospects";
+import { useCallback, useEffect, useMemo, useRef, useState } from "react";
+import { citiesForState, countiesForState } from "@/lib/area-zips";
+import { US_STATES } from "@/lib/us-states";
+import { independentFitScore, inviteSkipReason, isScaledBrand, parseOtherProviderTypes, RECRUITMENT_TRADES, type RecruitmentTradeSlug } from "@/lib/vendor-prospects";
 import type { CatalogIntakeReview, CatalogMatch } from "@/lib/catalog-intake";
+
+const OTHER_CITY = "__other__";
+const ALL_TRADE_SLUGS = RECRUITMENT_TRADES.map((trade) => trade.slug);
 
 type Prospect = {
   id?: string;
@@ -47,8 +52,21 @@ function fitOf(row: Prospect) {
 }
 
 export default function RecruitmentBoard() {
-  const [city, setCity] = useState("Lehi");
   const [state, setState] = useState("UT");
+  const [areaMode, setAreaMode] = useState<"city" | "county">("city");
+  const [cityChoice, setCityChoice] = useState("Lehi");
+  const [otherCity, setOtherCity] = useState("");
+  const [county, setCounty] = useState("Utah County");
+  const [trades, setTrades] = useState<RecruitmentTradeSlug[]>([...ALL_TRADE_SLUGS]);
+  const [otherTypeOn, setOtherTypeOn] = useState(false);
+  const [otherTypes, setOtherTypes] = useState("");
+  const [typesOpen, setTypesOpen] = useState(false);
+  const typesRef = useRef<HTMLDivElement>(null);
+  const cities = useMemo(() => citiesForState(state), [state]);
+  const counties = useMemo(() => countiesForState(state), [state]);
+  const city = areaMode === "city" ? (cityChoice === OTHER_CITY ? otherCity.trim() : cityChoice) : "";
+  const selectedCounty = areaMode === "county" ? county : "";
+  const extraQueries = useMemo(() => (otherTypeOn ? parseOtherProviderTypes(otherTypes) : []), [otherTypeOn, otherTypes]);
   const [prospects, setProspects] = useState<Prospect[]>([]);
   const [reviews, setReviews] = useState<CatalogIntakeReview[]>([]);
   const [mergePick, setMergePick] = useState<Record<string, string>>({});
@@ -72,6 +90,24 @@ export default function RecruitmentBoard() {
   }, []);
 
   useEffect(() => { void load(); }, [load]);
+  useEffect(() => {
+    if (cityChoice !== OTHER_CITY && !cities.includes(cityChoice)) {
+      setCityChoice(cities[0] || OTHER_CITY);
+    }
+  }, [cities, cityChoice]);
+  useEffect(() => {
+    if (county && !counties.includes(county)) {
+      setCounty(counties[0] || "");
+    }
+    if (areaMode === "county" && !counties.length) setAreaMode("city");
+  }, [counties, county, areaMode]);
+  useEffect(() => {
+    function close(event: MouseEvent) {
+      if (typesRef.current && !typesRef.current.contains(event.target as Node)) setTypesOpen(false);
+    }
+    document.addEventListener("mousedown", close);
+    return () => document.removeEventListener("mousedown", close);
+  }, []);
 
   const pendingReviews = useMemo(() => reviews.filter((row) => row.status === "pending"), [reviews]);
 
@@ -84,19 +120,53 @@ export default function RecruitmentBoard() {
     return [...groups.entries()];
   }, [prospects]);
 
+  function toggleTrade(slug: RecruitmentTradeSlug) {
+    setTrades((current) => current.includes(slug) ? current.filter((item) => item !== slug) : [...current, slug]);
+  }
+
   async function run(autoInvite: boolean) {
+    if (areaMode === "city" && !city) {
+      setMessage("Choose a city, or pick Other and enter the city name.");
+      return;
+    }
+    if (areaMode === "county" && !selectedCounty) {
+      setMessage("Choose a county, or switch Search by to City.");
+      return;
+    }
+    if (!trades.length && !extraQueries.length) {
+      setMessage("Select at least one provider type, or enter an Other type.");
+      return;
+    }
+    if (otherTypeOn && !extraQueries.length) {
+      setMessage("Enter an Other provider type, or uncheck Other.");
+      return;
+    }
     setBusy(true);
     setMessage("");
+    const place = selectedCounty || city;
     const response = await fetch("/api/vendors/recruitment/run", {
       method: "POST",
       headers: { "Content-Type": "application/json" },
-      body: JSON.stringify({ city, state, autoInvite, minRating: 4.4, minReviews: 8, maxReviews: 250, limitPerCategory: 3 }),
+      body: JSON.stringify({
+        city: selectedCounty ? "" : city,
+        county: selectedCounty,
+        state,
+        trades,
+        extraQueries,
+        autoInvite,
+        minRating: 4.4,
+        minReviews: 8,
+        maxReviews: 250,
+        limitPerCategory: 3,
+      }),
     });
     const body = await response.json();
     setBusy(false);
     if (!response.ok) { setMessage(body.error || "Recruitment failed"); return; }
     setSource(body.source);
-    setMessage(`${body.discovered || 0} independents ranked from public listings. ${body.invited?.length || 0} invitations prepared${body.warning ? ` • ${body.warning}` : ""}.`);
+    const zips = Array.isArray(body.zips) && body.zips.length ? ` ZIPs ${body.zips.join(", ")}.` : "";
+    const queries = Array.isArray(body.queries) && body.queries.length ? ` Queries: ${body.queries.join("; ")}.` : "";
+    setMessage(`${body.discovered || 0} independents ranked for ${body.place || place}, ${state}.${zips}${queries} ${body.invited?.length || 0} invitations prepared${body.warning ? ` • ${body.warning}` : ""}.`);
     await load();
   }
 
@@ -137,14 +207,105 @@ export default function RecruitmentBoard() {
           </div>
           <span className="pill">Independents first</span>
         </div>
-        <p className="summary">portonOS looks for owner-operators with real public proof—not national brands or 1,000-review call centers. Invite ranking peaks around 25–90 reviews, skips franchises, and never writes that score onto dispatch scorecards.</p>
-        <div className="vendorFilters">
-          <input value={city} onChange={(e) => setCity(e.target.value)} placeholder="City" />
-          <input value={state} onChange={(e) => setState(e.target.value)} placeholder="ST" />
-          <button className="secondaryBtn" disabled={busy} onClick={() => void run(false)}>Discover & rank</button>
-          <button className="primary" disabled={busy} onClick={() => void run(true)}>{busy ? "Working…" : "Find and invite"}</button>
+        <p className="summary">Search by city or by county—not both. Discover maps that area to ZIP codes and builds a query per provider type, including any Other type you enter. Ranking still skips franchises and never writes public-review scores onto dispatch scorecards.</p>
+        <div className="recruitFilters">
+          <label>
+            State
+            <select value={state} onChange={(e) => setState(e.target.value)}>
+              {US_STATES.map((row) => (
+                <option key={row.code} value={row.code}>{row.name}</option>
+              ))}
+            </select>
+          </label>
+          <label>
+            Search by
+            <select
+              value={areaMode}
+              onChange={(e) => {
+                const next = e.target.value === "county" ? "county" : "city";
+                setAreaMode(next);
+                if (next === "county" && !county) setCounty(counties[0] || "");
+              }}
+            >
+              <option value="city">City</option>
+              <option value="county" disabled={!counties.length}>County</option>
+            </select>
+          </label>
+          {areaMode === "city" ? (
+            <label className="span2">
+              City
+              <select value={cityChoice} onChange={(e) => setCityChoice(e.target.value)}>
+                {cities.map((name) => (
+                  <option key={name} value={name}>{name}</option>
+                ))}
+                <option value={OTHER_CITY}>Other…</option>
+              </select>
+            </label>
+          ) : (
+            <label className="span2">
+              County
+              <select value={county} onChange={(e) => setCounty(e.target.value)}>
+                {counties.map((name) => (
+                  <option key={name} value={name}>{name}</option>
+                ))}
+              </select>
+            </label>
+          )}
+          {areaMode === "city" && cityChoice === OTHER_CITY && (
+            <label className="span2">
+              City name
+              <input value={otherCity} onChange={(e) => setOtherCity(e.target.value)} placeholder="City name" />
+            </label>
+          )}
+          <div className="span2 multiSelect" ref={typesRef}>
+            <span>Provider types</span>
+            <button type="button" className="multiSelectToggle" disabled={busy} onClick={() => setTypesOpen((open) => !open)}>
+              {trades.length === ALL_TRADE_SLUGS.length && !otherTypeOn
+                ? "All listed types"
+                : `${trades.length} type${trades.length === 1 ? "" : "s"}${otherTypeOn ? " + Other" : ""}`}
+            </button>
+            {typesOpen && (
+              <div className="multiSelectMenu">
+                {RECRUITMENT_TRADES.map((trade) => (
+                  <label key={trade.slug}>
+                    <input
+                      type="checkbox"
+                      checked={trades.includes(trade.slug)}
+                      onChange={() => toggleTrade(trade.slug)}
+                    />
+                    {trade.name}
+                  </label>
+                ))}
+                <label>
+                  <input
+                    type="checkbox"
+                    checked={otherTypeOn}
+                    onChange={(e) => setOtherTypeOn(e.target.checked)}
+                  />
+                  Other
+                </label>
+              </div>
+            )}
+          </div>
+          {otherTypeOn && (
+            <label className="span2">
+              Other provider type
+              <input
+                value={otherTypes}
+                onChange={(e) => setOtherTypes(e.target.value)}
+                placeholder="Garage door, painting, concrete…"
+              />
+            </label>
+          )}
+          <div className="span2 recruitActions">
+            <button className="secondaryBtn" disabled={busy} onClick={() => void run(false)}>Discover & rank</button>
+            <button className="primary" disabled={busy} onClick={() => void run(true)}>{busy ? "Working…" : "Find and invite"}</button>
+          </div>
         </div>
         {message && <div className="notice">{message}{source ? ` • Source: ${source}` : ""}</div>}
+        {prospects.length === 0 && !message && (
+          <div className="empty">No prospects on the board yet. Discover & rank maps the selected city or county to ZIP codes and ranks independents in that area. Find and invite also sends outreach — do not use it until you want emails or texts to go out.</div>
+        )}
         {groupedProspects.map(([category, rows]) => (
           <div className="recruitGroup" key={category}>
             <h3>{category}</h3>

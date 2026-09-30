@@ -1,10 +1,11 @@
 import { NextResponse } from "next/server";
 import { getAuthedContext } from "@/lib/backend";
 import { getOperatorAdmin } from "@/lib/operator-admin";
-import { getPlatformCatalog, listCatalogVendors, listReleasedCatalogForOrg, stripCatalogDocuments } from "@/lib/platform-catalog";
+import { getPlatformCatalog, listAllVendorsForAdmin, listReleasedCatalogForOrg, stripCatalogDocuments, vendorOnRecruitmentBoard } from "@/lib/platform-catalog";
 import { findCatalogDuplicates, queueCatalogIntake } from "@/lib/catalog-intake";
-import { buildVendorFingerprint, isNetworkAdmin, normalizeVendorName } from "@/lib/vendors";
+import { buildVendorFingerprint, canReleaseToOrganizations, isNetworkAdmin, normalizeVendorName } from "@/lib/vendors";
 import { vendors as demoVendors } from "@/lib/vendor-demo";
+import { demoProspects } from "@/lib/vendor-prospect-demo";
 
 function filterDemo(rows: typeof demoVendors, q: string, status: string | null, stage: string | null) {
   let next = rows;
@@ -12,6 +13,34 @@ function filterDemo(rows: typeof demoVendors, q: string, status: string | null, 
   if (status) next = next.filter((v) => v.approval_status === status);
   if (stage) next = next.filter((v) => v.workflow_stage === stage);
   return next;
+}
+
+function screenedNotOnBoardRows(
+  rows: Array<Record<string, unknown>>,
+  prospects: Array<{ vendor_id?: string | null; normalized_name?: string | null; identity_fingerprint?: string | null; name?: string | null }>,
+) {
+  return rows
+    .filter((row) => {
+      const screened = canReleaseToOrganizations(String(row.workflow_stage ?? "")) || Boolean(row.catalog_released);
+      if (!screened) return false;
+      return !vendorOnRecruitmentBoard({
+        id: String(row.id ?? ""),
+        identity_fingerprint: (row.identity_fingerprint as string | null) ?? null,
+        normalized_name: (row.normalized_name as string | null) ?? null,
+        name: String(row.name ?? ""),
+      }, prospects);
+    })
+    .map((row) => ({
+      id: String(row.id ?? ""),
+      name: String(row.name ?? ""),
+      trade: (row.trade as string | null) ?? null,
+      city: (row.city as string | null) ?? null,
+      state: (row.state as string | null) ?? null,
+      workflow_stage: row.workflow_stage,
+      approval_status: row.approval_status,
+      organization_name: (row.organization_name as string | null) ?? null,
+      in_platform_catalog: Boolean(row.in_platform_catalog),
+    }));
 }
 
 export async function GET(request: Request) {
@@ -25,12 +54,14 @@ export async function GET(request: Request) {
 
   if (!supabase) {
     if (platformAdmin) {
+      const vendors = filterDemo(demoVendors, q, status, stage);
       return NextResponse.json({
         mode: "demo",
         role: null,
         platformAdmin: true,
-        vendors: filterDemo(demoVendors, q, status, stage),
+        vendors,
         catalog: [],
+        screenedNotOnBoard: screenedNotOnBoardRows(vendors as unknown as Array<Record<string, unknown>>, demoProspects),
         meta: emptyMeta,
       });
     }
@@ -57,24 +88,23 @@ export async function GET(request: Request) {
         warning: catalog.error,
       });
     }
-    const listed = await listCatalogVendors(catalog.admin, catalog.organizationId, { q, status, stage });
-    let rows = listed.data;
-    let warning: string | undefined;
-    if (listed.error) {
-      const fallback = await catalog.admin.from("vendors").select("*").eq("organization_id", catalog.organizationId).order("name");
-      if (fallback.error) return NextResponse.json({ error: listed.error.message }, { status: 500 });
-      rows = fallback.data;
-      warning = "Run supabase/migrations/20260930140000_platform_vendor_catalog.sql so vendors can be released to organizations.";
-    }
+    const listed = await listAllVendorsForAdmin(catalog.admin, catalog.organizationId, { q, status, stage });
+    if (listed.error && !listed.data.length) return NextResponse.json({ error: listed.error.message }, { status: 500 });
+    const rows = listed.data;
     const { data: categories } = await catalog.admin.from("service_categories").select("id,name").eq("active", true).order("name");
+    const { data: prospects } = await catalog.admin
+      .from("vendor_prospects")
+      .select("vendor_id,normalized_name,identity_fingerprint,name");
+    const screenedNotOnBoard = screenedNotOnBoardRows(rows as Array<Record<string, unknown>>, prospects ?? []);
     return NextResponse.json({
       mode: "live",
       role: "platform",
       platformAdmin: true,
-      vendors: rows ?? [],
+      vendors: rows,
       catalog: [],
+      screenedNotOnBoard,
       meta: { categories: categories ?? [], owners: [], homes: [] },
-      warning,
+      warning: listed.warning,
     });
   }
 

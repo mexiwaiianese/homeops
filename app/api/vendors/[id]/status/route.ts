@@ -22,10 +22,11 @@ export async function PATCH(request: Request, { params }: { params: Promise<{ id
     if (!isNetworkAdmin(role)) return NextResponse.json({ error: "Network admin required" }, { status: 403 });
   }
 
-  const { data: current, error: readError } = await client.from("vendors")
-    .select("id,workflow_stage,approval_status")
-    .eq("id", id).eq("organization_id", orgId).single();
+  const { data: current, error: readError } = platformAdmin
+    ? await client.from("vendors").select("id,organization_id,workflow_stage,approval_status").eq("id", id).single()
+    : await client.from("vendors").select("id,organization_id,workflow_stage,approval_status").eq("id", id).eq("organization_id", orgId).single();
   if (readError || !current) return NextResponse.json({ error: "Vendor not found" }, { status: 404 });
+  const vendorOrgId = current.organization_id as string;
 
   await client.rpc("refresh_vendor_eligibility", { v_id: id });
   const { data: refreshed } = await client.from("vendors").select("workflow_stage,approval_status").eq("id",id).single();
@@ -42,7 +43,7 @@ export async function PATCH(request: Request, { params }: { params: Promise<{ id
   if (toStage === "approved" || toStage === "monitored" || ["approved","preferred"].includes(toStatus)) {
     const { data: credentials } = await client.from("vendor_credentials")
       .select("credential_type,verification_status,expires_on")
-      .eq("vendor_id", id).eq("organization_id", orgId);
+      .eq("vendor_id", id).eq("organization_id", vendorOrgId);
     const blocking = (credentials ?? []).some((c:any) =>
       ["license","insurance_general_liability","insurance_workers_comp"].includes(c.credential_type) &&
       (["rejected","expired"].includes(c.verification_status) || (c.expires_on && new Date(c.expires_on+"T23:59:59Z").getTime() < Date.now()))
@@ -59,17 +60,17 @@ export async function PATCH(request: Request, { params }: { params: Promise<{ id
   if (toStage === "approved") updates.approved_at = new Date().toISOString();
   if (toStage === "suspended") updates.suspended_at = new Date().toISOString();
   if (toStage === "monitored") updates.last_monitored_at = new Date().toISOString();
-  if (platformAdmin && (toStage === "documents_reviewed" || toStage === "approved" || toStage === "monitored")) {
+  if (platformAdmin && vendorOrgId === orgId && (toStage === "documents_reviewed" || toStage === "approved" || toStage === "monitored")) {
     updates.catalog_released = true;
     updates.catalog_released_at = new Date().toISOString();
   }
 
   const { data, error } = await client.from("vendors").update(updates)
-    .eq("id", id).eq("organization_id", orgId).select().single();
+    .eq("id", id).eq("organization_id", vendorOrgId).select().single();
   if (error) return NextResponse.json({ error: error.message }, { status: 400 });
 
   await client.from("vendor_status_history").insert({
-    organization_id: orgId,
+    organization_id: vendorOrgId,
     vendor_id: id,
     from_workflow_stage: fromStage,
     to_workflow_stage: toStage,

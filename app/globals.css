@@ -1921,6 +1921,46 @@ button:disabled {
 .recruitRow small{color:var(--muted);margin-top:3px}
 .recruitRow.isScaled{opacity:.62}
 .recruitLayout{display:grid;grid-template-columns:minmax(0,1fr) 320px;gap:16px;align-items:start}
+.recruitFilters{display:grid;grid-template-columns:1fr 1fr;gap:8px;margin-bottom:8px}
+.recruitFilters label,.recruitFilters .multiSelect{display:flex;flex-direction:column;gap:4px;font-size:10px;font-weight:800;text-transform:uppercase;letter-spacing:.04em;color:#858d88}
+.recruitFilters .span2{grid-column:1/-1}
+.recruitFilters input,.recruitFilters select,.multiSelectToggle{
+  width:100%;
+  border:1px solid #d9ddd9;
+  background:#fff;
+  padding:10px 11px;
+  border-radius:9px;
+  font:inherit;
+  font-size:12px;
+  font-weight:600;
+  text-transform:none;
+  letter-spacing:0;
+  color:var(--ink);
+  text-align:left;
+}
+.recruitActions{display:flex;gap:8px;flex-wrap:wrap}
+.recruitActions button{flex:1;min-width:140px}
+.multiSelect{position:relative}
+.multiSelectMenu{
+  position:absolute;
+  z-index:8;
+  top:calc(100% + 4px);
+  left:0;
+  right:0;
+  max-height:280px;
+  overflow:auto;
+  background:#fff;
+  border:1px solid var(--line);
+  border-radius:10px;
+  box-shadow:0 8px 24px rgba(28,36,28,.12);
+  padding:8px;
+  display:flex;
+  flex-direction:column;
+  gap:2px;
+}
+.multiSelectMenu label{display:flex;align-items:center;gap:8px;padding:7px 8px;border-radius:8px;font-size:12px;font-weight:600;text-transform:none;letter-spacing:0;color:var(--ink);cursor:pointer}
+.multiSelectMenu label:hover{background:#f6f8f5}
+.multiSelectMenu input{width:auto;margin:0}
 .recruitSide{position:sticky;top:16px}
 .intakeCardMini{border:1px solid var(--line);border-radius:12px;padding:12px;margin-top:12px;display:flex;flex-direction:column;gap:4px}
 .intakeCardMini strong{font-size:13px}
