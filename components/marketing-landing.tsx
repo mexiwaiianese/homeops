@@ -1,6 +1,6 @@
 "use client";
 
-import { FormEvent, useMemo, useState } from "react";
+import { FormEvent, useEffect, useMemo, useState } from "react";
 import BrandLockup from "@/components/brand-lockup";
 import type { DemoRole } from "@/lib/demo-access";
 
@@ -16,7 +16,24 @@ export default function MarketingLanding({ demoError }: { demoError?: string }) 
   const [status, setStatus] = useState<"idle" | "sending" | "sent" | "error">("idle");
   const [message, setMessage] = useState(demoError || "");
   const [devLink, setDevLink] = useState("");
+  const [menuOpen, setMenuOpen] = useState(false);
   const selected = useMemo(() => ROLES.find((row) => row.id === role) || ROLES[0], [role]);
+
+  useEffect(() => {
+    const close = () => setMenuOpen(false);
+    const onKey = (event: KeyboardEvent) => {
+      if (event.key === "Escape") close();
+    };
+    const onResize = () => {
+      if (window.innerWidth > 900) close();
+    };
+    document.addEventListener("keydown", onKey);
+    window.addEventListener("resize", onResize);
+    return () => {
+      document.removeEventListener("keydown", onKey);
+      window.removeEventListener("resize", onResize);
+    };
+  }, []);
 
   async function requestDemo(event: FormEvent) {
     event.preventDefault();
@@ -41,9 +58,21 @@ export default function MarketingLanding({ demoError }: { demoError?: string }) 
 
   return (
     <main className="marketing">
-      <header className="marketingNav">
-        <BrandLockup href="/" artwork="lockup" />
-        <nav>
+      <header className={`marketingNav${menuOpen ? " menu-open" : ""}`}>
+        <div className="marketingNavBar">
+          <BrandLockup href="/" artwork="lockup" />
+          <button
+            type="button"
+            className="navToggle"
+            aria-expanded={menuOpen}
+            aria-controls="marketing-menu"
+            aria-label={menuOpen ? "Close menu" : "Open menu"}
+            onClick={() => setMenuOpen((open) => !open)}
+          >
+            <span className="navToggleBars" aria-hidden="true" />
+          </button>
+        </div>
+        <nav id="marketing-menu" onClick={() => setMenuOpen(false)}>
           <a href="#product">Product</a>
           <a href="#roles">Roles</a>
           <a href="#demo">Demo</a>

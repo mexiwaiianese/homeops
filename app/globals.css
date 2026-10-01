@@ -31,6 +31,11 @@
 * {
   box-sizing: border-box;
 }
+html,
+body {
+  max-width: 100%;
+  overflow-x: hidden;
+}
 body {
   margin: 0;
   background: var(--bg);
@@ -4075,8 +4080,9 @@ a.statLink:hover {
 
 .marketing {
   min-height: 100vh;
+  width: 100%;
   max-width: 100%;
-  overflow-x: clip;
+  overflow-x: hidden;
   background: var(--ivory);
   color: var(--ink);
 }
@@ -4085,7 +4091,10 @@ a.statLink:hover {
 .marketingGrid,
 .marketingRoles,
 .marketingDemo,
-.marketingFoot {
+.marketingFoot,
+.marketingHero > *,
+.marketingCard,
+.marketingAside {
   min-width: 0;
   max-width: 100%;
   box-sizing: border-box;
@@ -4099,20 +4108,35 @@ a.statLink:hover {
   background: var(--navy);
   color: #f4f1ea;
 }
+.marketingNavBar {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 12px;
+  min-width: 0;
+  width: auto;
+}
 .marketingNav .brand {
   padding: 0;
   color: inherit;
   min-width: 0;
 }
+.marketing img {
+  max-width: 100%;
+  height: auto;
+}
 .marketingNav .brandLockupImg,
 .marketingNav .brandArtwork {
-  max-width: min(180px, 70vw);
+  max-width: 160px;
   height: auto;
   background: var(--ivory);
   border-radius: 10px;
   padding: 6px 10px;
 }
 .marketingNav .brandMarkImg {
+  display: none;
+}
+.marketingNav .navToggle {
   display: none;
 }
 .marketingNav nav {
@@ -4128,7 +4152,6 @@ a.statLink:hover {
   text-decoration: none;
   font-size: 13px;
   font-weight: 600;
-  white-space: nowrap;
 }
 .marketingNav nav .primary {
   color: var(--navy);
@@ -4142,25 +4165,32 @@ a.statLink:hover {
   gap: 32px;
   align-items: center;
   padding: 48px 28px 28px;
-  width: min(1100px, 100%);
+  width: 100%;
+  max-width: 1100px;
   margin: 0 auto;
 }
-.marketingHero > * {
+.marketingHero > div {
   min-width: 0;
   max-width: 100%;
 }
+.marketingHero h1,
+.marketingHero p,
+.marketingHero .eyebrow {
+  max-width: 100%;
+  overflow-wrap: break-word;
+  word-break: break-word;
+}
 .marketingHero h1 {
   margin: 8px 0 14px;
-  font-size: clamp(28px, 7vw, 52px);
+  font-size: clamp(28px, 7.2vw, 52px);
   line-height: 1.15;
-  overflow-wrap: anywhere;
 }
 .marketingHero p {
-  max-width: 560px;
+  width: auto;
+  max-width: 36rem;
   margin: 0;
   color: var(--muted);
   line-height: 1.65;
-  overflow-wrap: anywhere;
 }
 .marketingMark {
   width: min(280px, 100%);
@@ -4182,7 +4212,8 @@ a.statLink:hover {
 .marketingRoles,
 .marketingDemo,
 .marketingFoot {
-  width: min(1100px, 100%);
+  width: 100%;
+  max-width: 1100px;
   margin: 0 auto;
   padding: 12px 28px 36px;
 }
@@ -4307,6 +4338,11 @@ a.statLink:hover {
   color: var(--muted);
   font-size: 13px;
 }
+.marketingFoot img {
+  width: auto;
+  max-width: min(180px, 100%);
+  height: auto;
+}
 .notice.error {
   background: var(--red2);
   border-color: #efcfc8;
@@ -4350,27 +4386,44 @@ a.statLink:hover {
   .marketingNav {
     flex-direction: column;
     align-items: stretch;
-    gap: 12px;
-    padding: 14px 16px 16px;
+    gap: 0;
+    padding: 12px 16px 12px;
+  }
+  .marketingNavBar {
+    width: 100%;
+  }
+  .marketingNav .navToggle {
+    display: inline-flex;
+    color: #f4f1ea;
+    background: rgba(255, 255, 255, 0.1);
   }
   .marketingNav nav {
-    display: grid;
-    grid-template-columns: repeat(2, minmax(0, 1fr));
-    gap: 8px;
+    display: none;
+    flex-direction: column;
+    align-items: stretch;
+    gap: 0;
+    width: 100%;
+    padding: 8px 0 4px;
+  }
+  .marketingNav.menu-open nav {
+    display: flex;
   }
   .marketingNav nav a {
     display: flex;
     align-items: center;
-    justify-content: center;
-    min-height: 40px;
-    padding: 8px 10px;
-    border-radius: 10px;
-    background: rgba(255, 255, 255, 0.08);
-    white-space: normal;
-    text-align: center;
+    justify-content: flex-start;
+    min-height: 44px;
+    padding: 10px 4px;
+    border-radius: 0;
+    border-bottom: 1px solid rgba(244, 241, 234, 0.12);
+    background: transparent;
+    text-align: left;
   }
   .marketingNav nav .primary {
-    grid-column: 1 / -1;
+    justify-content: center;
+    margin-top: 10px;
+    border-bottom: 0;
+    border-radius: 10px;
   }
   .marketingHero,
   .marketingGrid,
@@ -4389,9 +4442,19 @@ a.statLink:hover {
   .marketingHero {
     gap: 20px;
   }
+  .marketingHero p,
+  .marketingHero h1,
+  .marketingHero .eyebrow,
+  .marketingHero > div,
+  .marketingActions {
+    width: 100%;
+    max-width: 100%;
+  }
   .marketingMark {
     justify-self: center;
-    width: min(240px, 100%);
+    width: 100%;
+    max-width: 240px;
+    box-sizing: border-box;
   }
   .marketingActions {
     flex-direction: column;
@@ -4399,6 +4462,8 @@ a.statLink:hover {
   }
   .marketingActions a {
     text-align: center;
+    width: 100%;
+    box-sizing: border-box;
   }
   .marketingCard,
   .marketingAside,
