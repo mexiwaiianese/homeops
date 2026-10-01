@@ -4075,8 +4075,20 @@ a.statLink:hover {
 
 .marketing {
   min-height: 100vh;
+  max-width: 100%;
+  overflow-x: clip;
   background: var(--ivory);
   color: var(--ink);
+}
+.marketingNav,
+.marketingHero,
+.marketingGrid,
+.marketingRoles,
+.marketingDemo,
+.marketingFoot {
+  min-width: 0;
+  max-width: 100%;
+  box-sizing: border-box;
 }
 .marketingNav {
   display: flex;
@@ -4090,10 +4102,11 @@ a.statLink:hover {
 .marketingNav .brand {
   padding: 0;
   color: inherit;
+  min-width: 0;
 }
 .marketingNav .brandLockupImg,
 .marketingNav .brandArtwork {
-  max-width: 180px;
+  max-width: min(180px, 70vw);
   height: auto;
   background: var(--ivory);
   border-radius: 10px;
@@ -4108,12 +4121,14 @@ a.statLink:hover {
   align-items: center;
   justify-content: flex-end;
   gap: 8px 16px;
+  min-width: 0;
 }
 .marketingNav nav a {
   color: #d7e2d6;
   text-decoration: none;
   font-size: 13px;
   font-weight: 600;
+  white-space: nowrap;
 }
 .marketingNav nav .primary {
   color: var(--navy);
@@ -4123,26 +4138,33 @@ a.statLink:hover {
 }
 .marketingHero {
   display: grid;
-  grid-template-columns: minmax(0, 1.2fr) minmax(180px, 0.6fr);
+  grid-template-columns: minmax(0, 1.2fr) minmax(0, 0.6fr);
   gap: 32px;
   align-items: center;
   padding: 48px 28px 28px;
-  max-width: 1100px;
+  width: min(1100px, 100%);
   margin: 0 auto;
+}
+.marketingHero > * {
+  min-width: 0;
+  max-width: 100%;
 }
 .marketingHero h1 {
   margin: 8px 0 14px;
-  font-size: clamp(32px, 6vw, 52px);
-  line-height: 1.12;
+  font-size: clamp(28px, 7vw, 52px);
+  line-height: 1.15;
+  overflow-wrap: anywhere;
 }
 .marketingHero p {
   max-width: 560px;
   margin: 0;
   color: var(--muted);
   line-height: 1.65;
+  overflow-wrap: anywhere;
 }
 .marketingMark {
   width: min(280px, 100%);
+  max-width: 100%;
   height: auto;
   justify-self: end;
   background: #fff;
@@ -4160,7 +4182,7 @@ a.statLink:hover {
 .marketingRoles,
 .marketingDemo,
 .marketingFoot {
-  max-width: 1100px;
+  width: min(1100px, 100%);
   margin: 0 auto;
   padding: 12px 28px 36px;
 }
@@ -4177,11 +4199,14 @@ a.statLink:hover {
   border: 1px solid var(--line);
   border-radius: 18px;
   padding: 22px;
+  min-width: 0;
+  max-width: 100%;
 }
 .marketingGrid h2,
 .marketingRoles h2,
 .marketingDemo h2 {
   margin: 6px 0 10px;
+  overflow-wrap: anywhere;
 }
 .marketingGrid p,
 .marketingRole span,
@@ -4189,6 +4214,7 @@ a.statLink:hover {
 .marketingCard p {
   color: var(--muted);
   line-height: 1.6;
+  overflow-wrap: anywhere;
 }
 .marketingRoleGrid {
   display: grid;
@@ -4324,31 +4350,73 @@ a.statLink:hover {
   .marketingNav {
     flex-direction: column;
     align-items: stretch;
-    padding: 16px;
+    gap: 12px;
+    padding: 14px 16px 16px;
   }
   .marketingNav nav {
-    justify-content: flex-start;
+    display: grid;
+    grid-template-columns: repeat(2, minmax(0, 1fr));
+    gap: 8px;
+  }
+  .marketingNav nav a {
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    min-height: 40px;
+    padding: 8px 10px;
+    border-radius: 10px;
+    background: rgba(255, 255, 255, 0.08);
+    white-space: normal;
+    text-align: center;
+  }
+  .marketingNav nav .primary {
+    grid-column: 1 / -1;
   }
   .marketingHero,
   .marketingGrid,
   .marketingRoleGrid,
   .marketingDemo,
   .adminPackageGrid {
-    grid-template-columns: 1fr;
+    grid-template-columns: minmax(0, 1fr);
   }
   .marketingHero,
   .marketingGrid,
   .marketingRoles,
   .marketingDemo,
   .marketingFoot {
-    padding-left: 16px;
-    padding-right: 16px;
+    padding: 20px 16px 28px;
+  }
+  .marketingHero {
+    gap: 20px;
   }
   .marketingMark {
-    justify-self: start;
+    justify-self: center;
+    width: min(240px, 100%);
+  }
+  .marketingActions {
+    flex-direction: column;
+    align-items: stretch;
+  }
+  .marketingActions a {
+    text-align: center;
+  }
+  .marketingCard,
+  .marketingAside,
+  .marketingGrid article,
+  .marketingRole {
+    padding: 18px;
+  }
+  .marketingRoleRow {
+    gap: 8px 12px;
   }
   .adminOverrideRow {
     grid-template-columns: 1fr;
+  }
+}
+@media (max-width: 520px) {
+  .marketingRoleRow {
+    flex-direction: column;
+    align-items: flex-start;
   }
 }
 
