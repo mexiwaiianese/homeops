@@ -161,7 +161,7 @@ export default function MarketingLanding({ demoError }: { demoError?: string }) 
         </form>
         <div className="marketingAside">
           <p className="eyebrow">YOUR WORKSPACE</p>
-          <h2>Ready for a blank instance?</h2>
+          <h2>Ready to get to work?</h2>
           <p>
             Full registration provisions an empty organization — no sample homes, no demo vendors.
             Choose a package now; platform admins can still turn features on or off per organization later.
