@@ -113,14 +113,16 @@ export default function MarketingLanding({ demoError }: { demoError?: string }) 
             Work email
             <input type="email" required value={email} onChange={(event) => setEmail(event.target.value)} placeholder="you@company.com" />
           </label>
-          <fieldset className="marketingRolePick">
+          <fieldset className="marketingRolePick marketingRolePick-inline">
             <legend>Open the demo as</legend>
-            {ROLES.map((row) => (
-              <label key={row.id} className="miniCheck">
-                <input type="radio" name="role" checked={role === row.id} onChange={() => setRole(row.id)} />
-                <span>{row.title}</span>
-              </label>
-            ))}
+            <div className="marketingRoleRow">
+              {ROLES.map((row) => (
+                <label key={row.id} className="miniCheck">
+                  <input type="radio" name="role" checked={role === row.id} onChange={() => setRole(row.id)} />
+                  <span>{row.title}</span>
+                </label>
+              ))}
+            </div>
           </fieldset>
           <button className="primary" type="submit" disabled={status === "sending"}>
             {status === "sending" ? "Sending…" : "Email my demo link"}

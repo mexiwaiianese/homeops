@@ -4247,6 +4247,20 @@ a.statLink:hover {
   font-weight: 700;
   margin-bottom: 6px;
 }
+.marketingRoleRow {
+  display: flex;
+  flex-direction: row;
+  flex-wrap: wrap;
+  align-items: center;
+  gap: 10px 20px;
+}
+.marketingCard .marketingRolePick-inline .miniCheck {
+  flex-direction: row;
+  align-items: center;
+  margin: 0;
+  width: auto;
+  font-weight: 650;
+}
 .marketingRolePick .marketingRole {
   flex-direction: row;
   align-items: flex-start;
