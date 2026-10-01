@@ -4079,12 +4079,24 @@ a.statLink:hover {
 }
 
 .marketing {
+  --marketing-width: 90%;
   min-height: 100vh;
   width: 100%;
   max-width: 100%;
   overflow-x: hidden;
   background: var(--ivory);
   color: var(--ink);
+}
+.marketing h1,
+.marketing h2,
+.marketing p,
+.marketing span,
+.marketing a,
+.marketing button,
+.marketing label,
+.marketing legend {
+  overflow-wrap: anywhere;
+  word-break: break-word;
 }
 .marketingNav,
 .marketingHero,
@@ -4162,12 +4174,14 @@ a.statLink:hover {
 .marketingHero {
   display: grid;
   grid-template-columns: minmax(0, 1.2fr) minmax(0, 0.6fr);
+  justify-items: stretch;
+  align-items: start;
   gap: 32px;
-  align-items: center;
   padding: 48px 28px 28px;
   width: 100%;
   max-width: 1100px;
   margin: 0 auto;
+  box-sizing: border-box;
 }
 .marketingHero > div {
   min-width: 0;
@@ -4177,7 +4191,7 @@ a.statLink:hover {
 .marketingHero p,
 .marketingHero .eyebrow {
   max-width: 100%;
-  overflow-wrap: break-word;
+  overflow-wrap: anywhere;
   word-break: break-word;
 }
 .marketingHero h1 {
@@ -4186,11 +4200,17 @@ a.statLink:hover {
   line-height: 1.15;
 }
 .marketingHero p {
-  width: auto;
-  max-width: 36rem;
   margin: 0;
   color: var(--muted);
   line-height: 1.65;
+}
+@media (min-width: 901px) {
+  .marketingHero {
+    align-items: center;
+  }
+  .marketingHero p {
+    max-width: 36rem;
+  }
 }
 .marketingMark {
   width: min(280px, 100%);
@@ -4425,35 +4445,58 @@ a.statLink:hover {
     border-bottom: 0;
     border-radius: 10px;
   }
-  .marketingHero,
+  .marketingNav {
+    padding-left: 0;
+    padding-right: 0;
+  }
+  .marketingNavBar,
+  .marketingNav nav {
+    width: var(--marketing-width);
+    max-width: var(--marketing-width);
+    margin-inline: auto;
+  }
+  .marketingHero {
+    display: flex;
+    flex-direction: column;
+    align-items: stretch;
+    gap: 20px;
+    width: var(--marketing-width);
+    max-width: var(--marketing-width);
+    margin-inline: auto;
+    padding: 24px 0 28px;
+  }
   .marketingGrid,
   .marketingRoleGrid,
   .marketingDemo,
   .adminPackageGrid {
     grid-template-columns: minmax(0, 1fr);
   }
-  .marketingHero,
   .marketingGrid,
   .marketingRoles,
   .marketingDemo,
   .marketingFoot {
-    padding: 20px 16px 28px;
+    width: var(--marketing-width);
+    max-width: var(--marketing-width);
+    margin-inline: auto;
+    padding: 20px 0 28px;
   }
-  .marketingHero {
-    gap: 20px;
-  }
-  .marketingHero p,
-  .marketingHero h1,
-  .marketingHero .eyebrow,
   .marketingHero > div,
-  .marketingActions {
+  .marketingHero h1,
+  .marketingHero p,
+  .marketingHero .eyebrow,
+  .marketingActions,
+  .marketingGrid article,
+  .marketingCard,
+  .marketingAside,
+  .marketingRole {
     width: 100%;
     max-width: 100%;
+    box-sizing: border-box;
   }
   .marketingMark {
-    justify-self: center;
-    width: 100%;
-    max-width: 240px;
+    align-self: center;
+    width: min(240px, 100%);
+    max-width: 100%;
     box-sizing: border-box;
   }
   .marketingActions {
@@ -4461,9 +4504,12 @@ a.statLink:hover {
     align-items: stretch;
   }
   .marketingActions a {
+    display: flex;
+    align-items: center;
+    justify-content: center;
     text-align: center;
-    width: 100%;
     box-sizing: border-box;
+    text-decoration: none;
   }
   .marketingCard,
   .marketingAside,
