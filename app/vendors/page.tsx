@@ -3,13 +3,10 @@
 import { useCallback, useEffect, useMemo, useState } from "react";
 import type { VendorApprovalStatus, VendorWorkflowStage } from "@/lib/vendors";
 import { isNetworkAdmin, managerVisibleStatuses, canReleaseToOrganizations } from "@/lib/vendors";
-import BrandLockup from "@/components/brand-lockup";
-import ManagerSignOut from "@/components/manager-sign-out";
-import NavToggle from "@/components/nav-toggle";
-import BrandIcon from "@/components/brand-icon";
 import RecruitmentBoard from "./recruitment-board";
 import VendorBiddingPanel from "@/components/vendor-bidding-panel";
 import VendorBidAccess from "@/components/vendor-bid-access";
+import ManagerOpsNav from "@/components/manager-ops-nav";
 
 type VendorRow = {
   id: string;
@@ -230,31 +227,7 @@ export default function VendorsPage() {
     <main className="vendorShell">
       {toast && <div className="toast">{toast}</div>}
       <aside className="finSide">
-        <BrandLockup href="/" className="finBrand" />
-        <NavToggle />
-        <nav>
-          <a className="finNav" href="/">
-            <BrandIcon name="listing" className="navIcon" />
-            Operations
-          </a>
-          <a className="finNav" href="/listings">
-            <BrandIcon name="listing" className="navIcon" />
-            Listings
-          </a>
-          <a className="finNav" href="/payments">
-            <BrandIcon name="rent" className="navIcon" />
-            Payments
-          </a>
-          <a className="finNav" href="/financials">
-            <BrandIcon name="rent" className="navIcon" />
-            Books
-          </a>
-          <a className="finNav active" href="/vendors">
-            <BrandIcon name="applications" className="navIcon" />
-            Approved Vendors
-          </a>
-          <ManagerSignOut className="finNav" />
-        </nav>
+        <ManagerOpsNav active="vendors" />
         <div className="portfolio">
           <small>VENDOR NETWORK</small>
           <strong>{vendors.length} records</strong>

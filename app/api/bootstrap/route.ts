@@ -5,6 +5,10 @@ import { isDemoOrganizationSlug } from "@/lib/demo-ledger";
 import { healDemoBoard } from "@/lib/demo-seed-live";
 import { listDemoMaintenance } from "@/lib/maintenance-demo";
 import { getDemoOrgSettings } from "@/lib/org-settings";
+import { cookies } from "next/headers";
+import { ALL_FEATURES_ON } from "@/lib/product-features";
+import { blankWorkspaceCookie, memoryWorkspaceById } from "@/lib/provision-org";
+import { featuresForOrganization } from "@/lib/subscription-packages";
 import { createSupabaseAdminClient } from "@/lib/supabase/admin";
 import { seedManagerOpportunities } from "@/lib/vendor-auction-demo";
 
@@ -12,6 +16,24 @@ export async function GET(request: Request) {
   const origin = new URL(request.url).origin;
   const { supabase, user, organizationId, role } = await getAuthedContext();
   if (!supabase) {
+    const blankId = (await cookies()).get(blankWorkspaceCookie)?.value;
+    const blank = blankId ? memoryWorkspaceById(blankId) : null;
+    if (blank) {
+      return NextResponse.json({
+        mode: "live",
+        authenticated: true,
+        user: { email: blank.ownerEmail, role: "owner" },
+        owners: [],
+        homes: [],
+        leases: [],
+        maintenance: [],
+        settings: getDemoOrgSettings(),
+        openAuctionJobIds: [],
+        features: await featuresForOrganization(blank.organizationId),
+        packageId: blank.packageId,
+        organizationName: blank.name,
+      });
+    }
     const seeded = await seedManagerOpportunities(origin);
     return NextResponse.json({
       mode: "demo",
@@ -22,6 +44,7 @@ export async function GET(request: Request) {
       settings: getDemoOrgSettings(),
       role: "manager",
       openAuctionJobIds: seeded.openJobIds,
+      features: ALL_FEATURES_ON,
     });
   }
   if (!user || !organizationId) return NextResponse.json({ mode: "auth", authenticated: false }, { status: 401 });
@@ -56,5 +79,7 @@ export async function GET(request: Request) {
     maintenance: maintenanceRows.data,
     settings: orgRow.data?.settings ?? {},
     openAuctionJobIds: (auctionRows.data ?? []).map((row) => row.maintenance_request_id),
+    features: await featuresForOrganization(organizationId),
+    organizationName: orgRow.data?.name ?? null,
   });
 }

@@ -1,10 +1,7 @@
 "use client";
 
 import { FormEvent, useEffect, useMemo, useState } from "react";
-import BrandLockup from "@/components/brand-lockup";
-import ManagerSignOut from "@/components/manager-sign-out";
-import NavToggle from "@/components/nav-toggle";
-import BrandIcon from "@/components/brand-icon";
+import ManagerOpsNav from "@/components/manager-ops-nav";
 import { BILL_KINDS, BOOK_KINDS, buildOwnerStatements, buildTenantLedgers, type BookEntry, type BooksHome, type BooksOwner, type VendorBill } from "@/lib/books";
 import { buildYearReport } from "@/lib/books-reports";
 import { moneyCents } from "@/lib/rent";
@@ -64,19 +61,6 @@ function parseCsv(text: string) {
   if (cell || row.length) { row.push(cell); rows.push(row); }
   const headers = (rows.shift() || []).map((x) => x.trim());
   return { headers, rows: rows.map((r) => Object.fromEntries(headers.map((h, i) => [h, r[i] ?? ""]))) };
-}
-
-function BooksNav() {
-  return (
-    <nav>
-      <a className="finNav" href="/"><BrandIcon name="listing" className="navIcon" />Operations</a>
-      <a className="finNav" href="/listings"><BrandIcon name="listing" className="navIcon" />Listings</a>
-      <a className="finNav" href="/payments"><BrandIcon name="rent" className="navIcon" />Payments</a>
-      <a className="finNav active" href="/financials"><BrandIcon name="rent" className="navIcon" />Books</a>
-      <a className="finNav" href="/vendors"><BrandIcon name="applications" className="navIcon" />Approved Vendors</a>
-      <ManagerSignOut className="finNav" />
-    </nav>
-  );
 }
 
 export default function BooksPage() {
@@ -264,9 +248,7 @@ export default function BooksPage() {
   return (
     <main className="finShell">
       <aside className="finSide">
-        <BrandLockup href="/" className="finBrand" />
-        <NavToggle />
-        <BooksNav />
+        <ManagerOpsNav active="books" />
         <div className="portfolio">
           <small>PROPERTY BOOKS</small>
           <strong>{homes.length} doors</strong>

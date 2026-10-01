@@ -25,6 +25,8 @@ export default async function AdminLoginPage({ searchParams }: { searchParams: P
             <p>This browser is signed in as the platform admin. Recruitment is not available to owners or property managers.</p>
             <div className="devMenu">
               <a className="primary" href="/vendors">Open the vendor board</a>
+              <a className="secondaryBtn" href="/admin/packages">Subscription packages</a>
+              <a className="secondaryBtn" href="/admin/organizations">Organizations</a>
             </div>
             <p>
               <a href="/dev/personas">Persona login</a>

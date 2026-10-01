@@ -9,6 +9,17 @@ export async function GET(request: Request) {
   const origin = appOrigin(request);
   const { supabase, user, organizationId } = await getAuthedContext();
   if (!supabase) {
+    if (organizationId) {
+      return NextResponse.json({
+        mode: "live",
+        stripe: false,
+        period: currentRentPeriod(),
+        summary: { dueCents: 0, paidCents: 0, dueCount: 0, paidCount: 0 },
+        charges: [],
+        tenants: [],
+        homes: [],
+      });
+    }
     const charges = listDemoCharges().map((row) => publicCharge(row, origin));
     const due = charges.filter((row) => row.status === "due" || row.status === "failed" || row.status === "partial" || row.status === "processing");
     return NextResponse.json({

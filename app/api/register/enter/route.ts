@@ -1,0 +1,57 @@
+import { NextResponse } from "next/server";
+import { baseCookieOptions } from "@/lib/persona-login/gate";
+import {
+  findSignupByStripeSession,
+  findSignupByToken,
+  markSignup,
+  provisionSignup,
+  ensureAuthUser,
+} from "@/lib/platform-signup";
+import { blankWorkspaceCookie } from "@/lib/provision-org";
+import { createSupabaseAdminClient } from "@/lib/supabase/admin";
+import { getStripe } from "@/lib/stripe";
+
+export const dynamic = "force-dynamic";
+
+export async function GET(request: Request) {
+  const url = new URL(request.url);
+  const token = url.searchParams.get("token") || "";
+  const sessionId = url.searchParams.get("session_id") || "";
+  let signup = token ? await findSignupByToken(token) : null;
+  if (!signup && sessionId) {
+    const stripe = getStripe();
+    if (stripe) {
+      const session = await stripe.checkout.sessions.retrieve(sessionId);
+      if (session.payment_status === "paid" || session.status === "complete") {
+        signup = await findSignupByStripeSession(session.id);
+        if (signup) await markSignup(signup.id, { status: "paid", stripeSessionId: session.id });
+      }
+    }
+  }
+  if (!signup) {
+    const dest = new URL("/register", request.url);
+    dest.searchParams.set("error", "That registration link is invalid or expired.");
+    return NextResponse.redirect(dest);
+  }
+
+  const admin = createSupabaseAdminClient();
+  const user = admin ? await ensureAuthUser(signup.email, signup.fullName) : null;
+  const workspace = await provisionSignup(signup, user?.id ?? null);
+
+  if (admin && user) {
+    const { data } = await admin.auth.admin.generateLink({
+      type: "magiclink",
+      email: signup.email,
+      options: { redirectTo: `${url.origin}/auth/callback?next=/app` },
+    });
+    const action = data.properties?.action_link;
+    if (action) return NextResponse.redirect(action);
+  }
+
+  const dest = new URL("/app", request.url);
+  const response = NextResponse.redirect(dest);
+  const demo = (await import("@/lib/demo-access")).clearDemoSessionCookie();
+  response.cookies.set(demo.name, demo.value, demo.options);
+  response.cookies.set(blankWorkspaceCookie, workspace.organizationId, baseCookieOptions(14 * 24 * 60 * 60));
+  return response;
+}

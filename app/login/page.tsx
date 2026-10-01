@@ -13,7 +13,7 @@ export default function LoginPage() {
 
   async function signIn(e: React.FormEvent) {
     e.preventDefault();
-    if (!configured) { setMessage("Add Supabase environment variables first. Demo mode is still available at /. "); return; }
+    if (!configured) { setMessage("Add Supabase environment variables first. Request a demo from the home page."); return; }
     const supabase = createBrowserClient(projectUrl!, publishableKey!);
     const redirectTo = `${window.location.origin}/auth/callback`;
     const { error } = await supabase.auth.signInWithOtp({ email, options: { emailRedirectTo: redirectTo } });
@@ -40,7 +40,8 @@ export default function LoginPage() {
         <button className="primary" type="submit">Email me a sign-in link</button>
         {message && <div className="notice">{message}</div>}
         <PersonaQuickLogin group="manager" title="Open as a manager" />
-        <a href="/">Return to demo</a>
+        <a href="/#demo">Request a demo</a>
+        <a href="/register">Start a blank workspace</a>
         <a href="/admin/login">Platform admin sign-in</a>
         <a href="/vendors/login">Vendor desk sign-in</a>
         <a href="/owners/login">Owner portal sign-in</a>

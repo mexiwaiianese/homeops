@@ -1,10 +1,7 @@
 "use client";
 
 import { useEffect, useState } from "react";
-import BrandLockup from "@/components/brand-lockup";
-import ManagerSignOut from "@/components/manager-sign-out";
-import NavToggle from "@/components/nav-toggle";
-import BrandIcon from "@/components/brand-icon";
+import ManagerOpsNav from "@/components/manager-ops-nav";
 
 type Connection = {
   id?: string;
@@ -207,17 +204,7 @@ export default function ListingsPage() {
     <main className="vendorShell">
       {toast && <div className="toast">{toast}</div>}
       <aside className="finSide">
-        <BrandLockup href="/" className="finBrand" />
-        <NavToggle />
-        <nav>
-          <a className="finNav" href="/"><BrandIcon name="listing" className="navIcon" />Operations</a>
-          <a className="finNav active" href="/listings"><BrandIcon name="listing" className="navIcon" />Listings</a>
-          <a className="finNav" href="/applications"><BrandIcon name="applications" className="navIcon" />Applications</a>
-          <a className="finNav" href="/payments"><BrandIcon name="rent" className="navIcon" />Payments</a>
-          <a className="finNav" href="/financials"><BrandIcon name="rent" className="navIcon" />Books</a>
-          <a className="finNav" href="/vendors"><BrandIcon name="applications" className="navIcon" />Approved Vendors</a>
-          <ManagerSignOut className="finNav" />
-        </nav>
+        <ManagerOpsNav active="listings" />
         <div className="portfolio">
           <small>RENTAL LISTINGS</small>
           <strong>{listings.length} listings</strong>

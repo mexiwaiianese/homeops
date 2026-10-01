@@ -45,7 +45,7 @@ import { demoVendorSessionCookie } from "@/lib/vendor-job-demo";
 type Group = "manager" | "owner" | "tenant" | "vendor";
 
 const GROUPS: Record<Group, { label: string; landingPath: string }> = {
-  manager: { label: "Property manager", landingPath: "/" },
+  manager: { label: "Property manager", landingPath: "/demo" },
   owner: { label: "Owners", landingPath: "/owners" },
   tenant: { label: "Tenants", landingPath: "/tenant" },
   vendor: { label: "Vendors", landingPath: "/vendors/desk" },
@@ -229,7 +229,7 @@ async function discoverPersonas(admin: SupabaseClient, workspace: DemoWorkspace)
       groupLabel: GROUPS.manager.label,
       label: "Demo manager",
       description: `Operations desk, rent collection, books, vendor network, listings for ${org.name}`,
-      landingPath: GROUPS.manager.landingPath,
+      landingPath: "/app",
       badge: "live",
       meta: { organizationId: org.id, email: personaEmail("manager", org.id) },
     });

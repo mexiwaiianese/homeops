@@ -1,10 +1,7 @@
 "use client";
 
 import { FormEvent, useEffect, useMemo, useState } from "react";
-import BrandLockup from "@/components/brand-lockup";
-import ManagerSignOut from "@/components/manager-sign-out";
-import NavToggle from "@/components/nav-toggle";
-import BrandIcon from "@/components/brand-icon";
+import ManagerOpsNav from "@/components/manager-ops-nav";
 import { moneyCents } from "@/lib/rent";
 
 type Charge = {
@@ -110,16 +107,7 @@ export default function PaymentsPage() {
   return (
     <main className="finShell">
       <aside className="finSide">
-        <BrandLockup href="/" className="finBrand" />
-        <NavToggle />
-        <nav>
-          <a className="finNav" href="/"><BrandIcon name="listing" className="navIcon" />Operations</a>
-          <a className="finNav" href="/listings"><BrandIcon name="listing" className="navIcon" />Listings</a>
-          <a className="finNav active" href="/payments"><BrandIcon name="rent" className="navIcon" />Payments</a>
-          <a className="finNav" href="/financials"><BrandIcon name="rent" className="navIcon" />Books</a>
-          <a className="finNav" href="/vendors"><BrandIcon name="applications" className="navIcon" />Approved Vendors</a>
-          <ManagerSignOut className="finNav" />
-        </nav>
+        <ManagerOpsNav active="payments" />
         <div className="portfolio">
           <small>COLLECTION</small>
           <strong>{summary.dueCount} due</strong>
