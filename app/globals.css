@@ -4342,10 +4342,21 @@ a.statLink:hover {
   flex-direction: row;
   align-items: flex-start;
   gap: 10px;
+  color: var(--ink);
+}
+.marketingRolePick .marketingRole span {
+  color: var(--ink);
+}
+.marketingRolePick .marketingRole strong {
+  color: var(--ink);
+  font-weight: 700;
 }
 .marketingRolePick .marketingRole small {
   display: block;
-  color: var(--muted);
+  margin-top: 4px;
+  color: var(--ink);
+  font-size: 13px;
+  line-height: 1.45;
   font-weight: 400;
 }
 .marketingFoot {
