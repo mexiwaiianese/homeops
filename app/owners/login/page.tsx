@@ -31,12 +31,16 @@ export default function OwnerLoginPage() {
 
   async function signInWithEmail(event: React.FormEvent) {
     event.preventDefault();
-    if (!configured) { setMessage("Demo mode: choose an owner below. Live owner accounts require Supabase."); return; }
     setBusy("email");
-    const supabase = createBrowserClient(projectUrl!, publishableKey!);
-    const { error } = await supabase.auth.signInWithOtp({ email, options: { emailRedirectTo: redirectTo(), shouldCreateUser: true } });
+    const response = await fetch("/api/auth/magic-link", {
+      method: "POST",
+      headers: { "Content-Type": "application/json" },
+      body: JSON.stringify({ email, next: "/owners", createUser: true }),
+    });
+    const body = await response.json().catch(() => ({}));
     setBusy("");
-    setMessage(error ? error.message : "Check your email for your owner portal link.");
+    setMessage(response.ok ? (body.message || "Check your email for your owner portal link.") : (body.error || "Could not send the sign-in link."));
+    if (body.devLink) setMessage(`Email is not configured locally. Open ${body.devLink}`);
   }
 
   // Google / Apple use Supabase OAuth. The provider must be enabled in the Supabase dashboard

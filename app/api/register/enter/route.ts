@@ -44,8 +44,11 @@ export async function GET(request: Request) {
       email: signup.email,
       options: { redirectTo: `${url.origin}/auth/callback?next=/app` },
     });
-    const action = data.properties?.action_link;
-    if (action) return NextResponse.redirect(action);
+    const hashed = data?.properties?.hashed_token;
+    const verifyType = data?.properties?.verification_type || "magiclink";
+    if (hashed) {
+      return NextResponse.redirect(`${url.origin}/auth/callback?token_hash=${encodeURIComponent(hashed)}&type=${encodeURIComponent(verifyType)}&next=${encodeURIComponent("/app")}`);
+    }
   }
 
   const dest = new URL("/app", request.url);

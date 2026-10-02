@@ -111,7 +111,7 @@ export async function consumeDemoAccessToken(token: string) {
       };
     }
   }
-  if (!row || !isDemoRole(row.role) || row.expiresAt < now) return null;
+  if (!row || !isDemoRole(row.role) || row.expiresAt < now || row.consumedAt) return null;
   row.consumedAt = now;
   memoryTokens.set(hash, row);
   if (admin) {
@@ -152,6 +152,13 @@ export function verifyDemoSessionCookie(raw?: string | null): DemoSession | null
   }
   if (!validEmail(email)) return null;
   return { email, role, expires: Number(expires) };
+}
+
+export function applyClearedDemoCookies(response: { cookies: { set: (name: string, value: string, options: NonNullable<CookieToSet["options"]>) => void } }) {
+  const gone = baseCookieOptions(0);
+  response.cookies.set(demoSessionCookie, "", gone);
+  response.cookies.set(demoOwnerCookie, "", gone);
+  response.cookies.set(demoVendorCookie, "", gone);
 }
 
 export async function getDemoSession(): Promise<DemoSession | null> {

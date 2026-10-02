@@ -1,5 +1,6 @@
 import type { Metadata } from "next";
 import { Cormorant_Garamond, Montserrat } from "next/font/google";
+import AuthHashNotice from "@/components/auth-hash-notice";
 import "./globals.css";
 
 const montserrat = Montserrat({
@@ -28,7 +29,10 @@ export const metadata: Metadata = {
 export default function RootLayout({ children }: Readonly<{ children: React.ReactNode }>) {
   return (
     <html lang="en" className={`${montserrat.variable} ${cormorant.variable}`}>
-      <body className={montserrat.className}>{children}</body>
+      <body className={montserrat.className}>
+        <AuthHashNotice />
+        {children}
+      </body>
     </html>
   );
 }

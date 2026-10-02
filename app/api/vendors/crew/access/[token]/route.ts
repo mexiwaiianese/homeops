@@ -22,7 +22,9 @@ export async function GET(request: Request, { params }: { params: Promise<{ toke
   const admin = createSupabaseAdminClient();
   if (!admin) return NextResponse.json({ error: "This crew link is not valid." }, { status: 404 });
   const { data: member } = await admin.from("vendor_crew_members").select("*, vendor_crew_assignments(*), vendors(name)").eq("token", token).maybeSingle();
-  if (!member) return NextResponse.json({ error: "This crew link is not valid." }, { status: 404 });
+  if (!member || (member as { deactivated_at?: string | null }).deactivated_at) {
+    return NextResponse.json({ error: "This crew link is not valid." }, { status: 404 });
+  }
   const tokens = ((member as any).vendor_crew_assignments ?? []).map((row: { job_token?: string }) => row.job_token).filter(Boolean);
   const { data: sites } = tokens.length
     ? await admin.from("vendor_job_sites").select("*, maintenance_requests(title, homes(address1, city, state))").in("token", tokens)

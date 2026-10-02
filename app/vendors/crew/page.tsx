@@ -13,6 +13,7 @@ type CrewMember = {
   jobTokens: string[];
   linkSentAt: string | null;
   linkSummary: string | null;
+  active?: boolean;
 };
 
 type Job = { token: string; title: string; address: string; city: string; status: string };
@@ -34,6 +35,8 @@ export default function VendorCrewPage() {
   const [phone, setPhone] = useState("");
   const [message, setMessage] = useState("");
   const [sending, setSending] = useState("");
+  const [editing, setEditing] = useState<string | null>(null);
+  const [edit, setEdit] = useState({ name: "", email: "", phone: "" });
 
   function apply(body: { crew?: CrewMember[]; jobs?: Job[]; error?: string }) {
     if (body.error) { setMessage(body.error); return; }
@@ -100,6 +103,44 @@ export default function VendorCrewPage() {
     }
   }
 
+  async function saveEdit(member: CrewMember) {
+    const response = await fetch("/api/vendors/crew", {
+      method: "POST",
+      headers: { "Content-Type": "application/json" },
+      body: JSON.stringify({ crewId: member.id, action: "update", ...edit }),
+    });
+    const body = await response.json();
+    if (!response.ok) { setMessage(body.error || "Could not save."); return; }
+    setEditing(null);
+    setMessage(`Updated ${edit.name || member.name}.`);
+    apply(body);
+  }
+
+  async function deactivate(member: CrewMember) {
+    const response = await fetch("/api/vendors/crew", {
+      method: "POST",
+      headers: { "Content-Type": "application/json" },
+      body: JSON.stringify({ crewId: member.id, action: member.active === false ? "update" : "deactivate", active: member.active === false }),
+    });
+    const body = await response.json();
+    if (!response.ok) { setMessage(body.error || "Could not update this person."); return; }
+    setMessage(member.active === false ? `${member.name} is active again.` : `${member.name} is deactivated. Their job link no longer works.`);
+    apply(body);
+  }
+
+  async function remove(member: CrewMember) {
+    if (!window.confirm(`Delete ${member.name} from the crew?`)) return;
+    const response = await fetch("/api/vendors/crew", {
+      method: "POST",
+      headers: { "Content-Type": "application/json" },
+      body: JSON.stringify({ crewId: member.id, action: "delete" }),
+    });
+    const body = await response.json();
+    if (!response.ok) { setMessage(body.error || "Could not delete this person."); return; }
+    setMessage(`${member.name} was removed.`);
+    apply(body);
+  }
+
   return (
     <VendorPortalFrame
       eyebrow="CREW"
@@ -117,7 +158,7 @@ export default function VendorCrewPage() {
         {crew.map((member) => (
           <div className="credential" key={member.id}>
             <div>
-              <strong>{member.name}</strong>
+              <strong>{member.name}{member.active === false ? " · inactive" : ""}</strong>
               <span>{member.email} · {member.phone}</span>
               <span>No login. Jobs on this link: {member.jobTokens.length}</span>
               <span className={member.linkSentAt && member.linkSummary && !/^Sent/.test(member.linkSummary) ? "crewLinkWarn" : undefined}>
@@ -129,18 +170,30 @@ export default function VendorCrewPage() {
                 <span>
                   {jobs.map((job) => (
                     <label className="checkRow" key={job.token}>
-                      <input type="checkbox" checked={member.jobTokens.includes(job.token)} onChange={() => void toggle(member, job)} />
+                      <input type="checkbox" checked={member.jobTokens.includes(job.token)} onChange={() => void toggle(member, job)} disabled={member.active === false} />
                       <span>{job.title}</span>
                     </label>
                   ))}
                 </span>
               )}
+              {editing === member.id && (
+                <span className="formGrid">
+                  <label>Name<input value={edit.name} onChange={(e) => setEdit({ ...edit, name: e.target.value })} /></label>
+                  <label>Email<input value={edit.email} onChange={(e) => setEdit({ ...edit, email: e.target.value })} /></label>
+                  <label>Phone<input value={edit.phone} onChange={(e) => setEdit({ ...edit, phone: e.target.value })} /></label>
+                  <button className="primary" type="button" onClick={() => void saveEdit(member)}>Save</button>
+                  <button className="secondaryBtn" type="button" onClick={() => setEditing(null)}>Cancel</button>
+                </span>
+              )}
             </div>
             <div className="crewActions">
-              <button className="primary" disabled={Boolean(sending)} onClick={() => void send(member)}>
+              <button className="primary" disabled={Boolean(sending) || member.active === false} onClick={() => void send(member)}>
                 {sending === member.id ? "Sending…" : member.linkSentAt ? "Send link again" : "Send link"}
               </button>
               <button className="secondaryBtn" onClick={() => void copy(member.accessUrl)}>Copy crew link</button>
+              <button className="secondaryBtn" onClick={() => { setEditing(member.id); setEdit({ name: member.name, email: member.email, phone: member.phone }); }}>Edit</button>
+              <button className="secondaryBtn" onClick={() => void deactivate(member)}>{member.active === false ? "Reactivate" : "Deactivate"}</button>
+              <button className="secondaryBtn" onClick={() => void remove(member)}>Delete</button>
             </div>
           </div>
         ))}

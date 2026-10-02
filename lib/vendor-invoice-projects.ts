@@ -12,6 +12,8 @@ export type InvoiceProject = {
   detail: string;
   billToName: string | null;
   billToEmail: string | null;
+  amountCents: number | null;
+  description: string | null;
 };
 
 export type PlatformMatch = { id: string; name: string; matchedBy: "name" | "email" | "account" };
@@ -53,6 +55,8 @@ export function demoInvoiceProjects(company: VendorSubscriber) {
         label: [bid.title, bid.address].filter(Boolean).join(" · "),
         detail: bid.status === "awarded" ? "Awarded bid" : bid.ownBidCents != null ? "Your bid is in" : "Open bid",
         ...DEMO_MANAGER,
+        amountCents: bid.ownBidCents ?? null,
+        description: bid.title || null,
       });
     }
     for (const job of listDemoJobsForVendor(match.id)) {
@@ -64,6 +68,8 @@ export function demoInvoiceProjects(company: VendorSubscriber) {
         label: [job.title, job.address].filter(Boolean).join(" · "),
         detail: job.completedAt ? "Completed job" : job.arrivedAt ? "Job in progress" : "Assigned job",
         ...DEMO_MANAGER,
+        amountCents: null,
+        description: job.title || null,
       });
     }
   }
@@ -109,6 +115,8 @@ export async function liveInvoiceProjects(admin: SupabaseClient, company: Vendor
       label: [opp.title, opp.address1].filter(Boolean).join(" · "),
       detail: opp.status === "awarded" ? "Awarded bid" : "Open bid",
       ...billTo(invite.vendor_id),
+      amountCents: null,
+      description: opp.title || null,
     });
   }
   for (const site of (sites.data ?? []) as Array<{ id: string; vendor_id: string; completed_at: string | null; arrived_at: string | null; maintenance_requests: any }>) {
@@ -122,6 +130,8 @@ export async function liveInvoiceProjects(admin: SupabaseClient, company: Vendor
       label: [req?.title, home?.address1].filter(Boolean).join(" · ") || "Job",
       detail: site.completed_at ? "Completed job" : site.arrived_at ? "Job in progress" : "Assigned job",
       ...billTo(site.vendor_id),
+      amountCents: null,
+      description: req?.title || null,
     });
   }
   return { matches, projects };

@@ -38,24 +38,33 @@ export default function RegisterPage() {
     setStatus("sending");
     setMessage("");
     setDevLink("");
-    const response = await fetch("/api/register", {
-      method: "POST",
-      headers: { "Content-Type": "application/json" },
-      body: JSON.stringify({ email, fullName, organizationName, packageId }),
-    });
-    const body = await response.json().catch(() => ({}));
-    if (!response.ok) {
+    try {
+      const controller = new AbortController();
+      const timer = window.setTimeout(() => controller.abort(), 25000);
+      const response = await fetch("/api/register", {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({ email, fullName, organizationName, packageId }),
+        signal: controller.signal,
+      });
+      window.clearTimeout(timer);
+      const body = await response.json().catch(() => ({}));
+      if (!response.ok) {
+        setStatus("error");
+        setMessage(body.error || "Could not start registration.");
+        return;
+      }
+      if (body.checkoutUrl) {
+        window.location.assign(body.checkoutUrl);
+        return;
+      }
+      setStatus("sent");
+      setMessage(`Check ${email}. Open the link to start your empty workspace.`);
+      if (body.devLink) setDevLink(body.devLink);
+    } catch {
       setStatus("error");
-      setMessage(body.error || "Could not start registration.");
-      return;
+      setMessage("Could not reach the server. Wait a minute and try again.");
     }
-    if (body.checkoutUrl) {
-      window.location.assign(body.checkoutUrl);
-      return;
-    }
-    setStatus("sent");
-    setMessage(`Check ${email} to confirm and open your blank workspace.`);
-    if (body.devLink) setDevLink(body.devLink);
   }
 
   return (
@@ -63,11 +72,11 @@ export default function RegisterPage() {
       <form className="intakeCard jobCard marketingCard" onSubmit={(event) => void submit(event)}>
         <BrandLockup artwork="lockup" />
         <p className="eyebrow">NEW WORKSPACE</p>
-        <h1>Register a blank portonOS instance.</h1>
-        <p>We provision an empty organization after you confirm your email{stripe ? " or complete payment" : ""}. Demo sample data is not copied in.</p>
+        <h1>Create your workspace.</h1>
+        <p>We email you a link. After you confirm, you start empty — your company, your people, your jobs. No sample data is copied in{stripe ? ". Paid plans take a card when billing is on." : "."}</p>
         <label>Your name<input required value={fullName} onChange={(e) => setFullName(e.target.value)} /></label>
         <label>Work email<input type="email" required value={email} onChange={(e) => setEmail(e.target.value)} /></label>
-        <label>Organization name<input required value={organizationName} onChange={(e) => setOrganizationName(e.target.value)} placeholder="Summit Property Group" /></label>
+        <label>Company name<input required value={organizationName} onChange={(e) => setOrganizationName(e.target.value)} placeholder="Summit Property Group" /></label>
         <fieldset className="marketingRolePick">
           <legend>Package</legend>
           {packages.map((row) => (
@@ -80,10 +89,10 @@ export default function RegisterPage() {
             </label>
           ))}
         </fieldset>
-        {selected && !selected.monthlyCents && <p className="summary">Core provisions immediately after email confirmation. Higher packages collect payment when Stripe is connected.</p>}
-        <button className="primary" type="submit" disabled={status === "sending"}>
-          {status === "sending" ? "Working…" : selected && selected.monthlyCents && stripe ? "Continue to payment" : "Email my workspace link"}
-        </button>
+        {selected && !selected.monthlyCents && <p className="summary">Core starts as soon as you confirm your email. Paid plans will ask for a card when billing is turned on.</p>}
+          <button className="primary" type="submit" disabled={status === "sending"}>
+            {status === "sending" ? "Sending…" : selected && selected.monthlyCents && stripe ? "Continue to payment" : "Email my workspace link"}
+          </button>
         {message && <div className={status === "error" ? "notice error" : "notice"}>{message}</div>}
         {devLink && <p className="summary">Email is not configured locally. Open <a href={devLink}>your unique workspace link</a>.</p>}
         <p><a href="/">Back to portonOS</a></p>

@@ -40,6 +40,17 @@ export async function POST(request: Request) {
   }
 
   const chargeId = intent.metadata?.chargeId;
+  const invoiceToken = intent.metadata?.invoiceToken;
+  if (invoiceToken && event.type === "payment_intent.succeeded") {
+    const { markVendorInvoicePaid } = await import("@/lib/vendor-billing-demo");
+    if (markVendorInvoicePaid(invoiceToken, "platform")) return NextResponse.json({ received: true, mode: "demo", invoiceToken });
+    const adminForInvoice = createSupabaseAdminClient();
+    if (adminForInvoice) {
+      const { markLiveInvoicePaid } = await import("@/lib/vendor-billing-live");
+      await markLiveInvoicePaid(adminForInvoice, invoiceToken, "platform");
+    }
+    return NextResponse.json({ received: true, mode: "live", invoiceToken });
+  }
   if (!chargeId) return NextResponse.json({ received: true, unmatched: true });
 
   const demo = getDemoCharge(chargeId);

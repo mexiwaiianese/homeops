@@ -15,7 +15,7 @@ export const metadata: Metadata = {
 };
 
 export default async function PersonaLoginPage({ searchParams }: { searchParams: Promise<{ error?: string }> }) {
-  if (!isPersonaLoginEnabled()) notFound();
+  if (process.env.NODE_ENV === "production" || !isPersonaLoginEnabled()) notFound();
   const { error } = await searchParams;
   return (
     <OperatorGate nextPath="/dev/personas" error={error} title="Persona switcher">

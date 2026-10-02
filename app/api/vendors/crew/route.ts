@@ -2,7 +2,7 @@ import { NextResponse } from "next/server";
 import { crewDeliverySummary, notifyCrewAssignment, notifyCrewLink, type CrewLinkDelivery } from "@/lib/vendor-crew-notify";
 import { vendors as demoVendors } from "@/lib/vendor-demo";
 import { getDemoJobByToken, listDemoJobsForVendor } from "@/lib/vendor-job-demo";
-import { addDemoCrew, assignDemoCrew, getDemoCrew, listDemoCrew, recordDemoCrewSend } from "@/lib/vendor-portal-demo";
+import { addDemoCrew, assignDemoCrew, getDemoCrew, listDemoCrew, recordDemoCrewSend, removeDemoCrew, updateDemoCrew } from "@/lib/vendor-portal-demo";
 import { missingPortalTable, requireVendorActor } from "@/lib/vendor-session";
 
 type Actor = Exclude<Awaited<ReturnType<typeof requireVendorActor>>, { error: string }>;
@@ -24,6 +24,7 @@ function demoCrewPayload(vendorId: string, origin: string) {
     jobs,
     crew: listDemoCrew(vendorId).map((member) => ({
       ...member,
+      active: !member.deactivatedAt,
       accessUrl: crewUrl(origin, member.token),
       linkSentAt: member.linkSentAt ?? null,
       linkSummary: member.linkSentAt
@@ -58,6 +59,8 @@ async function liveCrewPayload(actor: Actor & { mode: "live" }, origin: string) 
       token: member.token,
       jobTokens: (member.vendor_crew_assignments ?? []).map((row: { job_token?: string }) => row.job_token).filter(Boolean),
       accessUrl: crewUrl(origin, member.token),
+      active: !member.deactivated_at,
+      deactivatedAt: member.deactivated_at ?? null,
       linkSentAt: member.link_sent_at ?? null,
       linkSummary: member.link_sent_at
         ? crewDeliverySummary({ channel: member.link_channel ?? null, sentTo: member.link_sent_to ?? null, sent: !member.link_delivery_error, provider: "live", error: member.link_delivery_error })
@@ -180,6 +183,41 @@ export async function POST(request: Request) {
   if ("error" in actor) return NextResponse.json({ error: actor.error }, { status: actor.status });
   const body = await request.json().catch(() => ({}));
   const origin = new URL(request.url).origin;
+
+  // Edit, deactivate, or delete a crew member.
+  if (body.crewId && (body.action === "update" || body.action === "deactivate" || body.action === "delete")) {
+    const crewId = String(body.crewId);
+    if (actor.mode === "demo") {
+      if (body.action === "delete") {
+        const result = removeDemoCrew(actor.vendorId, crewId);
+        if ("error" in result) return NextResponse.json({ error: result.error }, { status: result.status });
+      } else {
+        const result = updateDemoCrew(actor.vendorId, crewId, {
+          name: body.name,
+          email: body.email,
+          phone: body.phone,
+          active: body.action === "deactivate" ? false : body.active,
+        });
+        if ("error" in result) return NextResponse.json({ error: result.error }, { status: result.status });
+      }
+      return respond(await payload(actor, origin));
+    }
+    if (body.action === "delete") {
+      await actor.admin.from("vendor_crew_assignments").delete().eq("crew_member_id", crewId);
+      const { error } = await actor.admin.from("vendor_crew_members").delete().eq("id", crewId).eq("vendor_id", actor.vendorId);
+      if (error) return NextResponse.json({ error: error.message }, { status: 400 });
+      return respond(await payload(actor, origin));
+    }
+    const patch: Record<string, unknown> = {};
+    if (body.name != null) patch.name = String(body.name).trim();
+    if (body.email != null) patch.email = String(body.email).trim().toLowerCase();
+    if (body.phone != null) patch.phone = String(body.phone).trim();
+    if (body.action === "deactivate") patch.deactivated_at = new Date().toISOString();
+    if (body.active === true) patch.deactivated_at = null;
+    const { error } = await actor.admin.from("vendor_crew_members").update(patch).eq("id", crewId).eq("vendor_id", actor.vendorId);
+    if (error) return NextResponse.json({ error: missingPortalTable(error.message) ? "Apply the crew follow-up migration." : error.message }, { status: 400 });
+    return respond(await payload(actor, origin));
+  }
 
   // Manual resend of the crew link.
   if (body.crewId && body.action === "send") {

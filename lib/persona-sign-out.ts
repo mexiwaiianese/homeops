@@ -10,6 +10,7 @@ import { resolvePersonaLoginAccess } from "@/lib/persona-login";
 export const personaSwitcherPath = "/dev/personas";
 
 export function signOutDestination(via: "open" | "code" | "allowlist" | null | undefined, fallback: string) {
+  if (process.env.NODE_ENV === "production") return fallback;
   return via === "code" ? personaSwitcherPath : fallback;
 }
 

@@ -2,6 +2,15 @@ import { createServerClient, type SetAllCookies } from "@supabase/ssr";
 import { NextResponse, type NextRequest } from "next/server";
 
 export async function middleware(request: NextRequest) {
+  const { pathname, searchParams } = request.nextUrl;
+  const code = searchParams.get("code");
+  const tokenHash = searchParams.get("token_hash");
+  if ((code || tokenHash) && pathname !== "/auth/callback" && !pathname.startsWith("/api/")) {
+    const dest = request.nextUrl.clone();
+    dest.pathname = "/auth/callback";
+    return NextResponse.redirect(dest);
+  }
+
   const url = process.env.NEXT_PUBLIC_SUPABASE_PROJECT_URL || process.env.NEXT_PUBLIC_SUPABASE_URL;
   const key = process.env.NEXT_PUBLIC_SUPABASE_PUBLISHABLE_KEY || process.env.NEXT_PUBLIC_SUPABASE_ANON_KEY;
   if (!url || !key) return NextResponse.next();

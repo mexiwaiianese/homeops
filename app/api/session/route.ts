@@ -5,7 +5,7 @@
 // with the beta access code, and /login otherwise.
 import { NextResponse } from "next/server";
 import { getAuthedContext } from "@/lib/backend";
-import { clearDemoSessionCookie, getDemoSession } from "@/lib/demo-access";
+import { applyClearedDemoCookies, clearDemoSessionCookie, getDemoSession } from "@/lib/demo-access";
 import { personaSignOutPath } from "@/lib/persona-sign-out";
 import { isSupabaseConfigured } from "@/lib/supabase/env";
 import { baseCookieOptions, personaActiveCookie } from "@/lib/persona-login";
@@ -29,6 +29,7 @@ export async function DELETE() {
   if (client && user) await client.auth.signOut().catch(() => undefined);
   const response = NextResponse.json({ signedOut: true, redirect: await personaSignOutPath("/login") });
   response.cookies.set(personaActiveCookie, "", baseCookieOptions(0));
+  applyClearedDemoCookies(response);
   const demo = clearDemoSessionCookie();
   response.cookies.set(demo.name, demo.value, demo.options);
   response.cookies.set(blankWorkspaceCookie, "", { ...baseCookieOptions(0) });

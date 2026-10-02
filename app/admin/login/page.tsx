@@ -30,11 +30,13 @@ export default async function AdminLoginPage({ searchParams }: { searchParams: P
               <a className="secondaryBtn" href="/admin/organizations">Organizations</a>
             </div>
             <EmailDeliverabilityTest />
-            <p>
-              <a href="/dev/personas">Persona login</a>
-              {" · "}
-              <a href="/dev/invoice-ads">Invoice ads</a>
-            </p>
+            {process.env.NODE_ENV !== "production" && (
+              <p>
+                <a href="/dev/personas">Persona login</a>
+                {" · "}
+                <a href="/dev/invoice-ads">Invoice ads</a>
+              </p>
+            )}
           </>
         ) : (
           <>

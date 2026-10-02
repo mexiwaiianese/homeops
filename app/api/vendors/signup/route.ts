@@ -1,9 +1,10 @@
 import { NextResponse } from "next/server";
-import { getAuthedContext } from "@/lib/backend";
+import { applyClearedDemoCookies } from "@/lib/demo-access";
 import { registerVendorSubscriber } from "@/lib/vendor-billing-demo";
 import { saveLiveSignup } from "@/lib/vendor-billing-live";
 import { dollars } from "@/lib/vendor-plans";
 import { createSupabaseAdminClient } from "@/lib/supabase/admin";
+import { isSupabaseConfigured } from "@/lib/supabase/env";
 import { demoVendorSessionCookie } from "@/lib/vendor-job-demo";
 
 export async function POST(request: Request) {
@@ -22,9 +23,9 @@ export async function POST(request: Request) {
   });
   if ("error" in result) return NextResponse.json({ error: result.error }, { status: result.status });
 
-  const { supabase } = await getAuthedContext();
+  const live = isSupabaseConfigured();
   const admin = createSupabaseAdminClient();
-  if (supabase && admin) {
+  if (live && admin) {
     const saved = await saveLiveSignup(admin, {
       companyName: result.subscriber.companyName,
       contactName: result.subscriber.contactName,
@@ -42,7 +43,7 @@ export async function POST(request: Request) {
   const monthlyCents = result.subscriber.monthlyCents;
   const plan = monthlyCents === 0 ? "Free" : `${dollars(monthlyCents)}/mo`;
   const response = NextResponse.json({
-    mode: supabase ? "live" : "demo",
+    mode: live && admin ? "live" : "demo",
     created: result.created,
     subscriber: {
       id: result.subscriber.id,
@@ -51,10 +52,10 @@ export async function POST(request: Request) {
       monthlyCents: result.subscriber.monthlyCents,
     },
     plan,
-    // Card billing is a Stripe subscription. Until a price is configured, the plan is reserved and the desk is usable.
     billing: "Plan reserved. The monthly charge starts when card billing is connected on this server.",
   });
-  if (!supabase) {
+  applyClearedDemoCookies(response);
+  if (!(live && admin)) {
     response.cookies.set(demoVendorSessionCookie, result.subscriber.id, { httpOnly: true, sameSite: "lax", path: "/", maxAge: 60 * 60 * 24 * 14 });
   }
   return response;

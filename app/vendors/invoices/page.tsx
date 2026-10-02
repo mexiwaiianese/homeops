@@ -5,6 +5,9 @@ import { useRouter } from "next/navigation";
 import VendorPortalFrame from "@/components/vendor-portal-frame";
 
 type Line = { description: string; amount: string };
+type Project = { key: string; kind: "bid" | "job"; label: string; detail: string; billToName: string | null; billToEmail: string | null; amountCents: number | null; description: string | null };
+type Match = { id: string; name: string; matchedBy: "name" | "email" | "account" };
+type Client = { name: string; email: string; projectLabel: string; details: string; amount: number; description: string };
 type Sent = {
   id: string;
   number: string;
@@ -16,10 +19,9 @@ type Sent = {
   viewUrl: string;
   deliveryError: string | null;
   sentAt: string | null;
+  status: string;
+  paidSource?: string | null;
 };
-
-type Project = { key: string; kind: "bid" | "job"; label: string; detail: string; billToName: string | null; billToEmail: string | null };
-type Match = { id: string; name: string; matchedBy: "name" | "email" | "account" };
 
 const OTHER = "other";
 const money = (cents: number) => new Intl.NumberFormat("en-US", { style: "currency", currency: "USD" }).format(cents / 100);
@@ -36,17 +38,25 @@ export default function VendorInvoicesPage() {
   const [details, setDetails] = useState("");
   const [dueOn, setDueOn] = useState("");
   const [sent, setSent] = useState<Sent[]>([]);
+  const [clients, setClients] = useState<Client[]>([]);
+  const [clientMode, setClientMode] = useState<"new" | "existing">("new");
+  const [clientKey, setClientKey] = useState("");
+  const [filled, setFilled] = useState({ name: "", email: "", project: "", amount: "", description: "" });
+  const [updateClient, setUpdateClient] = useState(false);
+  const [updateJob, setUpdateJob] = useState(false);
+  const [historyOpen, setHistoryOpen] = useState(false);
   const [message, setMessage] = useState("");
   const [busy, setBusy] = useState(false);
 
   function load() {
     return fetch("/api/vendors/invoices").then(async (r) => {
-      if (r.status === 401) { router.replace("/vendors/signup"); return null; }
+      if (r.status === 401) { router.replace("/vendors/login"); return null; }
       return r.json();
     }).then((body) => {
       if (!body) return;
       if (body.error) { setMessage(body.error); return; }
       setSent(body.invoices || []);
+      setClients(body.clients || []);
       setProjects(body.platform?.projects || []);
       setMatches(body.platform?.matches || []);
     }).catch(() => setMessage("Could not load invoices."));
@@ -64,13 +74,58 @@ export default function VendorInvoicesPage() {
     const project = projects.find((row) => row.key === key);
     if (!project) return;
     setProjectLabel(project.label);
-    if (project.billToName && !billToName) setBillToName(project.billToName);
-    if (project.billToEmail && !billToEmail) setBillToEmail(project.billToEmail);
+    if (project.billToName) setBillToName(project.billToName);
+    if (project.billToEmail) setBillToEmail(project.billToEmail);
+    if (project.description) setLines((rows) => [{ description: project.description || "", amount: project.amountCents ? String(project.amountCents / 100) : rows[0]?.amount || "" }, ...rows.slice(1)]);
+    setFilled({
+      name: project.billToName || billToName,
+      email: project.billToEmail || billToEmail,
+      project: project.label,
+      amount: project.amountCents ? String(project.amountCents / 100) : "",
+      description: project.description || "",
+    });
   }
 
+  function pickClient(email: string) {
+    setClientKey(email);
+    const client = clients.find((row) => row.email === email);
+    const awarded = projects.find((row) =>
+      row.kind === "bid" && /awarded/i.test(row.detail) && (
+        (row.billToEmail && row.billToEmail.toLowerCase() === email.toLowerCase())
+        || (client && row.billToName && row.billToName === client.name)
+      )
+    ) || projects.find((row) => row.kind === "bid" && /awarded/i.test(row.detail));
+    if (!client) return;
+    setBillToName(client.name);
+    setBillToEmail(client.email);
+    setProjectLabel(awarded?.label || client.projectLabel);
+    setDetails(client.details || "");
+    const description = awarded?.description || client.description;
+    const amount = awarded?.amountCents ? awarded.amountCents / 100 : client.amount;
+    setLines([{ description, amount: amount ? String(amount) : "" }]);
+    if (awarded) setProjectKey(awarded.key);
+    setFilled({ name: client.name, email: client.email, project: awarded?.label || client.projectLabel, amount: amount ? String(amount) : "", description });
+    setUpdateClient(false);
+    setUpdateJob(false);
+  }
+
+  const clientDirty = clientMode === "existing" && (billToName !== filled.name || billToEmail !== filled.email);
+  const jobDirty = clientMode === "existing" && (projectLabel !== filled.project || lines[0]?.description !== filled.description || lines[0]?.amount !== filled.amount);
   const bids = projects.filter((row) => row.kind === "bid");
   const jobs = projects.filter((row) => row.kind === "job");
 
+  async function setStatus(row: Sent, status: string) {
+    const response = await fetch("/api/vendors/invoices", {
+      method: "PATCH",
+      headers: { "Content-Type": "application/json" },
+      body: JSON.stringify({ id: row.id, status }),
+    });
+    const body = await response.json();
+    if (!response.ok) { setMessage(body.error || "Could not update status."); return; }
+    setSent(body.invoices || []);
+  }
+
+  const statuses = ["draft", "sent", "viewed", "paid", "overdue", "void"] as const;
   const total = lines.reduce((sum, line) => sum + (Number(line.amount) > 0 ? Math.round(Number(line.amount) * 100) : 0), 0);
 
   async function submit(event: FormEvent) {
@@ -79,7 +134,18 @@ export default function VendorInvoicesPage() {
     const response = await fetch("/api/vendors/invoices", {
       method: "POST",
       headers: { "Content-Type": "application/json" },
-      body: JSON.stringify({ billToName, billToEmail, projectLabel, projectKey: projectKey === OTHER ? null : projectKey, details, dueOn, lines }),
+      body: JSON.stringify({
+        billToName,
+        billToEmail,
+        previousEmail: filled.email || billToEmail,
+        projectLabel,
+        projectKey: projectKey === OTHER ? null : projectKey,
+        details,
+        dueOn,
+        lines,
+        updateClient,
+        updateJob,
+      }),
     });
     const body = await response.json();
     setBusy(false);
@@ -110,11 +176,65 @@ export default function VendorInvoicesPage() {
         </p>
       )}
       {message && <div className="notice">{message}</div>}
-      <form onSubmit={submit}>
-        <div className="formGrid">
-          <label>Bill to<input required value={billToName} onChange={(e) => setBillToName(e.target.value)} placeholder="Customer or company" /></label>
-          <label>Their email<input required type="email" value={billToEmail} onChange={(e) => setBillToEmail(e.target.value)} placeholder="billing@customer.com" /></label>
+      <p><button className="textLink" type="button" onClick={() => setHistoryOpen((open) => !open)}>{historyOpen ? "Hide historical invoices" : "View historical invoices"}</button></p>
+      {historyOpen && sent.length > 0 && (
+        <div className="credentialList">
+          {sent.map((row) => (
+            <div className="credential" key={`hist-${row.id}`}>
+              <div>
+                <strong>{row.number} · {money(row.totalCents)}</strong>
+                <span>{row.billToName} · {row.status}</span>
+              </div>
+              <label className="invoiceStatus">
+                Status
+                <select value={row.status} disabled={row.paidSource === "platform"} onChange={(e) => void setStatus(row, e.target.value)}>
+                  {statuses.map((status) => <option key={status} value={status}>{status}</option>)}
+                </select>
+              </label>
+              <a className="secondaryBtn" href={`${row.viewUrl}?as=vendor`}>View</a>
+            </div>
+          ))}
         </div>
+      )}
+      <form onSubmit={submit}>
+        <fieldset className="marketingRolePick marketingRolePick-inline">
+          <legend>Client</legend>
+          <div className="marketingRoleRow">
+            <label className="miniCheck">
+              <input type="radio" name="clientMode" checked={clientMode === "new"} onChange={() => { setClientMode("new"); setClientKey(""); }} />
+              <span>New client</span>
+            </label>
+            <label className="miniCheck">
+              <input type="radio" name="clientMode" checked={clientMode === "existing"} onChange={() => setClientMode("existing")} disabled={clients.length === 0} />
+              <span>Existing client</span>
+            </label>
+          </div>
+        </fieldset>
+        {clientMode === "existing" ? (
+          <label>Bill to
+            <select required value={clientKey} onChange={(e) => pickClient(e.target.value)}>
+              <option value="">Choose a client</option>
+              {clients.map((row) => <option key={row.email} value={row.email}>{row.name} · {row.email}</option>)}
+            </select>
+          </label>
+        ) : (
+          <div className="formGrid">
+            <label>Bill to<input required value={billToName} onChange={(e) => setBillToName(e.target.value)} placeholder="Customer or company" /></label>
+            <label>Their email<input required type="email" value={billToEmail} onChange={(e) => setBillToEmail(e.target.value)} placeholder="billing@customer.com" /></label>
+          </div>
+        )}
+        {clientMode === "existing" && (
+          <div className="formGrid">
+            <label>Bill to name<input required value={billToName} onChange={(e) => setBillToName(e.target.value)} /></label>
+            <label>Their email<input required type="email" value={billToEmail} onChange={(e) => setBillToEmail(e.target.value)} /></label>
+          </div>
+        )}
+        {(clientDirty || jobDirty) && (
+          <div className="checkRow">
+            {clientDirty && <label className="miniCheck"><input type="checkbox" checked={updateClient} onChange={(e) => setUpdateClient(e.target.checked)} /><span>Update client info</span></label>}
+            {jobDirty && <label className="miniCheck"><input type="checkbox" checked={updateJob} onChange={(e) => setUpdateJob(e.target.checked)} /><span>Update job info</span></label>}
+          </div>
+        )}
         <div className="formGrid">
           <label className="projectPick">
             Project
@@ -157,8 +277,14 @@ export default function VendorInvoicesPage() {
                 <div>
                   <strong>{row.number} · {money(row.totalCents)}</strong>
                   <span>{row.billToName} · {row.billToEmail}{row.projectLabel ? ` · ${row.projectLabel}` : ""}</span>
-                  <span>{row.deliveryError ? `Not emailed · ${row.deliveryError}` : "Emailed"}{row.dueOn ? ` · Due ${row.dueOn}` : ""}</span>
+                  <span>{row.deliveryError ? `Not emailed · ${row.deliveryError}` : row.status === "paid" ? "Paid" : "Emailed"}{row.dueOn ? ` · Due ${row.dueOn}` : ""}</span>
                 </div>
+                <label className="invoiceStatus">
+                  Status
+                  <select value={row.status} disabled={row.paidSource === "platform"} onChange={(e) => void setStatus(row, e.target.value)}>
+                    {statuses.map((status) => <option key={status} value={status}>{status}</option>)}
+                  </select>
+                </label>
                 <a className="secondaryBtn" href={`${row.viewUrl}?as=vendor`}>View</a>
               </div>
             ))}

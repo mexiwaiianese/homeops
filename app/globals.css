@@ -1174,6 +1174,36 @@ button:disabled {
   margin-top: 12px;
   text-decoration: none;
 }
+.textLink {
+  background: none;
+  border: 0;
+  padding: 0;
+  color: var(--teal);
+  font: inherit;
+  font-size: 13px;
+  font-weight: 700;
+  cursor: pointer;
+  text-decoration: underline;
+}
+.loginCard .textLink,
+.loginCard .summary {
+  display: inline;
+  margin: 10px 0 0;
+  text-align: left;
+}
+.authAlt {
+  display: grid;
+  gap: 8px;
+  margin: 14px 0 4px;
+}
+.invoiceStatus {
+  display: flex;
+  flex-direction: column;
+  gap: 4px;
+  font-size: 12px;
+  font-weight: 700;
+  min-width: 120px;
+}
 @media (max-width: 860px) {
   .loginShell {
     grid-template-columns: 1fr;

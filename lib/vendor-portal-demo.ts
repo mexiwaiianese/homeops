@@ -32,6 +32,7 @@ export type CrewMember = {
   linkChannel?: "email" | "sms" | null;
   linkSentTo?: string | null;
   linkDeliveryError?: string | null;
+  deactivatedAt?: string | null;
 };
 
 export type ReceivableStatus = "upcoming" | "invoiced" | "paid" | "overdue";
@@ -204,7 +205,9 @@ export function listDemoCrew(vendorId: string) {
 }
 
 export function getDemoCrewByToken(token: string) {
-  return [...store.crew.values()].find((row) => row.token === token) || null;
+  const member = [...store.crew.values()].find((row) => row.token === token) || null;
+  if (!member || member.deactivatedAt) return null;
+  return member;
 }
 
 export function addDemoCrew(vendorId: string, input: { name?: string; email: string; phone: string }) {
@@ -230,6 +233,24 @@ export function addDemoCrew(vendorId: string, input: { name?: string; email: str
 export function getDemoCrew(vendorId: string, crewId: string) {
   const member = store.crew.get(crewId);
   return member && member.vendorId === vendorId ? member : null;
+}
+
+export function updateDemoCrew(vendorId: string, crewId: string, input: { name?: string; email?: string; phone?: string; active?: boolean }) {
+  const member = getDemoCrew(vendorId, crewId);
+  if (!member) return { error: "Crew member not found.", status: 404 as const };
+  if (input.name != null) member.name = input.name.trim() || member.name;
+  if (input.email != null) member.email = input.email.trim().toLowerCase();
+  if (input.phone != null) member.phone = input.phone.trim();
+  if (input.active === false) member.deactivatedAt = new Date().toISOString();
+  if (input.active === true) member.deactivatedAt = null;
+  return { member };
+}
+
+export function removeDemoCrew(vendorId: string, crewId: string) {
+  const member = getDemoCrew(vendorId, crewId);
+  if (!member) return { error: "Crew member not found.", status: 404 as const };
+  store.crew.delete(crewId);
+  return { ok: true as const };
 }
 
 export function recordDemoCrewSend(

@@ -154,10 +154,11 @@ export default function MarketingLanding({ demoError }: { demoError?: string }) 
             </div>
           </fieldset>
           <button className="primary" type="submit" disabled={status === "sending"}>
-            {status === "sending" ? "Sending…" : "Email my demo"}
+            {status === "sending" ? "Emailing…" : "Email my demo"}
           </button>
           {message && <div className={status === "error" ? "notice error" : "notice"}>{message}</div>}
           {devLink && <p className="summary">Email is not configured locally. Open <a href={devLink}>your unique demo link</a>.</p>}
+          {role === "vendor" && <p><a className="secondaryBtn" href="/vendors/signup">Register a New Vendor</a></p>}
         </form>
         <div className="marketingAside">
           <p className="eyebrow">START YOUR COMPANY</p>
@@ -167,6 +168,7 @@ export default function MarketingLanding({ demoError }: { demoError?: string }) 
             You start empty — your homes, your owners, your vendors — and pick the package that matches how you operate.
           </p>
           <a className="primary" href="/register">Create your workspace</a>
+          {role === "vendor" && <a className="secondaryBtn" href="/vendors/signup">Register a New Vendor</a>}
           <p><a href="/login">Already have access? Sign in</a></p>
         </div>
       </section>

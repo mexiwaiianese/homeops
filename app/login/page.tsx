@@ -1,52 +1,25 @@
 "use client";
 
-import { useState } from "react";
-import { createBrowserClient } from "@supabase/ssr";
-import PersonaQuickLogin from "@/components/persona-login/persona-quick-login";
+import AccessSignIn from "@/components/access-sign-in";
 
 export default function LoginPage() {
-  const [email, setEmail] = useState("");
-  const [message, setMessage] = useState("");
-  const publishableKey = process.env.NEXT_PUBLIC_SUPABASE_PUBLISHABLE_KEY || process.env.NEXT_PUBLIC_SUPABASE_ANON_KEY;
-  const projectUrl = process.env.NEXT_PUBLIC_SUPABASE_PROJECT_URL || process.env.NEXT_PUBLIC_SUPABASE_URL;
-  const configured = Boolean(projectUrl && publishableKey);
-
-  async function signIn(e: React.FormEvent) {
-    e.preventDefault();
-    if (!configured) { setMessage("Add Supabase environment variables first. Request a demo from the home page."); return; }
-    const supabase = createBrowserClient(projectUrl!, publishableKey!);
-    const redirectTo = `${window.location.origin}/auth/callback`;
-    const { error } = await supabase.auth.signInWithOtp({ email, options: { emailRedirectTo: redirectTo } });
-    setMessage(error ? error.message : "Check your email for the portonOS sign-in link.");
-  }
-
   return (
     <main className="loginShell">
       <section className="loginBrand">
         <img className="loginBrandMark" src="/brand/portonos-mark.png" alt="portonOS" />
         <p className="eyebrow">EVERYTHING BEHIND EVERY DOOR</p>
-        <h1>Sign in to run the portfolio.</h1>
-        <p>Maintenance, approved vendors, and owner rules live in one operating desk—not a public marketplace.</p>
+        <h1>Sign in to your account.</h1>
+        <p>We send a one-time link to the email on your account. Managers, owners, vendors, and platform admins all use this screen.</p>
       </section>
-      <form className="loginCard" onSubmit={signIn}>
+      <section className="loginCard">
         <img className="loginLockup" src="/brand/portonos-wordmark.png" alt="" />
-        <p className="eyebrow">MANAGER ACCESS</p>
-        <h2>Email a sign-in link</h2>
-        <p>No password to remember. We’ll send a magic link to your inbox.</p>
-        <label>
-          Email
-          <input type="email" required value={email} onChange={(e) => setEmail(e.target.value)} placeholder="you@company.com" />
-        </label>
-        <button className="primary" type="submit">Email me a sign-in link</button>
-        {message && <div className="notice">{message}</div>}
-        <PersonaQuickLogin group="manager" title="Open as a manager" />
-        <a href="/#demo">Request a demo</a>
-        <a href="/register">Start a blank workspace</a>
-        <a href="/admin/login">Platform admin sign-in</a>
-        <a href="/vendors/login">Vendor desk sign-in</a>
-        <a href="/owners/login">Owner portal sign-in</a>
-        <a href="/tenant/login">Tenant portal sign-in</a>
-      </form>
+        <p className="eyebrow">SIGN IN</p>
+        <AccessSignIn
+          heading="Email a sign-in link"
+          lede="One email field. The link opens the desk that belongs to that account."
+          redirectTo="/app"
+        />
+      </section>
     </main>
   );
 }

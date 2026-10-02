@@ -36,6 +36,9 @@ export type VendorInvoice = {
   payments: boolean;
   sentAt: string | null;
   deliveryError: string | null;
+  status?: "draft" | "sent" | "viewed" | "paid" | "overdue" | "void";
+  paidAt?: string | null;
+  paidSource?: string | null;
   companyName: string;
   contactName: string;
   contactEmail: string;
@@ -75,6 +78,7 @@ export function registerVendorSubscriber(input: {
   if (!input.contactName.trim()) return { error: "Enter your name.", status: 400 as const };
   if (!/^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(email)) return { error: "Enter a valid email address.", status: 400 as const };
   if (input.phone.replace(/\D/g, "").length < 10) return { error: "Enter a phone number with at least 10 digits.", status: 400 as const };
+  if (!input.trade?.trim()) return { error: "Enter your trade.", status: 400 as const };
   const promoRaw = (input.promoCode || "").trim();
   const promo = promoRaw ? lookupVendorPromo(promoRaw) : null;
   if (promoRaw && !promo) return { error: "That promo code is not active.", status: 400 as const };
@@ -165,6 +169,9 @@ export function composeVendorInvoice(subscriber: VendorSubscriber, input: {
     payments: subscriber.payments,
     sentAt: null,
     deliveryError: null,
+    status: "draft",
+    paidAt: null,
+    paidSource: null,
     companyName: subscriber.companyName,
     contactName: subscriber.contactName,
     contactEmail: subscriber.email,
@@ -196,5 +203,53 @@ export function markVendorInvoiceSent(id: string, delivery: { sent: boolean; err
   if (!invoice) return null;
   invoice.sentAt = new Date().toISOString();
   invoice.deliveryError = delivery.sent ? null : delivery.error || "Email was not sent";
+  if (invoice.status === "draft" || !invoice.status) invoice.status = "sent";
   return invoice;
+}
+
+export function markVendorInvoicePaid(tokenValue: string, source = "platform") {
+  const invoice = getVendorInvoiceByToken(tokenValue);
+  if (!invoice) return null;
+  invoice.status = "paid";
+  invoice.paidAt = new Date().toISOString();
+  invoice.paidSource = source;
+  return invoice;
+}
+
+export function setVendorInvoiceStatus(id: string, status: NonNullable<VendorInvoice["status"]>) {
+  const invoice = store.invoices.find((row) => row.id === id);
+  if (!invoice) return { error: "Invoice not found.", status: 404 as const };
+  if (invoice.paidSource === "platform" && invoice.status === "paid" && status !== "paid") {
+    return { error: "This invoice was paid through the platform and cannot be unmarked.", status: 409 as const };
+  }
+  invoice.status = status;
+  if (status === "paid") {
+    invoice.paidAt = invoice.paidAt || new Date().toISOString();
+    invoice.paidSource = invoice.paidSource || "manual";
+  } else {
+    invoice.paidAt = null;
+    invoice.paidSource = null;
+  }
+  return { invoice };
+}
+
+export function upsertVendorClient(vendorId: string, input: { name: string; email: string; projectLabel?: string; details?: string; description?: string; amountCents?: number }) {
+  const email = input.email.trim().toLowerCase();
+  const existing = store.invoices.find((row) => row.vendorId === vendorId && row.billToEmail === email);
+  if (existing) {
+    existing.billToName = input.name.trim() || existing.billToName;
+  }
+  return { name: input.name.trim(), email };
+}
+
+export function updateVendorClientInvoices(vendorId: string, previousEmail: string, patch: { name?: string; email?: string; projectLabel?: string; details?: string; description?: string; amount?: string }) {
+  const from = previousEmail.trim().toLowerCase();
+  for (const invoice of store.invoices) {
+    if (invoice.vendorId !== vendorId || invoice.billToEmail !== from) continue;
+    if (patch.name) invoice.billToName = patch.name;
+    if (patch.email) invoice.billToEmail = patch.email.trim().toLowerCase();
+    if (patch.projectLabel) invoice.projectLabel = patch.projectLabel;
+    if (patch.details != null) invoice.details = patch.details;
+    if (patch.description && invoice.lines[0]) invoice.lines[0].description = patch.description;
+  }
 }

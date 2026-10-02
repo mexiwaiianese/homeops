@@ -76,7 +76,6 @@ export default function VendorSignupPage() {
       router.push("/vendors/invoices");
       return;
     }
-    setMessage(`${body.companyName || companyName} is registered on the ${body.plan} plan. Use the vendor sign-in link on the next screen. ${body.billing || ""}`);
     router.push("/vendors/login");
   }
 
@@ -114,7 +113,7 @@ export default function VendorSignupPage() {
           <label>Your name<input required value={contactName} onChange={(e) => setContactName(e.target.value)} placeholder="Alex Rivera" /></label>
           <label>Email<input required type="email" value={email} onChange={(e) => setEmail(e.target.value)} placeholder="office@company.com" /></label>
           <label>Phone<input required value={phone} onChange={(e) => setPhone(e.target.value)} placeholder="(801) 555-0100" /></label>
-          <label>Trade<input value={trade} onChange={(e) => setTrade(e.target.value)} placeholder="HVAC" /></label>
+          <label>Trade<input required value={trade} onChange={(e) => setTrade(e.target.value)} placeholder="HVAC" /></label>
           <div className="formGrid">
             <label>City<input value={city} onChange={(e) => setCity(e.target.value)} placeholder="Lehi" /></label>
             <label>State<input value={state} onChange={(e) => setState(e.target.value)} placeholder="UT" /></label>

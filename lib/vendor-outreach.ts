@@ -40,11 +40,21 @@ export async function sendVendorEmail(input: { to: string; subject: string; text
   const key = process.env.RESEND_API_KEY;
   const from = input.from || process.env.VENDOR_OUTREACH_FROM_EMAIL;
   if (!key || !from) return { sent: false, provider: "unconfigured", error: "Email provider is not configured" };
-  const response = await fetch("https://api.resend.com/emails", {
-    method: "POST",
-    headers: { Authorization: `Bearer ${key}`, "Content-Type": "application/json" },
-    body: JSON.stringify({ from, to: [input.to], subject: input.subject, text: input.text }),
-  });
+  const controller = new AbortController();
+  const timer = setTimeout(() => controller.abort(), 12000);
+  let response: Response;
+  try {
+    response = await fetch("https://api.resend.com/emails", {
+      method: "POST",
+      headers: { Authorization: `Bearer ${key}`, "Content-Type": "application/json" },
+      body: JSON.stringify({ from, to: [input.to], subject: input.subject, text: input.text }),
+      signal: controller.signal,
+    });
+  } catch {
+    return { sent: false, provider: "resend", error: "Email send timed out. Try again in a minute." };
+  } finally {
+    clearTimeout(timer);
+  }
   if (!response.ok) {
     const body = await response.json().catch(() => ({}));
     const detail = typeof body.message === "string" ? body.message : typeof body.name === "string" ? body.name : "";
