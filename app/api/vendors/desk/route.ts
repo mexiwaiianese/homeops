@@ -1,27 +1,20 @@
 import { NextResponse } from "next/server";
-import { cookies } from "next/headers";
-import { getAuthedContext } from "@/lib/backend";
-import { createSupabaseAdminClient } from "@/lib/supabase/admin";
-import { demoVendorSessionCookie, listDemoJobsForVendor } from "@/lib/vendor-job-demo";
+import { listDemoJobsForVendor } from "@/lib/vendor-job-demo";
 import { publicJob } from "@/lib/vendor-job";
+import { requireVendorActor } from "@/lib/vendor-session";
 
 export async function GET(request: Request) {
   const origin = new URL(request.url).origin;
-  const { supabase, user } = await getAuthedContext();
-  if (!supabase) {
-    const vendorId = (await cookies()).get(demoVendorSessionCookie)?.value;
-    if (!vendorId) return NextResponse.json({ error: "Sign in to the vendor desk." }, { status: 401 });
-    const jobs = listDemoJobsForVendor(vendorId).map((job) => publicJob(job, origin));
+  const actor = await requireVendorActor();
+  if ("error" in actor) return NextResponse.json({ error: actor.error }, { status: actor.status });
+  if (actor.mode === "demo") {
+    const jobs = listDemoJobsForVendor(actor.vendorId).map((job) => publicJob(job, origin));
     return NextResponse.json({ mode: "demo", jobs });
   }
-  if (!user) return NextResponse.json({ error: "Sign in to the vendor desk." }, { status: 401 });
-  const admin = createSupabaseAdminClient() || supabase;
-  const { data: vendorUser } = await admin.from("vendor_users").select("vendor_id, organization_id").eq("auth_user_id", user.id).maybeSingle();
-  if (!vendorUser) return NextResponse.json({ error: "This login is not linked to a vendor company." }, { status: 403 });
-  const { data: sites, error } = await admin
+  const { data: sites, error } = await actor.admin
     .from("vendor_job_sites")
     .select("*, vendors(name), maintenance_requests(title, status, homes(address1, city, state))")
-    .eq("vendor_id", vendorUser.vendor_id)
+    .eq("vendor_id", actor.vendorId)
     .order("awarded_at", { ascending: false });
   if (error) return NextResponse.json({ error: error.message }, { status: 400 });
   return NextResponse.json({

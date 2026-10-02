@@ -1244,6 +1244,12 @@ button:disabled {
 .intakeCard textarea {
   resize: vertical;
 }
+.adminEmailTest {
+  margin: 18px 0 8px;
+}
+.adminEmailTest .secondaryBtn {
+  margin-top: 8px;
+}
 .checkRow {
   flex-direction: row !important;
   align-items: flex-start;

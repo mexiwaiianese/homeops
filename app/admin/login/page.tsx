@@ -1,6 +1,7 @@
 import type { Metadata } from "next";
 import BrandLockup from "@/components/brand-lockup";
 import AdminLoginForm from "@/components/admin-login-form";
+import EmailDeliverabilityTest from "@/components/email-deliverability-test";
 import { getOperatorAdmin } from "@/lib/operator-admin";
 
 export const dynamic = "force-dynamic";
@@ -28,6 +29,7 @@ export default async function AdminLoginPage({ searchParams }: { searchParams: P
               <a className="secondaryBtn" href="/admin/packages">Subscription packages</a>
               <a className="secondaryBtn" href="/admin/organizations">Organizations</a>
             </div>
+            <EmailDeliverabilityTest />
             <p>
               <a href="/dev/personas">Persona login</a>
               {" · "}

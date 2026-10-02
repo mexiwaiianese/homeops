@@ -45,7 +45,11 @@ export async function sendVendorEmail(input: { to: string; subject: string; text
     headers: { Authorization: `Bearer ${key}`, "Content-Type": "application/json" },
     body: JSON.stringify({ from, to: [input.to], subject: input.subject, text: input.text }),
   });
-  if (!response.ok) return { sent: false, provider: "resend", error: "Email provider rejected the message" };
+  if (!response.ok) {
+    const body = await response.json().catch(() => ({}));
+    const detail = typeof body.message === "string" ? body.message : typeof body.name === "string" ? body.name : "";
+    return { sent: false, provider: "resend", error: detail || "Email provider rejected the message" };
+  }
   return { sent: true, provider: "resend" };
 }
 
