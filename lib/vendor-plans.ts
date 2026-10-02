@@ -12,6 +12,7 @@ export type VendorPromo = { code: string; label: string; percentOff: number };
 
 /** Active codes. Percent applies to the $19 base only. The online-payments add-on is always charged. */
 const VENDOR_PROMOS: VendorPromo[] = [
+  { code: "FOUNDER", label: "Founding vendor", percentOff: 100 },
   { code: "FOUNDING", label: "Founding vendor", percentOff: 100 },
 ];
 
