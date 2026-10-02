@@ -18,7 +18,7 @@ const cormorant = Cormorant_Garamond({
 
 export const metadata: Metadata = {
   title: "portonOS",
-  description: "Everything behind every door.",
+  description: "Operations software for property managers, owners, and the vendors they already trust.",
   icons: {
     icon: "/brand/portonos-mark.png",
     apple: "/brand/portonos-mark.png",
