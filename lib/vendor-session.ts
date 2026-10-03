@@ -30,7 +30,7 @@ export async function demoVendorFromCookies(): Promise<DemoVendorPublic | null> 
   if (!vendorId) return null;
   const seeded = demoVendors.find((row) => row.id === vendorId);
   if (seeded) {
-    return { id: seeded.id, name: seeded.name, trade: seeded.trade, email: seeded.email, city: seeded.city };
+    return { id: seeded.id, name: seeded.name, trade: seeded.trade, email: seeded.email || "", city: seeded.city };
   }
   const subscriber = getVendorSubscriber(vendorId);
   if (!subscriber) return null;
