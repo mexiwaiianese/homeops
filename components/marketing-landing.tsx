@@ -1,8 +1,17 @@
 "use client";
 
-import { FormEvent, useEffect, useMemo, useState } from "react";
+import { FormEvent, MouseEvent, useEffect, useLayoutEffect, useMemo, useState } from "react";
 import BrandLockup from "@/components/brand-lockup";
 import type { DemoRole } from "@/lib/demo-access";
+
+const SECTION_IDS = ["product", "roles", "demo"] as const;
+
+function scrollToMarketingSection(id: string) {
+  const el = document.getElementById(id);
+  if (!el) return;
+  const top = el.getBoundingClientRect().top + window.scrollY - 12;
+  window.scrollTo({ top: Math.max(0, top), behavior: "auto" });
+}
 
 const ROLES: Array<{ id: DemoRole; title: string; lede: string }> = [
   { id: "manager", title: "Property manager", lede: "Your workspace: homes, maintenance, owner rules, and the vendors you already use." },
@@ -10,7 +19,7 @@ const ROLES: Array<{ id: DemoRole; title: string; lede: string }> = [
   { id: "vendor", title: "Vendor", lede: "Awarded jobs and invited bids from managers who already have the home. No public lead board." },
 ];
 
-export default function MarketingLanding({ demoError }: { demoError?: string }) {
+export default function MarketingLanding({ demoError, focus }: { demoError?: string; focus?: string }) {
   const [email, setEmail] = useState("");
   const [role, setRole] = useState<DemoRole>("manager");
   const [status, setStatus] = useState<"idle" | "sending" | "sent" | "error">("idle");
@@ -34,6 +43,27 @@ export default function MarketingLanding({ demoError }: { demoError?: string }) 
       window.removeEventListener("resize", onResize);
     };
   }, []);
+
+  useLayoutEffect(() => {
+    const hash = window.location.hash.replace(/^#/, "");
+    const target = SECTION_IDS.includes(hash as (typeof SECTION_IDS)[number])
+      ? hash
+      : focus && SECTION_IDS.includes(focus as (typeof SECTION_IDS)[number])
+        ? focus
+        : demoError
+          ? "demo"
+          : "";
+    if (!target) return;
+    scrollToMarketingSection(target);
+  }, [demoError, focus]);
+
+  function onSectionLink(event: MouseEvent<HTMLAnchorElement>, id: string) {
+    event.preventDefault();
+    event.stopPropagation();
+    setMenuOpen(false);
+    if (window.location.hash !== `#${id}`) window.history.pushState(null, "", `#${id}`);
+    scrollToMarketingSection(id);
+  }
 
   async function requestDemo(event: FormEvent) {
     event.preventDefault();
@@ -78,9 +108,9 @@ export default function MarketingLanding({ demoError }: { demoError?: string }) 
           </button>
         </div>
         <nav id="marketing-menu" onClick={() => setMenuOpen(false)}>
-          <a href="#product">Product</a>
-          <a href="#roles">Roles</a>
-          <a href="#demo">Demo</a>
+          <a href="#product" onClick={(event) => onSectionLink(event, "product")}>Product</a>
+          <a href="#roles" onClick={(event) => onSectionLink(event, "roles")}>Roles</a>
+          <a href="#demo" onClick={(event) => onSectionLink(event, "demo")}>Demo</a>
           <a href="/login">Sign in</a>
           <a className="primary" href="/register">Start your workspace</a>
         </nav>
@@ -95,7 +125,7 @@ export default function MarketingLanding({ demoError }: { demoError?: string }) 
             Managers dispatch the work, owners see the money and the decisions, and vendors bid only on jobs they are invited to.
           </p>
           <div className="marketingActions">
-            <a className="primary" href="#demo">See it as your role</a>
+            <a className="primary" href="#demo" onClick={(event) => onSectionLink(event, "demo")}>See it as your role</a>
             <a className="secondaryBtn" href="/register">Start your workspace</a>
           </div>
         </div>

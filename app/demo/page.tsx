@@ -12,7 +12,7 @@ export const metadata: Metadata = {
 
 export default async function DemoDeskPage() {
   const session = await getDemoSession();
-  if (!session) redirect("/#demo");
+  if (!session) redirect("/?focus=demo");
   if (session.role !== "manager") redirect(demoLandingPath(session.role));
   return <ManagerDesk surface="demo" />;
 }

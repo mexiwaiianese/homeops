@@ -14,6 +14,7 @@ export async function GET(request: Request) {
   if (!granted) {
     const dest = new URL("/", request.url);
     dest.searchParams.set("demoError", "That demo link has expired. Request a new one.");
+    dest.searchParams.set("focus", "demo");
     return NextResponse.redirect(dest);
   }
   const dest = new URL(demoLandingPath(granted.role), request.url);

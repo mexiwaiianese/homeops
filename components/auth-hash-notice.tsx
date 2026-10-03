@@ -13,6 +13,8 @@ export default function AuthHashNotice() {
 
   useEffect(() => {
     const liveHash = window.location.hash.replace(/^#/, "");
+    // Only treat query-shaped hashes as Auth (access_token= / error=). Plain #demo must stay.
+    if (liveHash && !liveHash.includes("=")) return;
     if (liveHash) sessionStorage.setItem(HASH_KEY, liveHash);
     const params = new URLSearchParams(liveHash || sessionStorage.getItem(HASH_KEY) || "");
     const query = new URLSearchParams(window.location.search);
