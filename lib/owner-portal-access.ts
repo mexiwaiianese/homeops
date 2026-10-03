@@ -1,6 +1,7 @@
 import type { SupabaseClient } from "@supabase/supabase-js";
 import { cookies } from "next/headers";
 import { getAuthedContext } from "@/lib/backend";
+import { getDemoSession } from "@/lib/demo-access";
 import { createSupabaseAdminClient } from "@/lib/supabase/admin";
 import { owners as demoOwners } from "@/lib/data";
 
@@ -19,16 +20,17 @@ export type OwnerPortalAccess =
 export async function ownerPortalAccess(request?: Request): Promise<OwnerPortalAccess> {
   const requestedOwner = request ? new URL(request.url).searchParams.get("ownerId") : null;
   const { supabase, user, organizationId } = await getAuthedContext();
+  const cookieOwner = (await cookies()).get(demoOwnerSessionCookie)?.value;
+  const demoSession = await getDemoSession();
 
-  if (!supabase) {
-    const cookieOwner = (await cookies()).get(demoOwnerSessionCookie)?.value;
-    const ownerId = requestedOwner || cookieOwner;
+  if (!user) {
+    const ownerId = cookieOwner || (demoSession?.role === "owner" ? (requestedOwner || demoOwners[0]?.id) : null);
     const owner = demoOwners.find((row) => row.id === ownerId);
-    if (!owner) return { mode: "error", status: 401, error: "Choose an owner to open the portal." };
+    if (!owner) return { mode: "error", status: 401, error: "Sign in to open your owner portal." };
     return { mode: "demo", ownerId: owner.id, db: null, organizationId: null, preview: Boolean(requestedOwner && requestedOwner !== cookieOwner), userId: null };
   }
 
-  if (!user) return { mode: "error", status: 401, error: "Sign in to open your owner portal." };
+  if (!supabase) return { mode: "error", status: 503, error: "The owner portal requires a connected backend." };
 
   if (organizationId) {
     if (!requestedOwner) return { mode: "error", status: 400, error: "Managers preview the portal from an owner record (add ?ownerId=)." };

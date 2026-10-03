@@ -34,7 +34,9 @@ export default function AccessSignIn({
 
   useEffect(() => {
     const params = new URLSearchParams(window.location.search);
-    if (params.get("confirmed")) setMessage("Your email is confirmed. Sign in with a link, Google, Apple, or a password.");
+    if (params.get("sent") || params.get("confirmed")) {
+      setMessage("Check your email for a one-time sign-in link. It stops working after you open it.");
+    }
     if (params.get("error")) setMessage(authErrorMessage(params.get("error")));
   }, []);
 
@@ -67,8 +69,12 @@ export default function AccessSignIn({
         setMessage(authErrorMessage(body.error || "Could not send the sign-in link."));
         return;
       }
+      if (body.devLink) {
+        setDevLink(body.devLink);
+        setMessage("Email is not configured on this server, so the sign-in link was not emailed. Open it below.");
+        return;
+      }
       setMessage(body.message || "Check your email for a one-time sign-in link. It stops working after you open it.");
-      if (body.devLink) setDevLink(body.devLink);
     } catch {
       setBusy(false);
       setMessage("Could not reach the server. Wait a minute and try again.");

@@ -154,11 +154,20 @@ export function verifyDemoSessionCookie(raw?: string | null): DemoSession | null
   return { email, role, expires: Number(expires) };
 }
 
-export function applyClearedDemoCookies(response: { cookies: { set: (name: string, value: string, options: NonNullable<CookieToSet["options"]>) => void } }) {
+function expireCookieHeader(name: string, secure: boolean) {
+  return `${name}=; Path=/; Max-Age=0; Expires=Thu, 01 Jan 1970 00:00:00 GMT; HttpOnly; SameSite=Lax${secure ? "; Secure" : ""}`;
+}
+
+export function applyClearedDemoCookies(response: {
+  cookies: { set: (name: string, value: string, options: NonNullable<CookieToSet["options"]>) => void };
+  headers?: { append: (name: string, value: string) => void };
+}) {
   const gone = baseCookieOptions(0);
-  response.cookies.set(demoSessionCookie, "", gone);
-  response.cookies.set(demoOwnerCookie, "", gone);
-  response.cookies.set(demoVendorCookie, "", gone);
+  for (const name of [demoSessionCookie, demoOwnerCookie, demoVendorCookie]) {
+    response.cookies.set(name, "", gone);
+    // Expire the opposite Secure flag too, so a leftover demo cookie actually dies.
+    response.headers?.append("Set-Cookie", expireCookieHeader(name, !gone.secure));
+  }
 }
 
 export async function getDemoSession(): Promise<DemoSession | null> {

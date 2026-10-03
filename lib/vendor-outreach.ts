@@ -50,8 +50,9 @@ export async function sendVendorEmail(input: { to: string; subject: string; text
       body: JSON.stringify({ from, to: [input.to], subject: input.subject, text: input.text }),
       signal: controller.signal,
     });
-  } catch {
-    return { sent: false, provider: "resend", error: "Email send timed out. Try again in a minute." };
+  } catch (error) {
+    const timedOut = error instanceof Error && error.name === "AbortError";
+    return { sent: false, provider: "resend", error: timedOut ? "Email send timed out. Try again in a minute." : "Could not reach the email provider." };
   } finally {
     clearTimeout(timer);
   }

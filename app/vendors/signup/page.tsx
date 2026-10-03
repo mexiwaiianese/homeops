@@ -1,12 +1,10 @@
 "use client";
 
 import { FormEvent, useEffect, useState } from "react";
-import { useRouter } from "next/navigation";
 import BrandLockup from "@/components/brand-lockup";
 import { VENDOR_BASE_CENTS, VENDOR_PAYMENTS_ADDON_CENTS, dollars, pricedMonthlyCents, vendorMonthlyCents, type VendorPromo } from "@/lib/vendor-plans";
 
 export default function VendorSignupPage() {
-  const router = useRouter();
   const [companyName, setCompanyName] = useState("");
   const [contactName, setContactName] = useState("");
   const [email, setEmail] = useState("");
@@ -72,11 +70,12 @@ export default function VendorSignupPage() {
     const body = await response.json();
     setBusy(false);
     if (!response.ok) { setMessage(body.error || "Could not create the account."); return; }
-    if (body.mode === "demo") {
-      router.push("/vendors/invoices");
+    if (body.mode === "live") {
+      setMessage(body.message || `Check ${email} for a one-time sign-in link.`);
+      if (body.devLink) window.location.assign(body.devLink);
       return;
     }
-    router.push("/vendors/login");
+    window.location.assign("/vendors/invoices");
   }
 
   return (

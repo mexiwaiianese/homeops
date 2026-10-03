@@ -28,7 +28,9 @@ export async function issueResendMagicLink(input: {
   let generated = await admin.auth.admin.generateLink({ type: "magiclink", email, options: { redirectTo } });
 
   if (generated.error && missingUser(generated.error.message)) {
-    if (!input.createUser) return { ok: true as const, sent: false as const };
+    if (!input.createUser) {
+      return { error: "No account for that email. Register first.", status: 404 as const };
+    }
     const created = await admin.auth.admin.createUser({ email, email_confirm: true });
     if (created.error && !/already|registered|exists/i.test(created.error.message || "")) {
       return { error: created.error.message || "Could not create the login.", status: 400 as const };

@@ -1,5 +1,7 @@
 import { NextResponse } from "next/server";
+import { issueResendMagicLink } from "@/lib/auth-magic-link";
 import { applyClearedDemoCookies } from "@/lib/demo-access";
+import { ensureAuthUser } from "@/lib/platform-signup";
 import { registerVendorSubscriber } from "@/lib/vendor-billing-demo";
 import { saveLiveSignup } from "@/lib/vendor-billing-live";
 import { dollars } from "@/lib/vendor-plans";
@@ -25,6 +27,24 @@ export async function POST(request: Request) {
 
   const live = isSupabaseConfigured();
   const admin = createSupabaseAdminClient();
+  if (live && !admin) {
+    return NextResponse.json({ error: "Vendor sign-in is not configured on this server." }, { status: 503 });
+  }
+
+  const monthlyCents = result.subscriber.monthlyCents;
+  const plan = monthlyCents === 0 ? "Free" : `${dollars(monthlyCents)}/mo`;
+  const payload = {
+    created: result.created,
+    subscriber: {
+      id: result.subscriber.id,
+      companyName: result.subscriber.companyName,
+      payments: result.subscriber.payments,
+      monthlyCents: result.subscriber.monthlyCents,
+    },
+    plan,
+    billing: "Plan reserved. The monthly charge starts when card billing is connected on this server.",
+  };
+
   if (live && admin) {
     const saved = await saveLiveSignup(admin, {
       companyName: result.subscriber.companyName,
@@ -39,24 +59,33 @@ export async function POST(request: Request) {
       monthlyCents: result.subscriber.monthlyCents,
     });
     if ("error" in saved) return NextResponse.json({ error: saved.error }, { status: 400 });
+    try {
+      await ensureAuthUser(result.subscriber.email, result.subscriber.contactName);
+    } catch (error) {
+      return NextResponse.json({ error: error instanceof Error ? error.message : "Could not create the login." }, { status: 400 });
+    }
+    const mailed = await issueResendMagicLink({
+      email: result.subscriber.email,
+      origin: new URL(request.url).origin,
+      next: "/vendors/desk",
+      createUser: true,
+    });
+    const response = NextResponse.json({
+      ...payload,
+      mode: "live" as const,
+      emailed: !("error" in mailed),
+      emailError: "error" in mailed ? mailed.error : null,
+      message: "error" in mailed
+        ? mailed.error
+        : `Check ${result.subscriber.email} for a one-time sign-in link.`,
+      devLink: "devLink" in mailed ? mailed.devLink : undefined,
+    });
+    applyClearedDemoCookies(response);
+    return response;
   }
-  const monthlyCents = result.subscriber.monthlyCents;
-  const plan = monthlyCents === 0 ? "Free" : `${dollars(monthlyCents)}/mo`;
-  const response = NextResponse.json({
-    mode: live && admin ? "live" : "demo",
-    created: result.created,
-    subscriber: {
-      id: result.subscriber.id,
-      companyName: result.subscriber.companyName,
-      payments: result.subscriber.payments,
-      monthlyCents: result.subscriber.monthlyCents,
-    },
-    plan,
-    billing: "Plan reserved. The monthly charge starts when card billing is connected on this server.",
-  });
+
+  const response = NextResponse.json({ ...payload, mode: "demo" as const });
   applyClearedDemoCookies(response);
-  if (!(live && admin)) {
-    response.cookies.set(demoVendorSessionCookie, result.subscriber.id, { httpOnly: true, sameSite: "lax", path: "/", maxAge: 60 * 60 * 24 * 14 });
-  }
+  response.cookies.set(demoVendorSessionCookie, result.subscriber.id, { httpOnly: true, sameSite: "lax", path: "/", maxAge: 60 * 60 * 24 * 14 });
   return response;
 }

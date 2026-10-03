@@ -14,7 +14,21 @@ import { seedManagerOpportunities } from "@/lib/vendor-auction-demo";
 
 export async function GET(request: Request) {
   const origin = new URL(request.url).origin;
-  const { supabase, user, organizationId, role } = await getAuthedContext();
+  const { supabase, user, organizationId, role, demoSession } = await getAuthedContext();
+  if ((!user || !organizationId) && demoSession?.role === "manager") {
+    const seeded = await seedManagerOpportunities(origin);
+    return NextResponse.json({
+      mode: "demo",
+      homes,
+      owners,
+      tenants,
+      maintenance: listDemoMaintenance(),
+      settings: getDemoOrgSettings(),
+      role: "manager",
+      openAuctionJobIds: seeded.openJobIds,
+      features: ALL_FEATURES_ON,
+    });
+  }
   if (!supabase) {
     const blankId = (await cookies()).get(blankWorkspaceCookie)?.value;
     const blank = blankId ? memoryWorkspaceById(blankId) : null;

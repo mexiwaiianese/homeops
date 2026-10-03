@@ -15,7 +15,7 @@ export async function getAuthedContext() {
   const { data: { user } } = await supabase.auth.getUser();
   if (!user) {
     if (blank) return { supabase: null, user: null, organizationId: blank.organizationId, role: "owner" as const, demoSession: null };
-    return { supabase, user: null, organizationId: null, role: null, demoSession: null };
+    return { supabase, user: null, organizationId: null, role: demoSession?.role ?? null, demoSession };
   }
   const { data: membership } = await supabase
     .from("organization_members")

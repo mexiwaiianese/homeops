@@ -51,9 +51,14 @@ export default function MarketingLanding({ demoError }: { demoError?: string }) 
       setMessage(body.error || "Could not send the demo link.");
       return;
     }
+    if (body.devLink) {
+      setStatus("sent");
+      setDevLink(body.devLink);
+      setMessage("Email is not configured on this server, so the demo link was not emailed. Open it below.");
+      return;
+    }
     setStatus("sent");
     setMessage(`Check ${email} for a unique ${selected.title.toLowerCase()} demo link.`);
-    if (body.devLink) setDevLink(body.devLink);
   }
 
   return (
@@ -157,7 +162,7 @@ export default function MarketingLanding({ demoError }: { demoError?: string }) 
             {status === "sending" ? "Emailing…" : "Email my demo"}
           </button>
           {message && <div className={status === "error" ? "notice error" : "notice"}>{message}</div>}
-          {devLink && <p className="summary">Email is not configured locally. Open <a href={devLink}>your unique demo link</a>.</p>}
+          {devLink && <p className="summary">Open <a href={devLink}>your unique demo link</a>.</p>}
           {role === "vendor" && <p><a className="secondaryBtn" href="/vendors/signup">Register a New Vendor</a></p>}
         </form>
         <div className="marketingAside">

@@ -1,5 +1,4 @@
 import { NextResponse } from "next/server";
-import { cookies } from "next/headers";
 import { getAuthedContext } from "@/lib/backend";
 import { baseCookieOptions, personaActiveCookie } from "@/lib/persona-login";
 import { personaSignOutPath } from "@/lib/persona-sign-out";
@@ -8,21 +7,18 @@ import { createSupabaseAdminClient } from "@/lib/supabase/admin";
 import { linkLiveSignup } from "@/lib/vendor-billing-live";
 import { vendors as demoVendors } from "@/lib/vendor-demo";
 import { demoVendorSessionCookie } from "@/lib/vendor-job-demo";
+import { demoVendorFromCookies } from "@/lib/vendor-session";
 
 export async function GET() {
   const { supabase, user } = await getAuthedContext();
-  if (!supabase) {
-    const vendorId = (await cookies()).get(demoVendorSessionCookie)?.value;
-    const vendor = demoVendors.find((row) => row.id === vendorId);
+  if (!user) {
+    const vendor = await demoVendorFromCookies();
     if (!vendor) return NextResponse.json({ mode: "demo", vendor: null }, { status: 401 });
-    return NextResponse.json({
-      mode: "demo",
-      vendor: { id: vendor.id, name: vendor.name, trade: vendor.trade, email: vendor.email, city: vendor.city },
-    });
+    return NextResponse.json({ mode: "demo", vendor });
   }
-  if (!user) return NextResponse.json({ error: "Sign in to open the vendor desk." }, { status: 401 });
   // Vendor desk users are not organization members, so the user-scoped client cannot see vendor_users under RLS.
   const admin = createSupabaseAdminClient() || supabase;
+  if (!admin) return NextResponse.json({ error: "Sign in to the vendor desk.", status: 503 });
   let { data } = await admin.from("vendor_users").select("*, vendors(id,name,trade,email,city)").eq("auth_user_id", user.id).maybeSingle();
   if (!data) {
     await linkLiveSignup(admin, user);
