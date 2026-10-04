@@ -28,15 +28,10 @@ export default async function AdminLoginPage({ searchParams }: { searchParams: P
               <a className="primary" href="/vendors">Open the vendor board</a>
               <a className="secondaryBtn" href="/admin/packages">Subscription packages</a>
               <a className="secondaryBtn" href="/admin/organizations">Organizations</a>
+              <a className="secondaryBtn" href="/admin/invoice-ads">Invoice ads</a>
+              <a className="secondaryBtn" href="/admin/personas">Persona login</a>
             </div>
             <EmailDeliverabilityTest />
-            {process.env.NODE_ENV !== "production" && (
-              <p>
-                <a href="/dev/personas">Persona login</a>
-                {" · "}
-                <a href="/dev/invoice-ads">Invoice ads</a>
-              </p>
-            )}
           </>
         ) : (
           <>

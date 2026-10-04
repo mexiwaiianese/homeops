@@ -1,6 +1,6 @@
 // Per-tester demo sandboxes for live (Supabase) mode.
 //
-// Every beta tester who unlocks /dev/personas gets their own organization, seeded with the full
+// Every beta tester who unlocks /admin/personas gets their own organization, seeded with the full
 // demo data set (lib/demo-seed-live). All four portals read by organization id, so two testers
 // never see each other's edits. The browser remembers which sandbox it owns through a signed,
 // httpOnly cookie; the database is the cache that holds the sandbox contents.

@@ -24,7 +24,8 @@ export async function GET(request: Request) {
 }
 
 async function operatorAllowed() {
-  if (googleAuthEnabled) return (await getOperatorAdmin()).allowed;
+  if ((await getOperatorAdmin()).allowed) return true;
+  if (googleAuthEnabled) return false;
   const access = await resolvePersonaLoginAccess({
     currentUserEmail: async () => (await getAuthedContext()).user?.email ?? null,
   });

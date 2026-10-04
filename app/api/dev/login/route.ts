@@ -45,7 +45,7 @@ export async function GET(request: Request) {
   if (!devToolsEnabled()) return NextResponse.json({ error: "Not found." }, { status: 404 });
   const token = new URL(request.url).searchParams.get("token") || "";
   const email = token ? consumeDevLoginToken(token) : null;
-  const home = new URL("/dev", request.url);
+  const home = new URL("/admin/login", request.url);
   if (!email) {
     home.searchParams.set("error", "That login link has expired. Request a new one.");
     return NextResponse.redirect(home);

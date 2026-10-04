@@ -65,10 +65,14 @@ function log(event: string, details: Record<string, unknown>) {
   console.info(`[persona-login] ${event}`, details);
 }
 
+async function openToCaller(adapter: PersonaLoginAdapter) {
+  if (getPersonaLoginConfig().enabled) return true;
+  return Boolean(await adapter.operatorAdmin?.().catch(() => false));
+}
+
 export function createPersonaLoginHandlers(adapter: PersonaLoginAdapter) {
   async function GET() {
-    const config = getPersonaLoginConfig();
-    if (!config.enabled) return notFound();
+    if (!(await openToCaller(adapter))) return notFound();
     const status = await personaLoginStatus(adapter);
     status.canSeed = typeof adapter.seed === "function";
     if (status.unlocked && adapter.diagnostics) status.warnings = await adapter.diagnostics().catch(() => []);
@@ -80,8 +84,7 @@ export function createPersonaLoginHandlers(adapter: PersonaLoginAdapter) {
   }
 
   async function seedPOST(request: Request) {
-    const config = getPersonaLoginConfig();
-    if (!config.enabled || !adapter.seed) return notFound();
+    if (!(await openToCaller(adapter)) || !adapter.seed) return notFound();
     const access = await resolvePersonaLoginAccess(adapter);
     if (!access.allowed) return json({ error: access.reason, needsUnlock: access.needsUnlock }, { status: 403 });
     const body = (await request.json().catch(() => ({}))) as { reset?: unknown };
@@ -100,7 +103,7 @@ export function createPersonaLoginHandlers(adapter: PersonaLoginAdapter) {
 
   async function POST(request: Request) {
     const config = getPersonaLoginConfig();
-    if (!config.enabled) return notFound();
+    if (!(await openToCaller(adapter))) return notFound();
     const access = await resolvePersonaLoginAccess(adapter);
     if (!access.allowed) return json({ error: access.reason, needsUnlock: access.needsUnlock }, { status: 403 });
 
@@ -131,8 +134,7 @@ export function createPersonaLoginHandlers(adapter: PersonaLoginAdapter) {
   }
 
   async function DELETE(request: Request) {
-    const config = getPersonaLoginConfig();
-    if (!config.enabled) return notFound();
+    if (!(await openToCaller(adapter))) return notFound();
     const access = await resolvePersonaLoginAccess(adapter);
     if (!access.allowed) return json({ error: access.reason, needsUnlock: access.needsUnlock }, { status: 403 });
     const cleared = (await adapter.signOut?.(contextFor(request)).catch(() => undefined)) ?? [];
@@ -142,7 +144,7 @@ export function createPersonaLoginHandlers(adapter: PersonaLoginAdapter) {
 
   async function unlockPOST(request: Request) {
     const config = getPersonaLoginConfig();
-    if (!config.enabled) return notFound();
+    if (!(await openToCaller(adapter))) return notFound();
     if (!config.accessCode) return json({ error: "No access code is configured for this environment." }, { status: 400 });
     const key = clientKey(request);
     if (!unlockAttemptAllowed(key)) {
@@ -178,8 +180,7 @@ export function createPersonaLoginHandlers(adapter: PersonaLoginAdapter) {
   }
 
   async function unlockDELETE(request: Request) {
-    const config = getPersonaLoginConfig();
-    if (!config.enabled) return notFound();
+    if (!(await openToCaller(adapter))) return notFound();
     const cleared = (await adapter.onLock?.(contextFor(request)).catch(() => undefined)) ?? [];
     return json({ ok: true }, { cookies: [...cleared, clearUnlockCookie(), { name: personaActiveCookie, value: "", options: baseCookieOptions(0) }] });
   }

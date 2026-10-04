@@ -6,7 +6,7 @@ import { leavePersona } from "@/lib/persona-sign-out-client";
 
 /**
  * Sidebar sign-out for the manager desk. Ends the manager session. A browser that unlocked with
- * the beta access code returns to /dev/personas; everyone else returns to /login.
+ * the beta access code returns to /admin/personas; everyone else returns to /login.
  */
 export default function ManagerSignOut({ className = "nav" }: { className?: string }) {
   const [busy, setBusy] = useState(false);

@@ -4,7 +4,7 @@
 // (e.g. the owner login page shows only owner personas). Same API and gating as the full panel,
 // but it never shows beta UI to the public: it renders nothing (or the fallback children) unless
 // the feature is on AND the visitor is already unlocked. The beta access code is entered on the
-// full switcher page (/dev/personas), not on the sign-in pages.
+// full switcher page (/admin/personas), not on the sign-in pages.
 // Portable: talks only to the persona-login API. Styles come from persona-login.css.
 
 import { useCallback, useEffect, useState } from "react";
@@ -30,7 +30,7 @@ async function readJson<T>(response: Response): Promise<T & { error?: string; ne
   return (await response.json().catch(() => ({}))) as T & { error?: string; needsUnlock?: boolean };
 }
 
-export default function PersonaQuickLogin({ group, title = "Open as a test persona", apiBase = "/api/persona-login", allPersonasHref = "/dev/personas", children }: PersonaQuickLoginProps) {
+export default function PersonaQuickLogin({ group, title = "Open as a test persona", apiBase = "/api/persona-login", allPersonasHref = "/admin/personas", children }: PersonaQuickLoginProps) {
   const [data, setData] = useState<ListResponse | null>(null);
   const [unavailable, setUnavailable] = useState(false);
   const [busy, setBusy] = useState("");

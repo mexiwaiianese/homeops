@@ -84,13 +84,12 @@ export function resetUnlockAttempts(key: string) {
 /** Decide whether the caller may list and assume personas. */
 export async function resolvePersonaLoginAccess(adapter?: Pick<PersonaLoginAdapter, "currentUserEmail" | "operatorAdmin">): Promise<PersonaLoginAccess> {
   const config = getPersonaLoginConfig();
+  if (adapter?.operatorAdmin && (await adapter.operatorAdmin().catch(() => false))) return { allowed: true, via: "allowlist" };
   if (!config.enabled) return { allowed: false, enabled: false, needsUnlock: false, reason: config.reason };
   if (!config.requiresUnlock) return { allowed: true, via: "open" };
 
   const jar = await cookies();
   if (verifyUnlockCookie(config, jar.get(personaUnlockCookie)?.value)) return { allowed: true, via: "code" };
-
-  if (adapter?.operatorAdmin && (await adapter.operatorAdmin().catch(() => false))) return { allowed: true, via: "allowlist" };
 
   if (config.allowedEmails.length && adapter?.currentUserEmail) {
     const email = (await adapter.currentUserEmail().catch(() => null))?.toLowerCase();
@@ -109,7 +108,7 @@ export async function personaLoginStatus(adapter?: Pick<PersonaLoginAdapter, "cu
   const config = getPersonaLoginConfig();
   const access = await resolvePersonaLoginAccess(adapter);
   return {
-    enabled: config.enabled,
+    enabled: config.enabled || access.allowed,
     unlocked: access.allowed,
     codeAvailable: Boolean(config.accessCode),
     allowlistAvailable: config.allowedEmails.length > 0,

@@ -493,7 +493,7 @@ export const homeopsPersonaLogin: PersonaLoginAdapter = {
 /** Appends a pointer to the migration list when a Supabase error is really a missing table/column. */
 function schemaHint(message: string): string {
   return /schema cache|does not exist/i.test(message)
-    ? `${message}. The database is missing a migration — open /dev/personas for the list of SQL files to run.`
+    ? `${message}. The database is missing a migration — open /admin/personas for the list of SQL files to run.`
     : message;
 }
 

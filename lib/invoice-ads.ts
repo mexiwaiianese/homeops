@@ -1,7 +1,7 @@
 /**
  * The note shown on /invoice/[token] while the PDF renders. Two versions: one for the property
  * manager who opens the email, one for the vendor who opens their own invoice. Editable from
- * /dev/invoice-ads. Images are stored inline as data URLs so no storage bucket is needed.
+ * /admin/invoice-ads. Images are stored inline as data URLs so no storage bucket is needed.
  */
 
 export type InvoiceAdAudience = "manager" | "vendor";

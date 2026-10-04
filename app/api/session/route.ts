@@ -1,7 +1,7 @@
 // Manager session: who is signed in, and a sign-out that ends it.
 //
 // Sign-out revokes the Supabase session (live mode) and forgets the active persona. It leaves the
-// persona unlock and sandbox cookies alone. `redirect` is /dev/personas when this browser unlocked
+// persona unlock and sandbox cookies alone. `redirect` is /admin/personas when this browser unlocked
 // with the beta access code, and /login otherwise.
 import { NextResponse } from "next/server";
 import { getAuthedContext } from "@/lib/backend";
