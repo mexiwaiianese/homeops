@@ -84,7 +84,7 @@ export default function VendorSignupPage() {
         <BrandLockup artwork="lockup" />
         <p className="eyebrow">VENDOR DESK · {dueCents === 0 ? "FREE" : `${dollars(dueCents)}/MO`}</p>
         <h1>Create your vendor account.</h1>
-        <p>Track your projects, record crew time, and send invoices by email. No AI features on this plan.</p>
+        <p>Only invited vendors from a vetted list can join. Track your projects, record crew time, and send invoices by email. No AI features on this plan. You do not pay to look eligible.</p>
         <div className="planGrid">
           <div className={!payments ? "planCard on" : "planCard"}>
             <strong>{dollars(VENDOR_BASE_CENTS)} a month</strong>

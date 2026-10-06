@@ -1,10 +1,15 @@
 "use client";
 
-import { FormEvent, MouseEvent, useEffect, useLayoutEffect, useMemo, useState } from "react";
-import BrandLockup from "@/components/brand-lockup";
+import { FormEvent, MouseEvent, useLayoutEffect, useMemo, useState } from "react";
+import FounderBlock from "@/components/founder-block";
+import { MarketingFooter, MarketingNav } from "@/components/marketing-chrome";
+import { HeroRoleShots, RoleScreens } from "@/components/product-shots";
+import QuantityProof from "@/components/quantity-proof";
+import StoryProof from "@/components/story-proof";
 import type { DemoRole } from "@/lib/demo-access";
+import { ACH_LINE, FAQ, FLAT_PRICE_LINE, OVERAGE_FRAME, OVERAGE_LINE, PUBLIC_PACKAGES, SCOPE_LINE, SPREADSHEET_LINE, packagePriceLine } from "@/lib/public-site";
 
-const SECTION_IDS = ["product", "roles", "demo"] as const;
+const SECTION_IDS = ["product", "roles", "demo", "faq"] as const;
 
 function scrollToMarketingSection(id: string) {
   const el = document.getElementById(id);
@@ -13,10 +18,10 @@ function scrollToMarketingSection(id: string) {
   window.scrollTo({ top: Math.max(0, top), behavior: "auto" });
 }
 
-const ROLES: Array<{ id: DemoRole; title: string; lede: string }> = [
-  { id: "manager", title: "Property manager", lede: "Your workspace: homes, maintenance, owner rules, and the vendors you already use." },
-  { id: "owner", title: "Property owner", lede: "Cash, approvals, and a record of work on properties you own — without living in the inbox." },
-  { id: "vendor", title: "Vendor", lede: "Awarded jobs and invited bids from managers who already have the home. No public lead board." },
+const ROLES: Array<{ id: DemoRole; title: string; lede: string; galleryEyebrow: string; galleryTitle: string }> = [
+  { id: "manager", title: "Property manager", lede: "Your workspace: homes, maintenance, owner rules, and the vendors you already use.", galleryEyebrow: "FOR MANAGERS", galleryTitle: "What needs you, the home, and the tenant." },
+  { id: "owner", title: "Property owner", lede: "Cash, approvals, and a record of work on properties you own — without living in the inbox.", galleryEyebrow: "FOR OWNERS", galleryTitle: "Each home, and the monthly statement." },
+  { id: "vendor", title: "Vendor", lede: "Awarded jobs and invited bids from managers who already have the home. No public lead board.", galleryEyebrow: "FOR VENDORS", galleryTitle: "The bid, and the invoice." },
 ];
 
 export default function MarketingLanding({ demoError, focus }: { demoError?: string; focus?: string }) {
@@ -25,24 +30,7 @@ export default function MarketingLanding({ demoError, focus }: { demoError?: str
   const [status, setStatus] = useState<"idle" | "sending" | "sent" | "error">("idle");
   const [message, setMessage] = useState(demoError || "");
   const [devLink, setDevLink] = useState("");
-  const [menuOpen, setMenuOpen] = useState(false);
   const selected = useMemo(() => ROLES.find((row) => row.id === role) || ROLES[0], [role]);
-
-  useEffect(() => {
-    const close = () => setMenuOpen(false);
-    const onKey = (event: KeyboardEvent) => {
-      if (event.key === "Escape") close();
-    };
-    const onResize = () => {
-      if (window.innerWidth > 900) close();
-    };
-    document.addEventListener("keydown", onKey);
-    window.addEventListener("resize", onResize);
-    return () => {
-      document.removeEventListener("keydown", onKey);
-      window.removeEventListener("resize", onResize);
-    };
-  }, []);
 
   useLayoutEffect(() => {
     const hash = window.location.hash.replace(/^#/, "");
@@ -60,7 +48,6 @@ export default function MarketingLanding({ demoError, focus }: { demoError?: str
   function onSectionLink(event: MouseEvent<HTMLAnchorElement>, id: string) {
     event.preventDefault();
     event.stopPropagation();
-    setMenuOpen(false);
     if (window.location.hash !== `#${id}`) window.history.pushState(null, "", `#${id}`);
     scrollToMarketingSection(id);
   }
@@ -93,50 +80,31 @@ export default function MarketingLanding({ demoError, focus }: { demoError?: str
 
   return (
     <main className="marketing">
-      <header className={`marketingNav${menuOpen ? " menu-open" : ""}`}>
-        <div className="marketingNavBar">
-          <BrandLockup href="/" artwork="lockup" />
-          <button
-            type="button"
-            className="navToggle"
-            aria-expanded={menuOpen}
-            aria-controls="marketing-menu"
-            aria-label={menuOpen ? "Close menu" : "Open menu"}
-            onClick={() => setMenuOpen((open) => !open)}
-          >
-            <span className="navToggleBars" aria-hidden="true" />
-          </button>
-        </div>
-        <nav id="marketing-menu" onClick={() => setMenuOpen(false)}>
-          <a href="#product" onClick={(event) => onSectionLink(event, "product")}>Product</a>
-          <a href="#roles" onClick={(event) => onSectionLink(event, "roles")}>Roles</a>
-          <a href="#demo" onClick={(event) => onSectionLink(event, "demo")}>Demo</a>
-          <a href="/login">Sign in</a>
-          <a className="primary" href="/register">Start your workspace</a>
-        </nav>
-      </header>
+      <MarketingNav onSectionLink={onSectionLink} />
 
       <section className="marketingHero">
         <div>
-          <p className="eyebrow">EVERYTHING BEHIND EVERY DOOR</p>
+          <p className="eyebrow">Run the portfolio without firefighting</p>
           <h1>Operations software for managers, owners, and the vendors they already trust.</h1>
           <p>
             portonOS is built for small property managers, landlords, and owner-operator trades — sold as a workspace for your company, not a public marketplace.
             Managers dispatch the work, owners see the money and the decisions, and vendors bid only on jobs they are invited to.
+            {" "}{SPREADSHEET_LINE} {SCOPE_LINE}
           </p>
           <div className="marketingActions">
             <a className="primary" href="#demo" onClick={(event) => onSectionLink(event, "demo")}>See it as your role</a>
             <a className="secondaryBtn" href="/register">Start your workspace</a>
+            <a className="textLink" href="/pricing">See pricing</a>
           </div>
         </div>
-        <img className="marketingMark" src="/brand/portonos-mark.png" alt="" />
+        <HeroRoleShots />
       </section>
 
       <section className="marketingGrid" id="product">
         <article>
           <p className="eyebrow">FOR MANAGERS</p>
           <h2>Run the portfolio from one desk.</h2>
-          <p>Diagnose, authorize, dispatch, and keep a permanent record. Your approved vendors bid in a private network you control — credentials never sit on a public page.</p>
+          <p>Diagnose, authorize, dispatch, and keep a permanent record. {SPREADSHEET_LINE} Your approved vendors bid in a private network you control — credentials never sit on a public page.</p>
         </article>
         <article>
           <p className="eyebrow">FOR OWNERS</p>
@@ -150,9 +118,12 @@ export default function MarketingLanding({ demoError, focus }: { demoError?: str
         </article>
       </section>
 
+      <QuantityProof />
+
       <section className="marketingRoles" id="roles">
         <p className="eyebrow">WHO IT IS FOR</p>
         <h2>One product. A door for each buyer.</h2>
+        <p>You should feel in control of the portfolio, not stuck firefighting. Vendors on your list are the trades you already trust, not leads on a board.</p>
         <div className="marketingRoleGrid">
           {ROLES.map((row) => (
             <button
@@ -168,14 +139,17 @@ export default function MarketingLanding({ demoError, focus }: { demoError?: str
         </div>
       </section>
 
+      <StoryProof />
+
       <section className="marketingDemo" id="demo">
         <form className="marketingCard" onSubmit={(event) => void requestDemo(event)}>
           <p className="eyebrow">TRY YOUR VIEW</p>
           <h2>See portonOS as a {selected.title.toLowerCase()}.</h2>
-          <p>Pick the persona that matches how you work. We email a private, one-person demo link — not a shared password — into a seeded workspace for that role.</p>
+          <p>Pick the persona that matches how you work. We email a private, one-person demo link — not a shared password — into a seeded workspace for that role. The link arrives in under 2 minutes. No sales call. It expires in 7 days.</p>
           <label>
             Work email
-            <input type="email" required value={email} onChange={(event) => setEmail(event.target.value)} placeholder="you@company.com" />
+            <input type="email" required value={email} onChange={(event) => setEmail(event.target.value)} placeholder="you@company.com" autoComplete="email" />
+            <small className="fieldNote">We use this email only to send your demo link. We do not sell it.</small>
           </label>
           <fieldset className="marketingRolePick marketingRolePick-inline">
             <legend>I want to tour as</legend>
@@ -191,6 +165,7 @@ export default function MarketingLanding({ demoError, focus }: { demoError?: str
           <button className="primary" type="submit" disabled={status === "sending"}>
             {status === "sending" ? "Emailing…" : "Email my demo"}
           </button>
+          <p className="marketingTrust">No credit card required to tour.</p>
           {message && <div className={status === "error" ? "notice error" : "notice"}>{message}</div>}
           {devLink && <p className="summary">Open <a href={devLink}>your unique demo link</a>.</p>}
           {role === "vendor" && <p><a className="secondaryBtn" href="/vendors/signup">Register a New Vendor</a></p>}
@@ -200,18 +175,40 @@ export default function MarketingLanding({ demoError, focus }: { demoError?: str
           <h2>Ready to get to work?</h2>
           <p>
             Open a workspace for your management company, your rentals, or the shops you dispatch.
-            You start empty — your homes, your owners, your vendors — and pick the package that matches how you operate.
+            You start empty — your homes, your owners, your vendors.
+            Core is {packagePriceLine(PUBLIC_PACKAGES[0])} and includes {PUBLIC_PACKAGES[0].includedProperties} properties.
+            Operations is {packagePriceLine(PUBLIC_PACKAGES[1])} and includes {PUBLIC_PACKAGES[1].includedProperties} properties.
+            Portfolio is {packagePriceLine(PUBLIC_PACKAGES[2])} and includes {PUBLIC_PACKAGES[2].includedProperties} properties.
+            {ACH_LINE} {OVERAGE_FRAME} {OVERAGE_LINE} {FLAT_PRICE_LINE}
           </p>
           <a className="primary" href="/register">Create your workspace</a>
+          <p className="marketingTrust">Cancel anytime. <a href="/pricing">See pricing</a>. Paid workspaces are billed through Stripe.</p>
           {role === "vendor" && <a className="secondaryBtn" href="/vendors/signup">Register a New Vendor</a>}
           <p><a href="/login">Already have access? Sign in</a></p>
         </div>
       </section>
 
-      <footer className="marketingFoot">
-        <img src="/brand/portonos-wordmark.png" alt="portonOS" />
-        <span>For managers, owners, and invited vendors. Not a public marketplace.</span>
-      </footer>
+      <section className="marketingRoleShots" aria-live="polite" aria-label={`${selected.title} screens`}>
+        <p className="eyebrow">{selected.galleryEyebrow}</p>
+        <h2>{selected.galleryTitle}</h2>
+        <RoleScreens role={role} />
+      </section>
+
+      <section className="marketingFaq" id="faq">
+        <h2>Questions</h2>
+        {FAQ.map((item) => (
+          <details key={item.question}>
+            <summary>{item.question}</summary>
+            <p>
+              {item.answer}
+              {item.question === "What does it cost?" ? <> Full list on the <a href="/pricing">pricing page</a>.</> : null}
+            </p>
+          </details>
+        ))}
+      </section>
+
+      <FounderBlock />
+      <MarketingFooter />
     </main>
   );
 }

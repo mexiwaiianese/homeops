@@ -1078,6 +1078,15 @@ button:disabled {
   padding: 56px 48px;
   color: #f4f1ea;
 }
+.brandHomeLink {
+  display: inline-block;
+  color: inherit;
+  text-decoration: none;
+  line-height: 0;
+}
+.marketingFoot .brandHomeLink img {
+  display: block;
+}
 .loginBrandMark {
   display: block;
   width: min(280px, 78%);
@@ -4139,6 +4148,7 @@ a.statLink:hover {
 .marketingGrid,
 .marketingRoles,
 .marketingDemo,
+.marketingRoleShots,
 .marketingFoot,
 .marketingHero > *,
 .marketingCard,
@@ -4209,7 +4219,7 @@ a.statLink:hover {
 }
 .marketingHero {
   display: grid;
-  grid-template-columns: minmax(0, 1.2fr) minmax(0, 0.6fr);
+  grid-template-columns: minmax(0, 1fr) minmax(0, 1fr);
   justify-items: stretch;
   align-items: start;
   gap: 32px;
@@ -4267,6 +4277,7 @@ a.statLink:hover {
 .marketingGrid,
 .marketingRoles,
 .marketingDemo,
+.marketingRoleShots,
 .marketingFoot {
   width: 100%;
   max-width: 1100px;
@@ -4522,6 +4533,7 @@ a.statLink:hover {
   .marketingGrid,
   .marketingRoles,
   .marketingDemo,
+  .marketingRoleShots,
   .marketingFoot {
     width: var(--marketing-width);
     max-width: var(--marketing-width);
@@ -4576,6 +4588,412 @@ a.statLink:hover {
   .marketingRoleRow {
     flex-direction: column;
     align-items: flex-start;
+  }
+}
+
+.marketingShots {
+  position: relative;
+  height: 700px;
+  min-width: 0;
+}
+.marketingShot {
+  position: absolute;
+  width: 84%;
+  border-radius: 16px;
+  overflow: hidden;
+  background: #fff;
+  border: 1px solid var(--line);
+  box-shadow: 0 18px 44px rgba(10, 36, 28, 0.14);
+}
+.marketingShot-manager {
+  top: 0;
+  left: 0;
+  z-index: 1;
+}
+.marketingShot-owner {
+  top: 175px;
+  left: 8%;
+  z-index: 2;
+}
+.marketingShot-vendor {
+  top: 350px;
+  left: 16%;
+  z-index: 3;
+}
+.marketingShot .productPhoto {
+  border: 0;
+  border-radius: 0;
+  box-shadow: none;
+  background: transparent;
+}
+.marketingShot .productPhoto figcaption {
+  display: none;
+}
+.marketingShot .productPhoto img {
+  height: 340px;
+  object-fit: cover;
+  object-position: top center;
+}
+@media (max-width: 900px) {
+  .marketingShots {
+    height: 480px;
+  }
+  .marketingShot {
+    width: 86%;
+  }
+  .marketingShot .productPhoto img {
+    height: 230px;
+  }
+  .marketingShot-owner {
+    top: 120px;
+    left: 7%;
+  }
+  .marketingShot-vendor {
+    top: 240px;
+    left: 14%;
+  }
+}
+.marketingShotBadge {
+  position: absolute;
+  z-index: 2;
+  top: 10px;
+  left: 10px;
+  background: var(--navy);
+  color: #f4f1ea;
+  font-size: 11px;
+  font-weight: 700;
+  letter-spacing: 0.04em;
+  text-transform: uppercase;
+  padding: 4px 8px;
+  border-radius: 999px;
+}
+.productPhotos {
+  display: grid;
+  grid-template-columns: repeat(auto-fit, minmax(260px, 420px));
+  gap: 16px;
+  justify-content: start;
+  align-items: start;
+}
+.marketingRoleShots h2 {
+  margin: 6px 0 12px;
+}
+.shotCarousel {
+  min-width: 0;
+}
+.shotCarouselControls {
+  display: flex;
+  justify-content: flex-end;
+  gap: 8px;
+  margin-bottom: 10px;
+}
+.shotCarouselBtn {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  width: 36px;
+  height: 36px;
+  padding: 0;
+  border: 1px solid var(--line);
+  border-radius: 999px;
+  background: #fff;
+  color: var(--navy);
+  cursor: pointer;
+}
+.shotCarouselBtn:disabled {
+  opacity: 0.35;
+  cursor: default;
+}
+.shotCarouselTrack {
+  display: flex;
+  align-items: flex-start;
+  gap: 16px;
+  overflow-x: auto;
+  scroll-snap-type: x mandatory;
+  padding-bottom: 8px;
+  scrollbar-width: thin;
+}
+.shotCarouselTrack:focus-visible {
+  outline: 2px solid var(--gold);
+  outline-offset: 4px;
+}
+.shotCarouselTrack .productPhoto {
+  flex: 0 0 min(360px, 82%);
+  scroll-snap-align: start;
+  scroll-snap-stop: always;
+}
+.productPhoto {
+  margin: 0;
+  background: #fff;
+  border: 1px solid var(--line);
+  border-radius: 16px;
+  overflow: hidden;
+  box-shadow: 0 18px 50px rgba(10, 36, 28, 0.08);
+}
+.productPhoto img {
+  display: block;
+  width: 100%;
+  height: auto;
+}
+.productPhoto figcaption {
+  margin: 0;
+  padding: 8px 12px 10px;
+  color: var(--muted);
+  font-size: 12px;
+  line-height: 1.4;
+}
+.marketingGrid .productPhoto {
+  box-shadow: none;
+}
+.productShot {
+  margin: 0 0 14px;
+  background: #fff;
+  border: 1px solid var(--line);
+  border-radius: 16px;
+  overflow: hidden;
+  box-shadow: 0 18px 50px rgba(10, 36, 28, 0.08);
+}
+.marketingGrid .productShot {
+  box-shadow: none;
+}
+.productShot figcaption {
+  margin: 0;
+  padding: 8px 12px;
+  background: var(--navy);
+  color: #f4f1ea;
+  font-size: 12px;
+  line-height: 1.4;
+}
+.productShotBody {
+  padding: 12px 14px 14px;
+}
+.productShotList {
+  list-style: none;
+  margin: 8px 0 0;
+  padding: 0;
+}
+.productShotList li {
+  display: flex;
+  flex-direction: column;
+  gap: 2px;
+  padding: 8px 0;
+  border-top: 1px solid var(--line);
+}
+.productShotList li.on {
+  background: var(--green2);
+  margin: 0 -8px;
+  padding: 8px;
+  border-radius: 10px;
+  border-top-color: transparent;
+}
+.productShotList span,
+.productShotWhy,
+.productShotCost span {
+  color: var(--muted);
+  font-size: 13px;
+}
+.productShotCost b {
+  display: block;
+  font-size: 28px;
+  line-height: 1.1;
+}
+.productShotWhy {
+  margin: 8px 0 0;
+}
+.marketingActions .textLink {
+  align-self: center;
+  color: var(--ink);
+  font-size: 14px;
+  font-weight: 700;
+}
+.fieldNote,
+.marketingTrust {
+  display: block;
+  margin-top: 6px;
+  color: var(--muted);
+  font-size: 13px;
+  font-weight: 400;
+  line-height: 1.45;
+}
+.marketingFaq,
+.marketingArticle,
+.founderBlock {
+  width: 100%;
+  max-width: 1100px;
+  margin: 0 auto;
+  padding: 12px 28px 36px;
+  box-sizing: border-box;
+}
+.marketingFaq details,
+.marketingArticle details {
+  background: #fff;
+  border: 1px solid var(--line);
+  border-radius: 14px;
+  padding: 12px 16px;
+  margin: 10px 0;
+}
+.marketingFaq summary,
+.marketingArticle details summary {
+  cursor: pointer;
+  font-weight: 700;
+}
+.marketingFoot {
+  align-items: flex-start;
+}
+.marketingFootLinks {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 8px 14px;
+  width: 100%;
+}
+.marketingFootLinks a {
+  color: var(--muted);
+  font-size: 13px;
+  font-weight: 650;
+}
+.pricingBoard {
+  margin-top: 18px;
+}
+.billingToggle {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 8px;
+}
+.billingToggle button {
+  border: 1px solid var(--line);
+  background: #fff;
+  border-radius: 999px;
+  padding: 8px 14px;
+  font: inherit;
+  font-weight: 700;
+  cursor: pointer;
+}
+.billingToggle button.on {
+  background: var(--navy);
+  color: #f4f1ea;
+  border-color: var(--navy);
+}
+.pricingGrid {
+  display: grid;
+  grid-template-columns: repeat(3, minmax(0, 1fr));
+  gap: 16px;
+  margin-top: 16px;
+}
+.pricingCard {
+  position: relative;
+  background: #fff;
+  border: 1px solid var(--line);
+  border-radius: 18px;
+  padding: 22px;
+  min-width: 0;
+}
+.pricingCard > a.primary {
+  display: inline-block;
+  margin-top: 16px;
+}
+.pricingCard.popular {
+  border-color: var(--gold);
+  box-shadow: 0 0 0 2px rgba(193, 145, 90, 0.25);
+}
+.popularBadge {
+  display: inline-block;
+  margin-bottom: 8px;
+  background: var(--gold);
+  color: var(--navy);
+  font-size: 11px;
+  font-weight: 800;
+  border-radius: 999px;
+  padding: 3px 8px;
+}
+.pricingAmount {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: baseline;
+  gap: 6px 12px;
+  font-size: 22px;
+  line-height: 1.3;
+  margin: 0 0 8px;
+}
+.pricingIncluded {
+  font-size: 16px;
+  font-weight: 700;
+}
+.pricingFlat,
+.pricingVendor {
+  margin-top: 18px;
+}
+.pricingTableWrap {
+  overflow-x: auto;
+  margin-top: 18px;
+}
+.pricingTable {
+  width: 100%;
+  border-collapse: collapse;
+  background: #fff;
+  min-width: 560px;
+}
+.pricingTable caption {
+  text-align: left;
+  font-weight: 700;
+  padding: 0 0 8px;
+}
+.pricingTable th,
+.pricingTable td {
+  text-align: left;
+  vertical-align: top;
+  padding: 10px 12px;
+  border-bottom: 1px solid var(--line);
+  font-size: 14px;
+  line-height: 1.45;
+}
+.changelog {
+  list-style: none;
+  margin: 0;
+  padding: 0;
+}
+.changelog li {
+  padding: 8px 0 18px;
+  border-bottom: 1px solid var(--line);
+}
+.changelog time {
+  color: var(--muted);
+  font-size: 13px;
+}
+.founderBlock {
+  display: flex;
+  gap: 16px;
+  align-items: flex-start;
+}
+.founderBlock img {
+  width: 96px;
+  height: 96px;
+  object-fit: cover;
+  border-radius: 16px;
+}
+.marketingArticle h1 {
+  font-size: clamp(32px, 5vw, 48px);
+  line-height: 1.15;
+  margin: 8px 0 12px;
+}
+.marketingArticle > .primary,
+.marketingArticle p > .primary {
+  display: inline-flex;
+  margin-top: 12px;
+}
+@media (max-width: 900px) {
+  .pricingGrid {
+    grid-template-columns: minmax(0, 1fr);
+  }
+  .marketingFaq,
+  .marketingArticle,
+  .founderBlock {
+    width: var(--marketing-width);
+    max-width: var(--marketing-width);
+    margin-inline: auto;
+    padding: 20px 0 28px;
+  }
+  .marketingActions .textLink {
+    display: flex;
+    justify-content: center;
   }
 }
 

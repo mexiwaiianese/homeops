@@ -3,9 +3,30 @@ import { validEmail } from "@/lib/demo-access";
 import { clientKey, unlockAttemptAllowed } from "@/lib/persona-login/gate";
 import { createPlatformSignup } from "@/lib/platform-signup";
 import { packageById } from "@/lib/product-features";
+import { annualBillCents, publicPackageById } from "@/lib/public-site";
 import { listPackages } from "@/lib/subscription-packages";
 import { getStripe, stripeReady } from "@/lib/stripe";
 import { sendVendorEmail } from "@/lib/vendor-outreach";
+
+const CORE_FIRST_YEAR_COUPON = "portonos_core_first_year";
+
+async function coreFirstYearCoupon(stripe: NonNullable<ReturnType<typeof getStripe>>, amountOff: number) {
+  try {
+    await stripe.coupons.retrieve(CORE_FIRST_YEAR_COUPON);
+    return CORE_FIRST_YEAR_COUPON;
+  } catch (error) {
+    const missing = Boolean(error && typeof error === "object" && "code" in error && (error as { code?: string }).code === "resource_missing");
+    if (!missing) throw error;
+    await stripe.coupons.create({
+      id: CORE_FIRST_YEAR_COUPON,
+      amount_off: amountOff,
+      currency: "usd",
+      duration: "once",
+      name: "Core first year: 3 months at $25 and 9 months at $99",
+    });
+    return CORE_FIRST_YEAR_COUPON;
+  }
+}
 
 export async function GET() {
   const packages = await listPackages();
@@ -34,9 +55,15 @@ export async function POST(request: Request) {
     packageId: pkg.id,
   });
 
-  if (pkg.monthlyCents > 0 && stripeReady()) {
+  const advertised = publicPackageById(pkg.id);
+  const monthlyAmount = advertised?.listCents ?? pkg.monthlyCents;
+  const yearTwo = advertised ? annualBillCents(advertised, 2) : monthlyAmount * 12;
+  const yearOne = advertised ? annualBillCents(advertised, 1) : yearTwo;
+  if (yearTwo > 0 && stripeReady()) {
     const stripe = getStripe();
     if (!stripe) return NextResponse.json({ error: "Billing is not configured." }, { status: 400 });
+    const introOff = yearTwo - yearOne;
+    const coupon = introOff > 0 ? await coreFirstYearCoupon(stripe, introOff) : "";
     const session = await stripe.checkout.sessions.create({
       mode: "subscription",
       customer_email: email,
@@ -44,12 +71,13 @@ export async function POST(request: Request) {
       metadata: { signupId: signup.id, tokenHash: signup.tokenHash, packageId: pkg.id },
       success_url: `${origin}/api/register/enter?session_id={CHECKOUT_SESSION_ID}`,
       cancel_url: `${origin}/register?canceled=1`,
+      ...(coupon ? { discounts: [{ coupon }] } : {}),
       line_items: [{
         quantity: 1,
         price_data: {
           currency: "usd",
-          unit_amount: pkg.monthlyCents,
-          recurring: { interval: "month" },
+          unit_amount: yearTwo,
+          recurring: { interval: "year" },
           product_data: { name: `portonOS ${pkg.name}` },
         },
       }],

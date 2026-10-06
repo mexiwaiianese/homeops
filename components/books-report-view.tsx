@@ -53,7 +53,7 @@ export default function BooksReportView({
     <div className={variant === "print" ? "reportDoc" : "reportApp"}>
       {variant === "print" && (
         <header className="reportPrintHead">
-          <BrandLockup />
+          <BrandLockup link={false} />
           <div>
             <p className="eyebrow">OWNER AND TAX PACKET</p>
             <h1>{report.year} cash reports</h1>

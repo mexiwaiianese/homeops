@@ -1,5 +1,6 @@
 import type { SupabaseClient } from "@supabase/supabase-js";
 import { packageById } from "@/lib/product-features";
+import { ensureWorkspaceRenewal } from "@/lib/property-overage-billing";
 import { listPackages, saveOrgSubscription } from "@/lib/subscription-packages";
 import { createSupabaseAdminClient } from "@/lib/supabase/admin";
 
@@ -65,6 +66,7 @@ export async function provisionBlankOrganization(input: {
     };
     memoryWorkspaces.set(organizationId, workspace);
     await saveOrgSubscription({ organizationId, packageId: pkg.id, status: "active" }, null);
+    await ensureWorkspaceRenewal(organizationId, new Date(), null);
     return workspace;
   }
 
@@ -74,6 +76,7 @@ export async function provisionBlankOrganization(input: {
       const { data: org } = await db.from("organizations").select("id, slug, name").eq("id", membership.organization_id).maybeSingle();
       if (org) {
         await saveOrgSubscription({ organizationId: org.id, packageId: pkg.id, status: "active" }, db);
+        await ensureWorkspaceRenewal(org.id, new Date(), db);
         return { organizationId: org.id, slug: org.slug, name: org.name, packageId: pkg.id, ownerEmail: email };
       }
     }
@@ -85,6 +88,7 @@ export async function provisionBlankOrganization(input: {
     await db.from("organization_members").insert({ organization_id: org.id, user_id: input.userId, role: "owner" });
   }
   await saveOrgSubscription({ organizationId: org.id, packageId: pkg.id, status: "active" }, db);
+  await ensureWorkspaceRenewal(org.id, new Date(), db);
   return { organizationId: org.id, slug: org.slug, name: org.name, packageId: pkg.id, ownerEmail: email };
 }
 

@@ -17,7 +17,7 @@ export type FeatureMap = Record<FeatureKey, boolean>;
 export const FEATURE_CATALOG: Array<{ key: FeatureKey; label: string; description: string }> = [
   { key: "operations", label: "Operations desk", description: "Homes, owners, tenants, and the maintenance command center." },
   { key: "listings", label: "Rental listings", description: "Draft listings and syndicate to ILS feeds." },
-  { key: "applications", label: "Applications", description: "Rental applications and screening intake." },
+  { key: "applications", label: "Applications", description: "Rental applications. Screening reports are billed per adult at the partner's price." },
   { key: "payments", label: "Rent payments", description: "Charges, pay links, and collection status." },
   { key: "books", label: "Books", description: "Property-level operating history and owner reports." },
   { key: "approved_vendors", label: "Approved vendors", description: "Internal vendor directory, eligibility, and reverse auctions." },
@@ -51,16 +51,16 @@ export const DEFAULT_PACKAGES: SubscriptionPackage[] = [
   {
     id: "core",
     name: "Core",
-    description: "Run the portfolio: operations desk plus owner and vendor portals.",
+    description: "Operations desk, owner portal, and vendor desk. Free ACH on included properties.",
     sortOrder: 1,
-    monthlyCents: 0,
+    monthlyCents: 9900,
     isDefault: true,
     features: mapOf(["owner_portal", "vendor_portal"]),
   },
   {
     id: "operations",
     name: "Operations",
-    description: "Add listings, applications, rent collection, and the approved vendor network.",
+    description: "Adds listings, applications, rent collection, and the approved vendor network. Includes ongoing development time for automations. Free ACH on included properties.",
     sortOrder: 2,
     monthlyCents: 14900,
     isDefault: false,
@@ -69,7 +69,7 @@ export const DEFAULT_PACKAGES: SubscriptionPackage[] = [
   {
     id: "portfolio",
     name: "Portfolio",
-    description: "The full desk: books and the tenant portal on top of operations.",
+    description: "Adds books and the tenant portal. Includes ongoing development time for personalization and new feature creation. Free ACH on included properties.",
     sortOrder: 3,
     monthlyCents: 29900,
     isDefault: false,

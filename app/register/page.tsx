@@ -3,10 +3,11 @@
 import { FormEvent, useEffect, useState } from "react";
 import BrandLockup from "@/components/brand-lockup";
 import { moneyCents, type SubscriptionPackage } from "@/lib/product-features";
+import { ANNUAL_BILLING_LINE, OVERAGE_FRAME, OVERAGE_LINE, annualBillCents, dollars, packagePriceLine, packageRateLine, publicPackageById } from "@/lib/public-site";
 
 export default function RegisterPage() {
   const [packages, setPackages] = useState<SubscriptionPackage[]>([]);
-  const [packageId, setPackageId] = useState("core");
+  const [packageId, setPackageId] = useState("operations");
   const [fullName, setFullName] = useState("");
   const [email, setEmail] = useState("");
   const [organizationName, setOrganizationName] = useState("");
@@ -25,13 +26,19 @@ export default function RegisterPage() {
         const rows = (body.packages || []) as SubscriptionPackage[];
         setPackages(rows);
         setStripe(Boolean(body.stripe));
-        const initial = rows.find((row) => row.isDefault)?.id || rows[0]?.id;
+        const requested = params.get("package");
+        const initial = rows.find((row) => row.id === requested)?.id
+          || rows.find((row) => row.id === "operations")?.id
+          || rows.find((row) => row.isDefault)?.id
+          || rows[0]?.id;
         if (initial) setPackageId(initial);
       })
       .catch(() => undefined);
   }, []);
 
   const selected = packages.find((row) => row.id === packageId);
+  const selectedOffer = publicPackageById(selected?.id);
+  const chargeCents = selectedOffer?.listCents ?? selected?.monthlyCents ?? 0;
 
   async function submit(event: FormEvent) {
     event.preventDefault();
@@ -73,7 +80,7 @@ export default function RegisterPage() {
         <BrandLockup artwork="lockup" />
         <p className="eyebrow">NEW WORKSPACE</p>
         <h1>Create your workspace.</h1>
-        <p>We email you a link. After you confirm, you start empty — your company, your people, your jobs. No sample data is copied in{stripe ? ". Paid plans take a card when billing is on." : "."}</p>
+        <p>We email you a link. After you confirm, you start empty — your company, your people, your jobs. No sample data is copied in. {stripe ? "Paid plans take a card on the next step. The workspace is billed once a year." : "Stripe is not turned on for this server, so this form emails a link and does not charge a card. The prices below are the published annual prices."}</p>
         <label>Your name<input required value={fullName} onChange={(e) => setFullName(e.target.value)} /></label>
         <label>Work email<input type="email" required value={email} onChange={(e) => setEmail(e.target.value)} /></label>
         <label>Company name<input required value={organizationName} onChange={(e) => setOrganizationName(e.target.value)} placeholder="Summit Property Group" /></label>
@@ -83,16 +90,28 @@ export default function RegisterPage() {
             <label key={row.id} className="marketingRole">
               <input type="radio" name="package" checked={packageId === row.id} onChange={() => setPackageId(row.id)} />
               <span>
-                <strong>{row.name}</strong>
-                <small>{row.monthlyCents ? `${moneyCents(row.monthlyCents)} / month` : "Included"} · {row.description}</small>
+                <strong>{row.name}{publicPackageById(row.id)?.popular ? " · Most popular" : ""}</strong>
+                <small>
+                  {publicPackageById(row.id)
+                    ? `${dollars(annualBillCents(publicPackageById(row.id)!, 1))}${publicPackageById(row.id)!.introCents ? " first year" : " a year"} · ${packageRateLine(publicPackageById(row.id)!)} · ${ANNUAL_BILLING_LINE} · ${publicPackageById(row.id)!.includedProperties} properties included`
+                    : row.monthlyCents ? `${moneyCents(row.monthlyCents)} / month` : "Included"}
+                  {" · "}{row.description}
+                </small>
               </span>
             </label>
           ))}
         </fieldset>
-        {selected && !selected.monthlyCents && <p className="summary">Core starts as soon as you confirm your email. Paid plans will ask for a card when billing is turned on.</p>}
+        {selectedOffer && (
+          <p className="summary">
+            {selectedOffer.includedProperties} properties included.
+            {` ${selectedOffer.name} is ${packagePriceLine(selectedOffer)}.`}
+            {" "}{OVERAGE_LINE} {OVERAGE_FRAME}
+          </p>
+        )}
           <button className="primary" type="submit" disabled={status === "sending"}>
-            {status === "sending" ? "Sending…" : selected && selected.monthlyCents && stripe ? "Continue to payment" : "Email my workspace link"}
+            {status === "sending" ? "Sending…" : chargeCents && stripe ? "Continue to payment" : "Email my workspace link"}
           </button>
+        <p className="marketingTrust">Cancel anytime. <a href="/pricing">See pricing</a>. {stripe ? "Cards are processed by Stripe." : "No card is charged on this server."}</p>
         {message && <div className={status === "error" ? "notice error" : "notice"}>{message}</div>}
         {devLink && <p className="summary">Email is not configured locally. Open <a href={devLink}>your unique workspace link</a>.</p>}
         <p><a href="/">Back to portonOS</a></p>

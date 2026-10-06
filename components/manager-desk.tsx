@@ -243,7 +243,10 @@ export default function ManagerDesk({ surface }: { surface: "demo" | "live" }) {
     if (!r.ok) { setToast(body.error || "Could not create home"); return; }
     const o = owners.find(x => x.id === payload.ownerId);
     const newHome: HomeUI = { id: body.home.id, address: body.home.address1, city: `${body.home.city}, ${body.home.state}`, ownerId: body.home.owner_id, tenantId: "", type: body.home.property_type ?? "single_family", rent: (body.home.monthly_rent_cents ?? 0)/100, reserve: (body.home.reserve_balance_cents ?? 0)/100, health: body.home.health_status, leaseEnds: "", systems: [], access: body.home.access_notes ?? [] };
-    setHomes(rows => [...rows, newHome]); setOwners(rows => rows.map(x => x.id === o?.id ? { ...x, homes: x.homes + 1 } : x)); setSelectedHome(newHome.id); setAddingHome(false); setTab("Homes"); setToast("Home Passport created");
+    setHomes(rows => [...rows, newHome]); setOwners(rows => rows.map(x => x.id === o?.id ? { ...x, homes: x.homes + 1 } : x)); setSelectedHome(newHome.id); setAddingHome(false); setTab("Homes");
+    const due = body.overage?.message as string | undefined;
+    const unsaved = body.overage && body.overage.stored === false ? " Billing storage is not ready, so this charge is not saved yet." : "";
+    setToast(due ? `Home Passport created. ${due}${unsaved}` : "Home Passport created");
   }
 
   return (

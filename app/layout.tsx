@@ -1,6 +1,7 @@
 import type { Metadata } from "next";
 import { Cormorant_Garamond, Montserrat } from "next/font/google";
 import AuthHashNotice from "@/components/auth-hash-notice";
+import { HOME_DESCRIPTION, SITE_ORIGIN } from "@/lib/public-site";
 import "./globals.css";
 
 const montserrat = Montserrat({
@@ -18,8 +19,18 @@ const cormorant = Cormorant_Garamond({
 });
 
 export const metadata: Metadata = {
+  metadataBase: new URL(SITE_ORIGIN),
   title: "portonOS",
-  description: "Operations software for property managers, owners, and the vendors they already trust.",
+  description: HOME_DESCRIPTION,
+  openGraph: {
+    siteName: "portonOS",
+    type: "website",
+    images: [{ url: "/brand/portonos-lockup.png", alt: "portonOS wordmark" }],
+  },
+  twitter: {
+    card: "summary_large_image",
+    images: ["/brand/portonos-lockup.png"],
+  },
   icons: {
     icon: "/brand/portonos-mark.png",
     apple: "/brand/portonos-mark.png",

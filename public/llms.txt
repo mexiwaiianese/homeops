@@ -1,0 +1,25 @@
+# portonOS
+
+Operations software for small property managers, landlords, and owner-operator trades. A workspace for your company, not a public marketplace.
+
+## Pricing
+
+- Billed once a year.
+- Core: $966 the first year (3 months at $25 and 9 months at $99), then $1,188 a year. 25 properties included. Free ACH payment processing on included properties. Operations desk, owner portal, and vendor desk.
+- Operations: $1,788 a year ($149/mo). 75 properties included. Free ACH payment processing on included properties. Adds listings, applications, rent collection, and the approved vendor network. Includes ongoing development time for automations.
+- Portfolio: $3,588 a year ($299/mo). 250 properties included. Free ACH payment processing on included properties. Adds books and the tenant portal. Includes ongoing development time for personalization and new feature creation.
+- Additional properties: $18 a year per property beyond the plan's included total. Added mid-year, that $18 is prorated to the renewal date, including a partial month. Eleven months left is $16.50. About two weeks left is about $0.75. The payment provider's transaction fee is charged in addition. No tier upgrade is required.
+- One flat price. No per-transaction fees, no onboarding fee, no per-lead charges. Free ACH payment processing on every included property.
+- Applicant screening is on Operations and Portfolio. The report is a credit, criminal, and eviction check for each adult. It is separate from the annual workspace price. Each adult pays the screening partner's price, passed through. The manager can pay that price or waive it. Published competitor prices as of October 2026: Buildium $17 when the manager pays or $35 when the applicant pays (Enhanced $20); DoorLoop $45 / $35 / $25 by plan, or $49.90 on the comprehensive applicant plan; TurboTenant $45 or $55; RentSpree $39.99, or $49.99 with income verification.
+- Vendors: only invited vendors from a vetted list can join. Vendor desk is $19/mo. Online payments add $10/mo. https://www.portonos.com/vendors/signup
+
+## Pages
+
+- https://www.portonos.com/
+- https://www.portonos.com/pricing
+- https://www.portonos.com/about
+- https://www.portonos.com/changelog
+- https://www.portonos.com/vs/portonos-vs-angi
+- https://www.portonos.com/vs/portonos-vs-buildium
+- https://www.portonos.com/vs/portonos-vs-doorloop
+- https://www.portonos.com/register

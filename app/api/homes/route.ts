@@ -1,5 +1,6 @@
 import { NextResponse } from "next/server";
 import { getAuthedContext } from "@/lib/backend";
+import { recordHomeOverage } from "@/lib/property-overage-billing";
 
 export async function POST(request: Request) {
   const { supabase, user, organizationId } = await getAuthedContext();
@@ -20,5 +21,6 @@ export async function POST(request: Request) {
     access_notes: body.accessNotes ?? [],
   }).select().single();
   if (error) return NextResponse.json({ error: error.message }, { status: 400 });
-  return NextResponse.json({ home: data }, { status: 201 });
+  const overage = await recordHomeOverage({ organizationId, homeId: data.id, supabase }).catch(() => null);
+  return NextResponse.json({ home: data, overage }, { status: 201 });
 }
