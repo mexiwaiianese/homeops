@@ -1,6 +1,6 @@
 import { NextResponse } from "next/server";
 import { getAuthedContext } from "@/lib/backend";
-import { getDemoOrgSettings, parseOrgSettings, setDemoOrgSettings } from "@/lib/org-settings";
+import { getDemoOrgSettings, orgSettingsPatch, parseOrgSettings, setDemoOrgSettings, settingsPatchFromBody } from "@/lib/org-settings";
 
 export async function GET() {
   const { supabase, user, organizationId } = await getAuthedContext();
@@ -14,9 +14,10 @@ export async function GET() {
 export async function PATCH(request: Request) {
   const { supabase, user, organizationId, role } = await getAuthedContext();
   const body = await request.json().catch(() => ({}));
-  const autoAssignAlwaysOn = body.autoAssignAlwaysOn === true;
+  const parsed = settingsPatchFromBody(body, supabase ? "live" : "demo");
+  if ("error" in parsed) return NextResponse.json({ error: parsed.error }, { status: 400 });
   if (!supabase) {
-    return NextResponse.json({ mode: "demo", settings: setDemoOrgSettings({ autoAssignAlwaysOn }) });
+    return NextResponse.json({ mode: "demo", settings: setDemoOrgSettings(parsed.patch) });
   }
   if (!user || !organizationId) return NextResponse.json({ error: "Authentication required" }, { status: 401 });
   if (!role || !["owner", "admin", "manager"].includes(role)) {
@@ -24,7 +25,7 @@ export async function PATCH(request: Request) {
   }
   const { data: current, error: readError } = await supabase.from("organizations").select("settings").eq("id", organizationId).maybeSingle();
   if (readError || !current) return NextResponse.json({ error: readError?.message || "Organization not found" }, { status: 400 });
-  const settings = { ...parseOrgSettings(current.settings), autoAssignAlwaysOn };
+  const settings = orgSettingsPatch(current.settings, parsed.patch);
   const { data, error } = await supabase
     .from("organizations")
     .update({ settings })

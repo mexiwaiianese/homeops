@@ -8,6 +8,7 @@ import {
   type RentalApplication,
   type ScreeningStatus,
 } from "@/lib/applications";
+import { RENTSPREE_PROVIDER, applicantPayLink, parseOrgSettings } from "@/lib/org-settings";
 
 function mapApplication(row: any, listing?: any, home?: any): RentalApplication {
   const occupants = Array.isArray(row.occupants) ? row.occupants.map(String) : [];
@@ -41,6 +42,7 @@ function mapApplication(row: any, listing?: any, home?: any): RentalApplication 
     screeningStatus: row.screening_status,
     screeningProvider: row.screening_provider,
     screeningNotes: row.screening_notes,
+    screeningRequestedAt: row.screening_requested_at ?? null,
     managerNotes: row.manager_notes,
     tenantId: row.tenant_id,
     leaseId: row.lease_id,
@@ -203,4 +205,21 @@ export function screeningPatch(status: ScreeningStatus, notes: string | null, pr
   };
   if (status === "requested" || status === "review") patch.status = "screening" satisfies ApplicationStatus;
   return patch;
+}
+
+export function rentSpreeRequestPatch(notes: string | null, requestedAt: string, applicationStatus: ApplicationStatus) {
+  const patch: Record<string, unknown> = {
+    screening_status: "requested" satisfies ScreeningStatus,
+    screening_notes: notes,
+    screening_provider: RENTSPREE_PROVIDER,
+    screening_requested_at: requestedAt,
+  };
+  if (applicationStatus === "submitted" || applicationStatus === "screening") patch.status = "screening" satisfies ApplicationStatus;
+  return patch;
+}
+
+export async function liveApplicantPayUrl(supabase: SupabaseClient, organizationId: string) {
+  const { data, error } = await supabase.from("organizations").select("settings").eq("id", organizationId).maybeSingle();
+  if (error) throw new Error(error.message);
+  return applicantPayLink("live", parseOrgSettings(data?.settings).rentspreeApplicantPayUrl);
 }

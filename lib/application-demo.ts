@@ -10,6 +10,7 @@ import {
   type RentalApplication,
   type ScreeningStatus,
 } from "@/lib/applications";
+import { RENTSPREE_PROVIDER } from "@/lib/org-settings";
 
 type Store = {
   tokens: Map<string, string>;
@@ -60,6 +61,7 @@ function seedIfNeeded() {
     screeningStatus: "not_started",
     screeningProvider: null,
     screeningNotes: null,
+    screeningRequestedAt: null,
     managerNotes: null,
     tenantId: null,
     leaseId: null,
@@ -109,7 +111,7 @@ export function publicDemoListing(token: string) {
   return listing ? { listing, listingId } : null;
 }
 
-export function submitDemoApplication(token: string, input: Omit<RentalApplication, "id" | "listingId" | "homeId" | "address" | "headline" | "status" | "feeCents" | "feeStatus" | "screeningStatus" | "screeningProvider" | "screeningNotes" | "managerNotes" | "tenantId" | "leaseId" | "createdAt" | "decidedAt">) {
+export function submitDemoApplication(token: string, input: Omit<RentalApplication, "id" | "listingId" | "homeId" | "address" | "headline" | "status" | "feeCents" | "feeStatus" | "screeningStatus" | "screeningProvider" | "screeningNotes" | "screeningRequestedAt" | "managerNotes" | "tenantId" | "leaseId" | "createdAt" | "decidedAt">) {
   const found = publicDemoListing(token);
   if (!found) return { error: "This application link is not valid.", status: 404 as const };
   const listing = listDemoListings().find((row) => row.id === found.listingId);
@@ -129,6 +131,7 @@ export function submitDemoApplication(token: string, input: Omit<RentalApplicati
     screeningStatus: "not_started",
     screeningProvider: null,
     screeningNotes: null,
+    screeningRequestedAt: null,
     managerNotes: null,
     tenantId: null,
     leaseId: null,
@@ -157,7 +160,7 @@ export function markDemoApplicationFee(id: string, status: ApplicationFeeStatus,
   return row;
 }
 
-export function updateDemoApplication(id: string, patch: Partial<Pick<RentalApplication, "status" | "screeningStatus" | "screeningNotes" | "screeningProvider" | "managerNotes" | "feeStatus" | "decidedAt" | "tenantId" | "leaseId">>) {
+export function updateDemoApplication(id: string, patch: Partial<Pick<RentalApplication, "status" | "screeningStatus" | "screeningNotes" | "screeningProvider" | "screeningRequestedAt" | "managerNotes" | "feeStatus" | "decidedAt" | "tenantId" | "leaseId">>) {
   const row = getDemoApplication(id);
   if (!row) return null;
   Object.assign(row, patch);
@@ -186,6 +189,17 @@ export function leaseDemoApplication(id: string) {
   row.status = "leased";
   row.decidedAt = row.decidedAt || new Date().toISOString();
   return { application: row, created: true as const };
+}
+
+export function requestDemoScreening(id: string, requestedAt: string) {
+  const row = getDemoApplication(id);
+  if (!row) return null;
+  return updateDemoApplication(id, {
+    screeningStatus: "requested",
+    screeningProvider: RENTSPREE_PROVIDER,
+    screeningRequestedAt: requestedAt,
+    ...(row.status === "submitted" || row.status === "screening" ? { status: "screening" as const } : {}),
+  });
 }
 
 export function setDemoScreening(id: string, status: ScreeningStatus, notes: string | null, provider: string | null) {

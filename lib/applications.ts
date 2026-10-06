@@ -32,6 +32,7 @@ export type RentalApplication = {
   screeningStatus: ScreeningStatus;
   screeningProvider: string | null;
   screeningNotes: string | null;
+  screeningRequestedAt: string | null;
   managerNotes: string | null;
   tenantId: string | null;
   leaseId: string | null;
@@ -62,6 +63,40 @@ export function applyPath(token: string) {
 
 export function screeningProviderConfigured() {
   return Boolean(process.env.SCREENING_PROVIDER && process.env.SCREENING_REQUEST_URL);
+}
+
+/** Names that each get the same applicant-pay link. The applicant is always included. */
+export function adultsToScreen(applicantName: string, otherAdults: string) {
+  const names = [applicantName, ...String(otherAdults || "").split("\n")]
+    .map((name) => name.trim())
+    .filter((name) => name.length >= 2);
+  const seen = new Set<string>();
+  const adults: string[] = [];
+  for (const name of names) {
+    const key = name.toLowerCase();
+    if (seen.has(key)) continue;
+    seen.add(key);
+    adults.push(name.slice(0, 120));
+    if (adults.length >= 20) break;
+  }
+  return adults;
+}
+
+export function screeningDeskMode(payUrl: string | null): "rentspree" | "provider" | "manual" {
+  if (payUrl) return "rentspree";
+  if (screeningProviderConfigured()) return "provider";
+  return "manual";
+}
+
+export function screeningStatusLabel(status: string) {
+  switch (status) {
+    case "not_started": return "Not started";
+    case "requested": return "Requested";
+    case "clear": return "Clear";
+    case "review": return "Needs review";
+    case "fail": return "Fail";
+    default: return status;
+  }
 }
 
 export type ApplicationDraft = {
