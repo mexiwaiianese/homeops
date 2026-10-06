@@ -2,6 +2,7 @@
 
 import { FormEvent, useEffect, useState } from "react";
 import BrandLockup from "@/components/brand-lockup";
+import { PAYMENT_PROCESSOR, PROCESSOR_RATE, PROCESSOR_RATE_NOTE } from "@/lib/public-site";
 import { VENDOR_BASE_CENTS, VENDOR_PAYMENTS_ADDON_CENTS, dollars, pricedMonthlyCents, vendorMonthlyCents, type VendorPromo } from "@/lib/vendor-plans";
 
 export default function VendorSignupPage() {
@@ -102,7 +103,7 @@ export default function VendorSignupPage() {
             <span>Online payments</span>
             <ul className="planList">
               <li>A pay-by-card link on every invoice.</li>
-              <li>Card processing is Stripe&apos;s rate, 2.9% + $0.30, passed through. No added percentage.</li>
+              <li>Card processing is {PAYMENT_PROCESSOR}&apos;s rate, {PROCESSOR_RATE}, passed through. No added percentage. <small>{PROCESSOR_RATE_NOTE}</small></li>
               <li>Promo codes do not discount this add-on.</li>
             </ul>
           </label>

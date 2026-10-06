@@ -62,7 +62,7 @@ export async function POST(request: Request, { params }: { params: Promise<{ tok
   if (!charge) return NextResponse.json({ error: "This pay link is not valid." }, { status: 404 });
   if (body.action === "intent") {
     const stripe = getStripe();
-    if (!stripe) return NextResponse.json({ error: "Stripe is not configured on this server." }, { status: 503 });
+    if (!stripe) return NextResponse.json({ error: "The payment processor is not configured on this server." }, { status: 503 });
     const remaining = remainingCents(charge);
     if (remaining <= 0) return NextResponse.json({ error: "This charge is already paid." }, { status: 409 });
     const intent = await stripe.paymentIntents.create({
@@ -78,5 +78,5 @@ export async function POST(request: Request, { params }: { params: Promise<{ tok
     }).eq("id", charge.id);
     return NextResponse.json({ mode: "live", clientSecret: intent.client_secret, publishableKey: stripePublishableKey() });
   }
-  return NextResponse.json({ error: "Use Stripe to pay this charge, or ask the manager to record cash." }, { status: 400 });
+  return NextResponse.json({ error: "Use the payment processor to pay this charge, or ask the manager to record cash." }, { status: 400 });
 }

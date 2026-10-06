@@ -49,8 +49,8 @@ export default function TenantPayPage() {
     });
     const body = await response.json();
     setBusy(false);
-    if (!response.ok) { setMessage(body.error || "Could not start Stripe checkout."); return; }
-    if (body.demoPay) { setMessage("Stripe keys are not on this server. Use demo pay below."); return; }
+    if (!response.ok) { setMessage(body.error || "Could not start checkout."); return; }
+    if (body.demoPay) { setMessage("Payment processor keys are not on this server. Use demo pay below."); return; }
     setClientSecret(body.clientSecret);
     setPublishableKey(body.publishableKey || publishableKey);
   }
@@ -92,7 +92,7 @@ export default function TenantPayPage() {
             <p className="eyebrow">RENT PAYMENT</p>
             <h1>{moneyCents(charge.remainingCents)}</h1>
             <p>{charge.address} · due {new Date(`${charge.dueOn}T12:00:00`).toLocaleDateString()} · {charge.kind.replace("_", " ")}</p>
-            <p className="summary">Pay inside portonOS. Stripe processes the card or bank debit; this page is the receipt and Autopay setup surface.</p>
+            <p className="summary">Pay inside portonOS. The payment processor processes the card or bank debit; this page is the receipt and Autopay setup surface.</p>
             {message && <div className="notice">{message}</div>}
             {clientSecret && publishableKey ? (
               <StripePayForm publishableKey={publishableKey} clientSecret={clientSecret} onPaid={() => { setMode("paid"); load(); }} />

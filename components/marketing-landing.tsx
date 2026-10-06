@@ -170,6 +170,15 @@ export default function MarketingLanding({ demoError, focus }: { demoError?: str
           {devLink && <p className="summary">Open <a href={devLink}>your unique demo link</a>.</p>}
           {role === "vendor" && <p><a className="secondaryBtn" href="/vendors/signup">Register a New Vendor</a></p>}
         </form>
+      </section>
+
+      <section className="marketingRoleShots" aria-live="polite" aria-label={`${selected.title} screens`}>
+        <p className="eyebrow">{selected.galleryEyebrow}</p>
+        <h2>{selected.galleryTitle}</h2>
+        <RoleScreens role={role} />
+      </section>
+
+      <section className="marketingStart">
         <div className="marketingAside">
           <p className="eyebrow">START YOUR COMPANY</p>
           <h2>Ready to get to work?</h2>
@@ -182,16 +191,10 @@ export default function MarketingLanding({ demoError, focus }: { demoError?: str
             {ACH_LINE} {OVERAGE_FRAME} {OVERAGE_LINE} {FLAT_PRICE_LINE}
           </p>
           <a className="primary" href="/register">Create your workspace</a>
-          <p className="marketingTrust">Cancel anytime. <a href="/pricing">See pricing</a>. Paid workspaces are billed through Stripe.</p>
+          <p className="marketingTrust">Cancel anytime. <a href="/pricing">See pricing</a>. Paid workspaces are billed through the payment processor.</p>
           {role === "vendor" && <a className="secondaryBtn" href="/vendors/signup">Register a New Vendor</a>}
           <p><a href="/login">Already have access? Sign in</a></p>
         </div>
-      </section>
-
-      <section className="marketingRoleShots" aria-live="polite" aria-label={`${selected.title} screens`}>
-        <p className="eyebrow">{selected.galleryEyebrow}</p>
-        <h2>{selected.galleryTitle}</h2>
-        <RoleScreens role={role} />
       </section>
 
       <section className="marketingFaq" id="faq">

@@ -83,7 +83,7 @@ export async function POST(request: Request) {
   if (body.action === "confirm" && body.paymentMethodId && stripe) {
     const method = await stripe.paymentMethods.retrieve(String(body.paymentMethodId));
     const bank = method.us_bank_account;
-    if (!bank) return NextResponse.json({ error: "Stripe did not return a bank account." }, { status: 400 });
+    if (!bank) return NextResponse.json({ error: "The payment processor did not return a bank account." }, { status: 400 });
     if (actor.mode === "demo") {
       const saved = setDemoPayout(actor.vendorId, {
         bankName: bank.bank_name || "Bank account",
@@ -101,7 +101,7 @@ export async function POST(request: Request) {
   }
 
   if (actor.mode !== "demo") {
-    return NextResponse.json({ error: stripe ? "Start a Stripe bank setup to change the payout account." : "Stripe is not configured on this server." }, { status: 400 });
+    return NextResponse.json({ error: stripe ? "Start a bank setup with the payment processor to change the payout account." : "The payment processor is not configured on this server." }, { status: 400 });
   }
 
   if (body.action === "replace") {
@@ -121,6 +121,6 @@ export async function POST(request: Request) {
   return NextResponse.json({
     mode: "demo",
     bank: saved,
-    notice: stripe ? undefined : "Stripe keys are not on this server, so this confirmation is stored for the demo only. No full account number was saved.",
+    notice: stripe ? undefined : "Payment processor keys are not on this server, so this confirmation is stored for the demo only. No full account number was saved.",
   });
 }

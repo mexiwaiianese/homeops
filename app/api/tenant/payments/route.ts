@@ -20,7 +20,7 @@ export async function POST(request: Request) {
   const stripe = getStripe();
 
   if (body.action === "confirm") {
-    if (!stripe) return NextResponse.json({ error: "Stripe is not configured." }, { status: 503 });
+    if (!stripe) return NextResponse.json({ error: "The payment processor is not configured." }, { status: 503 });
     const intentId = String(body.paymentIntentId || "");
     if (!intentId.startsWith("pi_")) return NextResponse.json({ error: "Missing payment intent." }, { status: 400 });
     const intent = await stripe.paymentIntents.retrieve(intentId, { expand: ["payment_method"] });
@@ -48,7 +48,7 @@ export async function POST(request: Request) {
   }
 
   const customerId = await ensureStripeCustomer(context);
-  if (!customerId) return NextResponse.json({ error: "Could not set up your Stripe profile." }, { status: 500 });
+  if (!customerId) return NextResponse.json({ error: "Could not set up your payment profile." }, { status: 500 });
   const metadata = {
     chargeId: charge.id,
     payToken: charge.payToken,

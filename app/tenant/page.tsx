@@ -96,7 +96,7 @@ export default function TenantPortalPage() {
         <p className="eyebrow">TENANT PORTAL</p>
         <h1>{data.tenant.name}</h1>
         <p className="tenantAddress">{data.tenant.address}{data.tenant.city ? ` · ${data.tenant.city}` : ""}</p>
-        {data.mode === "demo" && <div className="notice">Demo portal. {data.stripe ? "Stripe test keys are active; payments hit Stripe test mode and post to the demo ledger." : "No Stripe keys on this server, so payments and saved methods are simulated."}</div>}
+        {data.mode === "demo" && <div className="notice">Demo portal. {data.stripe ? "Payment processor test keys are active; payments hit the processor's test mode and post to the demo ledger." : "No payment processor keys on this server, so payments and saved methods are simulated."}</div>}
         {error && <div className="notice error">{error}</div>}
 
         <BalancePanel data={data} onChanged={load} onToast={setToast} />
@@ -199,7 +199,7 @@ function BalancePanel({ data, onChanged, onToast }: { data: Overview; onChanged:
       )}
       {paying && clientSecret && data.publishableKey && (
         <div className="stripeBox">
-          <p className="summary">Paying {money(paying.remainingCents)} for {kindLabel(paying.kind).toLowerCase()} due {day(paying.dueOn)}. Stripe processes the payment; portonOS keeps the receipt. This method is saved for next time.</p>
+          <p className="summary">Paying {money(paying.remainingCents)} for {kindLabel(paying.kind).toLowerCase()} due {day(paying.dueOn)}. The payment processor processes the payment; portonOS keeps the receipt. This method is saved for next time.</p>
           <StripePayForm publishableKey={data.publishableKey} clientSecret={clientSecret} onPaid={finishStripe} buttonLabel={`Pay ${money(paying.remainingCents)}`} />
           <button className="textBtn" onClick={() => { setPaying(null); setClientSecret(null); }}>Cancel</button>
         </div>
@@ -277,7 +277,7 @@ function PaymentMethodsPanel({ data, onChanged, onToast }: { data: Overview; onC
     <section className="tenantPanel">
       <div className="sectionTitle">
         <h3>Payment methods</h3>
-        <span>{data.stripe ? "Stored securely by Stripe" : "Demo"}</span>
+        <span>{data.stripe ? "Stored securely by the payment processor" : "Demo"}</span>
       </div>
       {message && <div className="notice error">{message}</div>}
       <div className="credentialList">

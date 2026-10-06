@@ -44,7 +44,7 @@ export default function VendorPayoutPage() {
       body: JSON.stringify({ action: "setup" }),
     });
     const body = await response.json();
-    if (!response.ok) { setMessage(body.error || "Could not start Stripe."); return; }
+    if (!response.ok) { setMessage(body.error || "Could not start the payment processor."); return; }
     setSecret(body.clientSecret || "");
     setPublishableKey(body.publishableKey || "");
   }
@@ -81,7 +81,7 @@ export default function VendorPayoutPage() {
     <VendorPortalFrame
       eyebrow="PAYOUT ACCOUNT"
       title="Bank account for job payments."
-      lede="Review the account portonOS pays, replace it, or confirm it. When Stripe is connected, the bank details are entered in Stripe and only the bank name and last four digits come back here."
+      lede="Review the account portonOS pays, replace it, or confirm it. When the payment processor is connected, the bank details are entered with the payment processor and only the bank name and last four digits come back here."
     >
       {message && <div className="notice">{message}</div>}
       <div className="miniStats vendorMini">
@@ -91,7 +91,7 @@ export default function VendorPayoutPage() {
         <div><span>Confirmed</span><strong>{bank?.confirmedAt ? new Date(bank.confirmedAt).toLocaleDateString() : "—"}</strong></div>
       </div>
       <div className="vendorFilters">
-        {stripeOn && <button className="primary" onClick={() => void startStripe()}>{bank?.status === "missing" ? "Add bank in Stripe" : "Change bank in Stripe"}</button>}
+        {stripeOn && <button className="primary" onClick={() => void startStripe()}>{bank?.status === "missing" ? "Add bank with the payment processor" : "Change bank with the payment processor"}</button>}
         {bank?.status !== "missing" && !stripeOn && <button className="secondaryBtn" onClick={() => void replace()}>Replace account</button>}
       </div>
       {secret && publishableKey && (
@@ -107,8 +107,8 @@ export default function VendorPayoutPage() {
                 body: JSON.stringify({ action: "confirm", paymentMethodId }),
               }).then(async (r) => {
                 const body = await r.json();
-                if (!r.ok) { setMessage(body.error || "Stripe saved the bank, but portonOS could not read it back."); return; }
-                setMessage("Stripe confirmed this bank account for payouts.");
+                if (!r.ok) { setMessage(body.error || "The payment processor saved the bank, but portonOS could not read it back."); return; }
+                setMessage("The payment processor confirmed this bank account for payouts.");
                 setSecret("");
                 apply(body);
               });
@@ -123,7 +123,7 @@ export default function VendorPayoutPage() {
           <button className="primary" type="submit">{bank?.status === "pending" ? "Confirm this account" : "Save and confirm"}</button>
         </form>
       )}
-      {!stripeOn && <p className="summary">This server has no Stripe secret key, so the form stores the bank name and last four only. Turn on Stripe test keys to collect and confirm the account inside Stripe.</p>}
+      {!stripeOn && <p className="summary">This server has no payment processor secret key, so the form stores the bank name and last four only. Turn on the payment processor&apos;s test keys to collect and confirm the account with the payment processor.</p>}
     </VendorPortalFrame>
   );
 }

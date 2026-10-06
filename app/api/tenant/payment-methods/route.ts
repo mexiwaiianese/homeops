@@ -19,9 +19,9 @@ export async function POST(request: Request) {
   const body = await request.json().catch(() => ({}));
 
   if (body.action === "setup") {
-    if (!stripeReady()) return NextResponse.json({ error: "Stripe is not configured on this server.", demo: context.mode === "demo" }, { status: 503 });
+    if (!stripeReady()) return NextResponse.json({ error: "The payment processor is not configured on this server.", demo: context.mode === "demo" }, { status: 503 });
     const clientSecret = await createSetupIntent(context);
-    if (!clientSecret) return NextResponse.json({ error: "Could not start Stripe setup." }, { status: 500 });
+    if (!clientSecret) return NextResponse.json({ error: "Could not start payment setup." }, { status: 500 });
     return NextResponse.json({ clientSecret, publishableKey: stripePublishableKey() });
   }
   if (body.action === "default") {

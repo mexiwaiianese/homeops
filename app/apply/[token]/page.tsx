@@ -152,7 +152,7 @@ export default function ApplyPage() {
           <div>
             <p className="eyebrow">APPLICATION FEE</p>
             <h1>Pay {money(listing.feeCents)} to finish.</h1>
-            <p>This is the application fee for {listing.address}. A credit, criminal, and eviction report is a separate charge at the screening partner&apos;s price. Card details stay with Stripe.</p>
+            <p>This is the application fee for {listing.address}. A credit, criminal, and eviction report is a separate charge at the screening partner&apos;s price. Card details stay with the payment processor.</p>
             {clientSecret && publishableKey ? (
               <StripePayForm publishableKey={publishableKey} clientSecret={clientSecret} onPaid={paid} buttonLabel={`Pay ${money(listing.feeCents)}`} />
             ) : (

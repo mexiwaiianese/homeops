@@ -1,9 +1,16 @@
+"use client";
+
+import { useState } from "react";
+import { ChevronDown } from "lucide-react";
 import {
   ACH_LINE,
   ANNUAL_BILLING_LINE,
   FLAT_PRICE_LINE,
   OVERAGE_FRAME,
   OVERAGE_LINE,
+  PAYMENT_PROCESSOR,
+  PROCESSOR_RATE,
+  PROCESSOR_RATE_NOTE,
   PUBLIC_PACKAGES,
   SCREENING_COST,
   SCREENING_FEATURE,
@@ -38,13 +45,18 @@ const ROWS: Array<{ label: string; cell: (pkg: PublicPackage) => string }> = [
   },
 ];
 
+const PREVIEW_ROWS = 4;
+
 export default function PricingBoard() {
+  const [featuresOpen, setFeaturesOpen] = useState(false);
+  const featureRows = featuresOpen ? ROWS : ROWS.slice(0, PREVIEW_ROWS);
   return (
     <div className="pricingBoard">
       <p className="summary">{ANNUAL_BILLING_LINE} Cancel before the next annual invoice and you are not billed again.</p>
       <div className="pricingGrid">
         {PUBLIC_PACKAGES.map((pkg) => (
           <article key={pkg.id} className={pkg.popular ? "pricingCard popular" : "pricingCard"}>
+            <div className="pricingCardBody">
             {pkg.popular && <span className="popularBadge">Most popular</span>}
             <h2>{pkg.name}</h2>
             <p className="pricingAmount">
@@ -61,6 +73,7 @@ export default function PricingBoard() {
               {pkg.includes.map((item) => <li key={item}>{item}</li>)}
             </ul>
             {pkg.devTime && <p>{pkg.devTime}</p>}
+            </div>
             <a className="primary" href={`/register?package=${pkg.id}`}>Start {pkg.name}</a>
           </article>
         ))}
@@ -68,24 +81,36 @@ export default function PricingBoard() {
       <p className="pricingFlat">{FLAT_PRICE_LINE} {ACH_LINE}</p>
       <p className="pricingFlat">{OVERAGE_LINE}</p>
       <p>{OVERAGE_FRAME}</p>
-      <div className="pricingTableWrap">
-        <table className="pricingTable">
-          <caption>What each package includes</caption>
-          <thead>
-            <tr>
-              <th scope="col"> </th>
-              {PUBLIC_PACKAGES.map((pkg) => <th key={pkg.id} scope="col">{pkg.name}{pkg.popular ? " · Most popular" : ""}</th>)}
-            </tr>
-          </thead>
-          <tbody>
-            {ROWS.map((row) => (
-              <tr key={row.label}>
-                <th scope="row">{row.label}</th>
-                {PUBLIC_PACKAGES.map((pkg) => <td key={pkg.id}>{row.cell(pkg)}</td>)}
+      <div className={featuresOpen ? "pricingCompare" : "pricingCompare is-collapsed"}>
+        <div className="pricingTableWrap">
+          <table className="pricingTable">
+            <caption>What each package includes</caption>
+            <thead>
+              <tr>
+                <th scope="col"> </th>
+                {PUBLIC_PACKAGES.map((pkg) => <th key={pkg.id} scope="col">{pkg.name}{pkg.popular ? " · Most popular" : ""}</th>)}
               </tr>
-            ))}
-          </tbody>
-        </table>
+            </thead>
+            <tbody id="package-features">
+              {featureRows.map((row) => (
+                <tr key={row.label}>
+                  <th scope="row">{row.label}</th>
+                  {PUBLIC_PACKAGES.map((pkg) => <td key={pkg.id}>{row.cell(pkg)}</td>)}
+                </tr>
+              ))}
+            </tbody>
+          </table>
+        </div>
+        <button
+          type="button"
+          className="pricingSeeMore"
+          aria-expanded={featuresOpen}
+          aria-controls="package-features"
+          onClick={() => setFeaturesOpen((open) => !open)}
+        >
+          {featuresOpen ? "See less" : "See more"}
+          <ChevronDown size={16} aria-hidden />
+        </button>
       </div>
       <section className="pricingVendor">
         <h2>Applicant screening</h2>
@@ -118,9 +143,10 @@ export default function PricingBoard() {
         <p>
           {VENDOR_PUBLIC_OFFER.note} The vendor desk is {dollars(VENDOR_PUBLIC_OFFER.baseCents)} a month.
           Online payments on invoices add {dollars(VENDOR_PUBLIC_OFFER.paymentsAddonCents)} a month.
-          Card processing is Stripe&apos;s rate, 2.9% + $0.30, passed through. Vendors do not pay to look eligible.
+          Card processing is {PAYMENT_PROCESSOR}&apos;s rate, {PROCESSOR_RATE}<sup><a href="#processing-rate-note" aria-label="Footnote about processing rates">1</a></sup>, passed through. Vendors do not pay to look eligible.
         </p>
         <a href={VENDOR_PUBLIC_OFFER.href}>Vendor signup</a>
+        <p className="summary pricingFootnote" id="processing-rate-note"><sup>1</sup> {PROCESSOR_RATE_NOTE}</p>
       </section>
     </div>
   );

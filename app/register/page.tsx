@@ -80,7 +80,7 @@ export default function RegisterPage() {
         <BrandLockup artwork="lockup" />
         <p className="eyebrow">NEW WORKSPACE</p>
         <h1>Create your workspace.</h1>
-        <p>We email you a link. After you confirm, you start empty — your company, your people, your jobs. No sample data is copied in. {stripe ? "Paid plans take a card on the next step. The workspace is billed once a year." : "Stripe is not turned on for this server, so this form emails a link and does not charge a card. The prices below are the published annual prices."}</p>
+        <p>We email you a link. After you confirm, you start empty — your company, your people, your jobs. No sample data is copied in. {stripe ? "Paid plans take a card on the next step. The workspace is billed once a year." : "The payment processor is not turned on for this server, so this form emails a link and does not charge a card. The prices below are the published annual prices."}</p>
         <label>Your name<input required value={fullName} onChange={(e) => setFullName(e.target.value)} /></label>
         <label>Work email<input type="email" required value={email} onChange={(e) => setEmail(e.target.value)} /></label>
         <label>Company name<input required value={organizationName} onChange={(e) => setOrganizationName(e.target.value)} placeholder="Summit Property Group" /></label>
@@ -111,7 +111,7 @@ export default function RegisterPage() {
           <button className="primary" type="submit" disabled={status === "sending"}>
             {status === "sending" ? "Sending…" : chargeCents && stripe ? "Continue to payment" : "Email my workspace link"}
           </button>
-        <p className="marketingTrust">Cancel anytime. <a href="/pricing">See pricing</a>. {stripe ? "Cards are processed by Stripe." : "No card is charged on this server."}</p>
+        <p className="marketingTrust">Cancel anytime. <a href="/pricing">See pricing</a>. {stripe ? "Cards are processed by the payment processor." : "No card is charged on this server."}</p>
         {message && <div className={status === "error" ? "notice error" : "notice"}>{message}</div>}
         {devLink && <p className="summary">Email is not configured locally. Open <a href={devLink}>your unique workspace link</a>.</p>}
         <p><a href="/">Back to portonOS</a></p>

@@ -105,11 +105,11 @@ export async function createSetupIntent(ctx: Ctx) {
 export async function setDefaultPaymentMethod(ctx: Ctx, methodId: string) {
   const stripe = getStripe();
   if (!stripe) {
-    if (ctx.mode !== "demo") return { error: "Stripe is not configured on this server." };
+    if (ctx.mode !== "demo") return { error: "The payment processor is not configured on this server." };
     return setDemoDefaultPaymentMethod(ctx.tenant.id, methodId);
   }
   const customerId = await ensureStripeCustomer(ctx);
-  if (!customerId) return { error: "Stripe customer is unavailable." };
+  if (!customerId) return { error: "The payment processor customer profile is unavailable." };
   const pm = await stripe.paymentMethods.retrieve(methodId);
   if (pm.customer !== customerId) return { error: "Payment method not found." };
   await stripe.customers.update(customerId, { invoice_settings: { default_payment_method: methodId } });
@@ -119,11 +119,11 @@ export async function setDefaultPaymentMethod(ctx: Ctx, methodId: string) {
 export async function removePaymentMethod(ctx: Ctx, methodId: string) {
   const stripe = getStripe();
   if (!stripe) {
-    if (ctx.mode !== "demo") return { error: "Stripe is not configured on this server." };
+    if (ctx.mode !== "demo") return { error: "The payment processor is not configured on this server." };
     return removeDemoPaymentMethod(ctx.tenant.id, methodId);
   }
   const customerId = await ensureStripeCustomer(ctx);
-  if (!customerId) return { error: "Stripe customer is unavailable." };
+  if (!customerId) return { error: "The payment processor customer profile is unavailable." };
   const pm = await stripe.paymentMethods.retrieve(methodId);
   if (pm.customer !== customerId) return { error: "Payment method not found." };
   await stripe.paymentMethods.detach(methodId);
@@ -131,7 +131,7 @@ export async function removePaymentMethod(ctx: Ctx, methodId: string) {
 }
 
 export function addDemoMethod(ctx: Ctx, input: { type: "card" | "us_bank_account"; last4?: string; brand?: string; bankName?: string }) {
-  if (ctx.mode !== "demo" || getStripe()) return { error: "Add payment methods through Stripe on this server." };
+  if (ctx.mode !== "demo" || getStripe()) return { error: "Add payment methods through the payment processor on this server." };
   return { method: addDemoPaymentMethod(ctx.tenant.id, input) };
 }
 

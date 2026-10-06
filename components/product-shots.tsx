@@ -198,7 +198,7 @@ function ShotCarousel({ label, children }: { label: string; children: ReactNode 
 
   return (
     <div className="shotCarousel">
-      <div className="shotCarouselControls">
+      <div className="shotCarouselControls" hidden={edges.start && edges.end}>
         <button type="button" className="shotCarouselBtn" aria-label={`Show previous ${label}`} onClick={() => move(-1)} disabled={edges.start}>
           <ChevronLeft size={18} aria-hidden />
         </button>
@@ -233,7 +233,7 @@ function ShotCarousel({ label, children }: { label: string; children: ReactNode 
 export function RoleScreens({ role }: { role: "manager" | "owner" | "vendor" }) {
   if (role === "manager") {
     return (
-      <ShotCarousel label="manager screens">
+      <ShotCarousel key="manager" label="manager screens">
         <ManagerNeedsYouShot />
         <HomePassportShot />
         <TenantPortalShot />
@@ -242,16 +242,16 @@ export function RoleScreens({ role }: { role: "manager" | "owner" | "vendor" }) 
   }
   if (role === "owner") {
     return (
-      <div className="productPhotos">
+      <ShotCarousel key="owner" label="owner screens">
         <OwnerResultsShot />
         <OwnerStatementShot />
-      </div>
+      </ShotCarousel>
     );
   }
   return (
-    <div className="productPhotos">
+    <ShotCarousel key="vendor" label="vendor screens">
       <VendorBidShot />
       <VendorInvoiceShot />
-    </div>
+    </ShotCarousel>
   );
 }

@@ -1,7 +1,7 @@
 /** Vendor self-serve plans. No AI features are included on either plan. */
 
 export const VENDOR_BASE_CENTS = 1900;
-/** Flat monthly add-on for a pay link on the invoice. Card processing stays Stripe's rate, passed through. */
+/** Flat monthly add-on for a pay link on the invoice. Card processing stays the payment processor's rate, passed through. */
 export const VENDOR_PAYMENTS_ADDON_CENTS = 1000;
 
 export function vendorMonthlyCents(payments: boolean) {
