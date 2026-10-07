@@ -1,3 +1,5 @@
+import { analytics } from "@heycatch/sdk";
+
 /** End a portal session, then follow the redirect the server chose (persona switcher or that portal's login). */
 export async function leavePersona(endpoint: string, fallback: string) {
   let redirect = fallback;
@@ -9,5 +11,6 @@ export async function leavePersona(endpoint: string, fallback: string) {
   } catch {
     // The session request failed; still leave the portal.
   }
+  analytics.resetIdentity();
   window.location.assign(redirect);
 }

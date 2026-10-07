@@ -1,4 +1,5 @@
 import { NextResponse } from "next/server";
+import { analytics } from "@heycatch/sdk";
 import { baseCookieOptions } from "@/lib/persona-login/gate";
 import {
   findSignupByStripeSession,
@@ -11,6 +12,8 @@ import { blankWorkspaceCookie } from "@/lib/provision-org";
 import { saveOrgSubscription } from "@/lib/subscription-packages";
 import { createSupabaseAdminClient } from "@/lib/supabase/admin";
 import { getStripe } from "@/lib/stripe";
+
+analytics.init({ projectKey: "hck_pk_mXc0gtQUqyM0DSQdUfQCORLW85pMGXxA" });
 
 export const dynamic = "force-dynamic";
 
@@ -35,11 +38,31 @@ export async function GET(request: Request) {
     return NextResponse.redirect(dest);
   }
 
+  const signupWasCompleted = signup.status === "provisioned";
   const admin = createSupabaseAdminClient();
   const user = admin ? await ensureAuthUser(signup.email, signup.fullName) : null;
   const workspace = await provisionSignup(signup, user?.id ?? null);
   const checkoutId = sessionId || signup.stripeSessionId || "";
   if (checkoutId) await attachCheckoutToWorkspace(checkoutId, workspace.organizationId, workspace.packageId);
+  if (!signupWasCompleted && user) {
+    await analytics.setIdentity(user.id, {
+      email: signup.email,
+      name: signup.fullName,
+      plan: workspace.packageId,
+    });
+    await analytics.trackEvent(
+      "signup_completed",
+      { plan: workspace.packageId },
+      { userId: user.id, request },
+    );
+    if (checkoutId) {
+      await analytics.trackEvent(
+        "subscription_started",
+        { plan: workspace.packageId },
+        { userId: user.id, request },
+      );
+    }
+  }
 
   if (admin && user) {
     const { data } = await admin.auth.admin.generateLink({
