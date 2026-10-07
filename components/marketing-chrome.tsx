@@ -82,7 +82,6 @@ export function MarketingFooter() {
           width={320}
           height={96}
           sizes="(max-width: 900px) 160px, 180px"
-          srcSet="/brand/portonos-wordmark.png 320w"
         />
       </a>
       <span>For managers, owners, and invited vendors. Not a public marketplace. {SCOPE_LINE}</span>
