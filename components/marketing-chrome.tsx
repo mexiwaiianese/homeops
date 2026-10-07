@@ -62,6 +62,7 @@ export function MarketingNav({
         <a href={sectionHref("roles")} onClick={(event) => onSection(event, "roles")}>Roles</a>
         <a href="/pricing">Pricing</a>
         <a href="/about">About</a>
+        <a href="/resources">Resources</a>
         <a href={sectionHref("demo")} onClick={(event) => onSection(event, "demo")}>Demo</a>
         <a href="/login">Sign in</a>
         <a className="primary" href="/register">Start your workspace</a>
@@ -89,6 +90,7 @@ export function MarketingFooter() {
         <a href="/pricing">Pricing</a>
         <a href="/about">About portonOS</a>
         <a href="/changelog">Changelog</a>
+        <a href="/resources">Resources</a>
         <a href="/terms">Terms</a>
         <a href="/property-management-software">Small portfolios</a>
         {COMPARISONS.map((row) => (
