@@ -3,7 +3,10 @@ import { VENDOR_BASE_CENTS, VENDOR_PAYMENTS_ADDON_CENTS } from "@/lib/vendor-pla
 export const SITE_ORIGIN = "https://www.portonos.com";
 
 export const HOME_TITLE = "portonOS - Property Management Software for Small Managers";
-export const HOME_DESCRIPTION = "Operations software for property managers, owners, and the vendors they already trust.";
+export const HOME_DESCRIPTION = "Property management operations software for small portfolios: maintenance, owner reporting, rent, books, and invited vendors in one workspace.";
+
+/** Add only company profiles portonOS actually owns. Empty means structured data omits sameAs. */
+export const ORGANIZATION_SAME_AS: string[] = [];
 
 export const FLAT_PRICE_LINE = "One flat price. No per-transaction fees, no onboarding fee, no per-lead charges.";
 
@@ -435,7 +438,7 @@ export const COMPARISONS: ComparisonPage[] = [
   {
     slug: "portonos-vs-buildium",
     title: "portonOS vs Buildium for Property Managers",
-    description: "Buildium publishes Essential from $62/mo, Growth from $192/mo, and Premium from $400/mo, plus add-on fees. portonOS includes 25, 75, or 250 properties, then $18 a year for each property past that, prorated when added mid-year.",
+    description: "Compare portonOS with Buildium on annual price, included properties, transaction fees, applicant screening, and private vendor workflows.",
     h1: "portonOS vs Buildium",
     lede: "Buildium is the long-running property-management suite (founded in 2004, now RealPage). Its public pricing starts lower on the Essential tier and then adds fees. portonOS is a flat annual workspace. Buildium's numbers below are the public starting prices as of October 2026. Check Buildium before you decide. They can change.",
     columns: ["portonOS", "Buildium"],
@@ -486,7 +489,7 @@ export const COMPARISONS: ComparisonPage[] = [
   {
     slug: "portonos-vs-doorloop",
     title: "portonOS vs DoorLoop for Property Managers",
-    description: "DoorLoop's Starter tier is $99/mo, billed yearly, and capped at 10 units. portonOS Core is billed once a year: $966 the first year (3 months at $25 and 9 months at $99), then $1,188 a year, with 25 properties included. Each property after that is $18 a year, prorated to the renewal date if added mid-year.",
+    description: "Compare portonOS with DoorLoop on annual price, property limits, onboarding fees, applicant screening, and private vendor workflows.",
     h1: "portonOS vs DoorLoop",
     lede: "DoorLoop is all-in-one property management software for small and mid-size operators. Its Starter tier matches portonOS Core's $99 entry price, then bills yearly and caps units. DoorLoop's numbers below are the public pricing as of October 2026. Check DoorLoop before you decide.",
     columns: ["portonOS", "DoorLoop"],
@@ -548,6 +551,7 @@ export const INDEXABLE_PATHS = [
   "/about",
   "/changelog",
   "/terms",
+  "/resources",
   CATEGORY_PATH,
   "/register",
   "/vendors/signup",
