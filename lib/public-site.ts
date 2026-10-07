@@ -6,7 +6,11 @@ export const HOME_TITLE = "portonOS - Property Management Software for Small Man
 export const HOME_DESCRIPTION = "Property management operations software for small portfolios: maintenance, owner reporting, rent, books, and invited vendors in one workspace.";
 
 /** Add only company profiles portonOS actually owns. Empty means structured data omits sameAs. */
-export const ORGANIZATION_SAME_AS: string[] = [];
+export const ORGANIZATION_SAME_AS: string[] = [
+  "https://www.linkedin.com/company/portonOS",
+  "https://x.com/_portonOS",
+  "https://www.tiktok.com/@portonOS",
+];
 
 export const FLAT_PRICE_LINE = "One flat price. No per-transaction fees, no onboarding fee, no per-lead charges.";
 
