@@ -1,0 +1,14 @@
+property_address,city,state,postal_code,monthly_rent,tenant_name,tenant_email,tenant_phone,transaction_date,amount,flow,vendor_name,account,description,memo,work_order
+1840 Maple Street,Provo,UT,84604,1850,Alicia Nguyen,alicia@example.com,8015550142,2026-01-03,1850,income,Alicia Nguyen,Rent,January rent,,
+1840 Maple Street,Provo,UT,84604,1850,Alicia Nguyen,alicia@example.com,8015550142,2026-02-03,1850,income,Alicia Nguyen,Rent,February rent,,
+1840 Maple Street,Provo,UT,84604,,,,,2026-01-12,420,expense,Wasatch Plumbing,Plumbing,Kitchen drain,After hours,WO-4412
+1840 Maple Street,Provo,UT,84604,,,,,2026-03-02,890,expense,Wasatch Plumbing,Plumbing,Same kitchen drain,,WO-4488
+1840 Maple Street,Provo,UT,84604,,,,,2026-05-18,760,expense,Wasatch Plumbing,Plumbing,Kitchen drain again,,WO-4601
+1840 Maple Street,Provo,UT,84604,,,,,2026-02-09,180,expense,Valley Drain Co,Plumbing,Drain clear,,WO-4430
+92 Canyon Road,Orem,UT,84057,2100,Jordan Hale,jordan@example.com,,2026-01-05,2100,income,Jordan Hale,Rent,January rent,,
+92 Canyon Road,Orem,UT,84057,,,,,2026-01-20,640,expense,Peak Heating,HVAC,No heat call,,WO-4502
+92 Canyon Road,Orem,UT,84057,,,,,2026-01-20,640,expense,Peak Heating,HVAC,No heat call,,WO-4502
+410 West 500 South,Springville,UT,84663,1600,,,,2026-02-14,240,expense,Green Line Lawn,Landscaping,February visit,,
+410 West 500 South,Springville,UT,84663,1600,,,,2026-03-14,240,expense,Green Line Lawn,Landscaping,March visit,,
+410 West 500 South,Springville,UT,84663,1600,,,,2026-04-14,240,expense,Green Line Lawn,Landscaping,April visit,,
+15 Orchard Lane,Spanish Fork,UT,84660,1750,Mina Patel,mina@example.com,8015550199,2026-03-01,310,expense,Summit Roofing,Repairs,Flashing patch,Tenant reported a leak,WO-4704

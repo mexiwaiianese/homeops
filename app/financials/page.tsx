@@ -7,6 +7,7 @@ import { buildYearReport } from "@/lib/books-reports";
 import { moneyCents } from "@/lib/rent";
 import { buildPortfolioIntelligence, type IntelligenceHome as Home, type IntelligenceTransaction as Tx } from "@/lib/portfolio-intelligence";
 import BooksReportView from "@/components/books-report-view";
+import CsvMigration from "@/components/csv-migration";
 
 type View = "owners" | "doors" | "bills" | "tenants" | "insights" | "reports" | "migrate";
 type InsightView = "overview" | "properties" | "services" | "trends" | "review";
@@ -39,30 +40,6 @@ const money = (c: number) => moneyCents(c);
 const pct = (n: number) => `${Math.round(n * 100)}%`;
 const monthLabel = (m: string) => new Date(`${m}-02T12:00:00`).toLocaleDateString("en-US", { month: "short", year: "2-digit" });
 
-function parseCsv(text: string) {
-  const rows: string[][] = [];
-  let row: string[] = [];
-  let cell = "";
-  let q = false;
-  for (let i = 0; i < text.length; i++) {
-    const ch = text[i];
-    if (ch === '"') {
-      if (q && text[i + 1] === '"') { cell += '"'; i++; }
-      else q = !q;
-    } else if (ch === "," && !q) { row.push(cell); cell = ""; }
-    else if ((ch === "\n" || ch === "\r") && !q) {
-      if (ch === "\r" && text[i + 1] === "\n") i++;
-      row.push(cell);
-      if (row.some((x) => x.trim())) rows.push(row);
-      row = [];
-      cell = "";
-    } else cell += ch;
-  }
-  if (cell || row.length) { row.push(cell); rows.push(row); }
-  const headers = (rows.shift() || []).map((x) => x.trim());
-  return { headers, rows: rows.map((r) => Object.fromEntries(headers.map((h, i) => [h, r[i] ?? ""]))) };
-}
-
 export default function BooksPage() {
   const [mode, setMode] = useState("checking");
   const [homes, setHomes] = useState<BooksHome[]>([]);
@@ -86,11 +63,6 @@ export default function BooksPage() {
   const [busy, setBusy] = useState("");
   const [billForm, setBillForm] = useState({ vendorName: "", homeId: "", kind: "repairs", amount: "", description: "", payNow: false });
   const [moveForm, setMoveForm] = useState({ ownerId: "", kind: "owner_disbursement", amount: "", notes: "" });
-  const [showImport, setShowImport] = useState(false);
-  const [fileName, setFileName] = useState("");
-  const [headers, setHeaders] = useState<string[]>([]);
-  const [rows, setRows] = useState<Record<string, string>[]>([]);
-  const [mapping, setMapping] = useState<Record<string, string>>({ date: "", description: "", vendor: "", amount: "", debit: "", credit: "", account: "", qbClass: "", qbLocation: "", customerProject: "", memo: "", positiveMeans: "expense" });
 
   async function load() {
     const r = await fetch("/api/financial/bootstrap");
@@ -210,31 +182,6 @@ export default function BooksPage() {
     if (r.ok) { setSelected([]); await load(); }
   }
 
-  function chooseFile(file?: File) {
-    if (!file) return;
-    setFileName(file.name);
-    file.text().then((text) => {
-      const p = parseCsv(text);
-      setHeaders(p.headers);
-      setRows(p.rows);
-      const find = (...ns: string[]) => p.headers.find((h) => ns.some((n) => h.toLowerCase().includes(n))) || "";
-      setMapping((m) => ({ ...m, date: find("date"), description: find("description", "name"), vendor: find("vendor", "payee"), amount: find("amount"), debit: find("debit"), credit: find("credit"), account: find("account"), qbClass: find("class"), qbLocation: find("location"), customerProject: find("customer", "project"), memo: find("memo") }));
-    });
-  }
-
-  async function importRows() {
-    if (!mapping.date || (!mapping.amount && !mapping.debit && !mapping.credit)) { setMsg("Map a date and either amount or debit/credit columns first."); return; }
-    if (mode !== "live") { setMsg("Import mapping is ready. Connect Supabase to persist a historical QuickBooks export. portonOS is already the live books."); return; }
-    setBusy("import");
-    const r = await fetch("/api/financial/imports", { method: "POST", headers: { "Content-Type": "application/json" }, body: JSON.stringify({ fileName, mapping, rows }) });
-    const b = await r.json();
-    setBusy("");
-    if (!r.ok) { setMsg(b.error || "Import failed"); return; }
-    setMsg(`Imported ${b.total} historical rows: ${b.matched} auto-matched, ${b.review} need review.`);
-    setShowImport(false);
-    await load();
-  }
-
   const tabs: { id: View; label: string }[] = [
     { id: "owners", label: "Owner money" },
     { id: "doors", label: "Doors" },
@@ -242,7 +189,7 @@ export default function BooksPage() {
     { id: "tenants", label: "Tenants" },
     { id: "insights", label: "Insights" },
     { id: "reports", label: "Reports" },
-    { id: "migrate", label: "Bring in old books" },
+    { id: "migrate", label: "Bring in a file" },
   ];
 
   return (
@@ -551,34 +498,8 @@ export default function BooksPage() {
           <BooksReportView report={yearReport} variant="app" year={reportYear} onYear={setReportYear} />
         )}
 
-        {view === "migrate" && (
-          <div className="panel">
-            <PanelTitle eyebrow="OPTIONAL" title="Bring in old QuickBooks rows" />
-            <p className="summary">portonOS is already the operating books. Use this only to load historical QBO CSV so Insights has prior months. It does not replace rent collection or bills.</p>
-            <button className="secondaryBtn" onClick={() => setShowImport(true)}>Map a QuickBooks export</button>
-          </div>
-        )}
+        {view === "migrate" && <CsvMigration mode={mode} onSaved={(message) => { setMsg(message); void load(); }} />}
       </section>
-      {showImport && (
-        <div className="modalShade">
-          <div className="modal importModal">
-            <div className="modalHead"><div><p className="eyebrow">HISTORICAL IMPORT</p><h2>Map a QBO export once</h2></div><button className="closeBtn" onClick={() => setShowImport(false)}>×</button></div>
-            <p className="summary">Unmatched rows go to Insights → Review. New rent and bills should be entered in portonOS, not re-imported.</p>
-            <label className="dropZone">Choose CSV<input type="file" accept=".csv,text/csv" onChange={(e) => chooseFile(e.target.files?.[0])} /><strong>{fileName || "Choose CSV file"}</strong><span>{rows.length ? `${rows.length} rows detected` : "Optional migration only"}</span></label>
-            {headers.length > 0 && (
-              <div className="mappingGrid">
-                {[["date", "Transaction date *"], ["vendor", "Vendor / payee"], ["description", "Description"], ["amount", "Amount"], ["debit", "Debit"], ["credit", "Credit"], ["account", "Account / category"], ["qbClass", "QuickBooks Class"], ["qbLocation", "QuickBooks Location"], ["customerProject", "Customer / Project"], ["memo", "Memo"]].map(([key, label]) => (
-                  <label key={key}>{label}<select value={mapping[key] || ""} onChange={(e) => setMapping({ ...mapping, [key]: e.target.value })}><option value="">Not mapped</option>{headers.map((h) => <option key={h} value={h}>{h}</option>)}</select></label>
-                ))}
-              </div>
-            )}
-            <div className="modalActions">
-              <button className="secondaryBtn" onClick={() => setShowImport(false)}>Cancel</button>
-              <button className="primary" onClick={() => void importRows()} disabled={Boolean(busy) || !rows.length}>{busy === "import" ? "Importing…" : "Import history"}</button>
-            </div>
-          </div>
-        </div>
-      )}
     </main>
   );
 }

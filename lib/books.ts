@@ -1,4 +1,4 @@
-export type BookSource = "homeops" | "rent" | "bill" | "owner" | "quickbooks_csv";
+export type BookSource = "homeops" | "rent" | "bill" | "owner" | "quickbooks_csv" | "csv";
 export type BookFlow = "income" | "expense" | "transfer";
 export type BookKind =
   | "rent_income"

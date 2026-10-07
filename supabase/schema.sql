@@ -100,6 +100,7 @@ create table if not exists tenants (
   full_name text not null,
   email text,
   phone text,
+  notes text,
   created_at timestamptz not null default now(),
   updated_at timestamptz not null default now()
 );
@@ -423,7 +424,7 @@ alter table financial_transactions add column if not exists vendor_id uuid;
 alter table financial_transactions add column if not exists charge_id uuid;
 alter table financial_transactions add column if not exists bill_id uuid;
 alter table financial_transactions drop constraint if exists financial_transactions_source_check;
-alter table financial_transactions add constraint financial_transactions_source_check check (source in ('homeops','rent','bill','owner','quickbooks_csv'));
+alter table financial_transactions add constraint financial_transactions_source_check check (source in ('homeops','rent','bill','owner','quickbooks_csv','csv'));
 alter table financial_transactions drop constraint if exists financial_transactions_kind_check;
 alter table financial_transactions add constraint financial_transactions_kind_check check (
   kind is null or kind in (

@@ -5,7 +5,7 @@ import { createPlatformSignup } from "@/lib/platform-signup";
 import { packageById } from "@/lib/product-features";
 import { annualBillCents, publicPackageById } from "@/lib/public-site";
 import { listPackages } from "@/lib/subscription-packages";
-import { getStripe, stripeReady } from "@/lib/stripe";
+import { getStripe, sandboxSubscriptionPriceId, sandboxSubscriptionProductId, STRIPE_SANDBOX_CORE_PROMOTION_CODE, stripeReady } from "@/lib/stripe";
 import { sendVendorEmail } from "@/lib/vendor-outreach";
 
 const CORE_FIRST_YEAR_COUPON = "portonos_core_first_year";
@@ -59,29 +59,39 @@ export async function POST(request: Request) {
   const monthlyAmount = advertised?.listCents ?? pkg.monthlyCents;
   const yearTwo = advertised ? annualBillCents(advertised, 2) : monthlyAmount * 12;
   const yearOne = advertised ? annualBillCents(advertised, 1) : yearTwo;
-  if (yearTwo > 0 && stripeReady()) {
+  const sandboxProduct = sandboxSubscriptionProductId(pkg.id);
+  if ((sandboxProduct || yearTwo > 0) && stripeReady()) {
     const stripe = getStripe();
     if (!stripe) return NextResponse.json({ error: "Billing is not configured." }, { status: 400 });
     const introOff = yearTwo - yearOne;
-    const coupon = introOff > 0 ? await coreFirstYearCoupon(stripe, introOff) : "";
-    const session = await stripe.checkout.sessions.create({
-      mode: "subscription",
-      customer_email: email,
-      client_reference_id: signup.id,
-      metadata: { signupId: signup.id, tokenHash: signup.tokenHash, packageId: pkg.id },
-      success_url: `${origin}/api/register/enter?session_id={CHECKOUT_SESSION_ID}`,
-      cancel_url: `${origin}/register?canceled=1`,
-      ...(coupon ? { discounts: [{ coupon }] } : {}),
-      line_items: [{
-        quantity: 1,
-        price_data: {
-          currency: "usd",
-          unit_amount: yearTwo,
-          recurring: { interval: "year" },
-          product_data: { name: `portonOS ${pkg.name}` },
-        },
-      }],
-    });
+    const coupon = sandboxProduct || introOff <= 0 ? "" : await coreFirstYearCoupon(stripe, introOff);
+    let session;
+    try {
+      session = await stripe.checkout.sessions.create({
+        mode: "subscription",
+        customer_email: email,
+        client_reference_id: signup.id,
+        metadata: { signupId: signup.id, tokenHash: signup.tokenHash, packageId: pkg.id },
+        success_url: `${origin}/api/register/enter?session_id={CHECKOUT_SESSION_ID}`,
+        cancel_url: `${origin}/register?canceled=1`,
+        ...(sandboxProduct && pkg.id === "core" ? { discounts: [{ promotion_code: STRIPE_SANDBOX_CORE_PROMOTION_CODE }] } : {}),
+        ...(coupon ? { discounts: [{ coupon }] } : {}),
+        line_items: [sandboxProduct
+          ? { quantity: 1, price: await sandboxSubscriptionPriceId(stripe, sandboxProduct) }
+          : {
+              quantity: 1,
+              price_data: {
+                currency: "usd",
+                unit_amount: yearTwo,
+                recurring: { interval: "year" },
+                product_data: { name: `portonOS ${pkg.name}` },
+              },
+            }],
+      });
+    } catch (error) {
+      const message = error instanceof Error ? error.message : "Could not start checkout.";
+      return NextResponse.json({ error: message }, { status: 502 });
+    }
     if (!session.url) return NextResponse.json({ error: "Could not start checkout." }, { status: 500 });
     signup.stripeSessionId = session.id;
     const admin = (await import("@/lib/supabase/admin")).createSupabaseAdminClient();

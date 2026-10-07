@@ -4415,6 +4415,20 @@ a.statLink:hover {
 .marketingStart {
   display: block;
 }
+.marketingCard .marketingPeek {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  gap: 8px 14px;
+  margin: 14px 0 0;
+  padding-top: 14px;
+  border-top: 1px solid var(--line);
+  font-size: 13px;
+  line-height: 1.45;
+}
+.marketingCard .marketingPeek .secondaryBtn {
+  flex: 0 0 auto;
+}
 .marketingStart {
   width: 100%;
   max-width: 1100px;
@@ -4665,6 +4679,13 @@ a.statLink:hover {
     text-align: center;
     box-sizing: border-box;
     text-decoration: none;
+  }
+  .marketingActions .textLink {
+    order: 4;
+  }
+  .marketingActions .marketingTrust {
+    order: 3;
+    max-width: none;
   }
   .marketingCard,
   .marketingAside,
@@ -4920,6 +4941,59 @@ a.statLink:hover {
   font-size: 14px;
   font-weight: 700;
 }
+.marketingActions .marketingTrust {
+  flex: 1 0 100%;
+  margin-top: 2px;
+  max-width: 36rem;
+}
+.marketingHeroVisual {
+  min-width: 0;
+}
+.proofStrip {
+  display: flex;
+  flex-direction: column;
+  gap: 6px;
+  margin-top: 12px;
+  color: var(--muted);
+  font-size: 13px;
+  line-height: 1.45;
+}
+.proofStrip p {
+  margin: 0;
+}
+.proofStrip time {
+  font-weight: 700;
+  color: var(--ink);
+}
+.payTrust {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  gap: 6px;
+  margin: 10px 0 0;
+}
+.payTrustMark {
+  border: 1px solid var(--line);
+  border-radius: 6px;
+  background: #fff;
+  padding: 3px 7px;
+  font-size: 11px;
+  font-weight: 800;
+  letter-spacing: 0.02em;
+  color: var(--navy);
+}
+.payTrustNote {
+  color: var(--muted);
+  font-size: 13px;
+}
+.changelogByline {
+  margin: 2px 0 0;
+  color: var(--muted);
+  font-size: 13px;
+}
+.pricingCard .marketingTrust {
+  margin-top: 8px;
+}
 .fieldNote,
 .marketingTrust {
   display: block;
@@ -5026,6 +5100,13 @@ a.statLink:hover {
   border-radius: 999px;
   padding: 3px 8px;
 }
+.pricingWho,
+.pricingAnchor {
+  margin: 0 0 8px;
+  color: var(--muted);
+  font-size: 14px;
+  line-height: 1.45;
+}
 .pricingAmount {
   display: flex;
   flex-wrap: wrap;
@@ -5127,16 +5208,117 @@ a.statLink:hover {
   color: var(--muted);
   font-size: 13px;
 }
+.marketingStories {
+  width: 100%;
+  max-width: 1100px;
+  margin: 0 auto;
+  padding: 12px 28px 36px;
+  box-sizing: border-box;
+}
+.marketingStories img {
+  width: 64px;
+  height: 64px;
+  object-fit: cover;
+  border-radius: 12px;
+}
+.marketingStories blockquote {
+  margin: 10px 0;
+}
+.marketingStories figcaption {
+  display: flex;
+  flex-direction: column;
+  gap: 2px;
+}
 .founderBlock {
   display: flex;
   gap: 16px;
   align-items: flex-start;
 }
-.founderBlock img {
+.founderBlock > div {
+  min-width: 0;
+  flex: 1 1 auto;
+}
+.founderBlock h2 {
+  margin: 0 0 8px;
+  font-size: clamp(28px, 4vw, 40px);
+  line-height: 1.15;
+}
+.founderBlock p {
+  margin: 0 0 12px;
+  color: var(--muted);
+  line-height: 1.65;
+}
+.founderBlock > img,
+.founderPortrait {
   width: 96px;
   height: 96px;
   object-fit: cover;
   border-radius: 16px;
+  flex: 0 0 auto;
+}
+.founderTire {
+  display: flow-root;
+}
+.founderTire img {
+  float: right;
+  width: min(300px, 38%);
+  height: auto;
+  margin: 4px 0 12px 24px;
+  border-radius: 16px;
+}
+.founderSign {
+  color: var(--ink);
+  font-weight: 650;
+}
+.aboutLede {
+  margin: 0 0 12px;
+  color: var(--ink);
+  font-size: 20px;
+  line-height: 1.4;
+}
+.billingCancel form {
+  display: grid;
+  gap: 14px;
+  max-width: 36rem;
+}
+.billingCancel textarea {
+  display: block;
+  width: 100%;
+  margin-top: 6px;
+  padding: 10px 12px;
+  border: 1px solid var(--line);
+  border-radius: 12px;
+  font: inherit;
+  background: #fff;
+}
+.reasonChips {
+  border: 0;
+  margin: 0;
+  padding: 0;
+  display: flex;
+  flex-wrap: wrap;
+  gap: 8px;
+}
+.reasonChips legend {
+  width: 100%;
+  margin-bottom: 4px;
+}
+.reasonChips .secondaryBtn.is-on {
+  border-color: var(--gold);
+  box-shadow: 0 0 0 2px rgba(193, 145, 90, 0.25);
+}
+.categoryShots {
+  display: grid;
+  grid-template-columns: repeat(3, minmax(0, 1fr));
+  gap: 16px;
+  align-items: start;
+  margin: 12px 0 20px;
+}
+@media (max-width: 800px) {
+  .categoryShots {
+    grid-template-columns: 1fr;
+    max-width: 420px;
+  }
 }
 .marketingArticle h1 {
   font-size: clamp(32px, 5vw, 48px);
@@ -5154,6 +5336,7 @@ a.statLink:hover {
   }
   .marketingFaq,
   .marketingArticle,
+  .marketingStories,
   .founderBlock {
     width: var(--marketing-width);
     max-width: var(--marketing-width);
@@ -5165,3 +5348,12 @@ a.statLink:hover {
     justify-content: center;
   }
 }
+@media (max-width: 640px) {
+  .founderTire img {
+    float: none;
+    display: block;
+    width: min(280px, 100%);
+    margin: 0 0 12px;
+  }
+}
+
