@@ -1,3 +1,4 @@
+import Image from "next/image";
 import { customerStories } from "@/lib/public-site";
 
 export default function StoryProof() {
@@ -8,7 +9,7 @@ export default function StoryProof() {
       <div className="marketingRoleGrid">
         {customerStories.map((story) => (
           <figure key={story.name} className="marketingCard">
-            {story.photoSrc ? <img src={story.photoSrc} alt={story.name} width={64} height={64} /> : null}
+            {story.photoSrc ? <Image src={story.photoSrc} alt={story.name} width={64} height={64} /> : null}
             <blockquote>{story.quote}</blockquote>
             <figcaption>
               <strong>{story.name}</strong>
