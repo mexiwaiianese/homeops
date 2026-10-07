@@ -50,6 +50,11 @@ const ROWS: Array<{ label: string; cell: (pkg: PublicPackage) => string }> = [
 
 const PREVIEW_ROWS = 4;
 
+function perPropertyMonthly(pkg: PublicPackage) {
+  const cents = annualBillCents(pkg, 1) / 12 / pkg.includedProperties;
+  return new Intl.NumberFormat("en-US", { style: "currency", currency: "USD", minimumFractionDigits: 2, maximumFractionDigits: 2 }).format(cents / 100);
+}
+
 export default function PricingBoard() {
   const [featuresOpen, setFeaturesOpen] = useState(false);
   const featureRows = featuresOpen ? ROWS : ROWS.slice(0, PREVIEW_ROWS);
@@ -67,7 +72,7 @@ export default function PricingBoard() {
               <span>{dollars(pkg.introCents ?? pkg.listCents)}/mo</span>
               <span className="pricingIncluded">{pkg.includedProperties} properties included</span>
             </p>
-            <p className="pricingAnchor">{VALUE_ANCHOR}</p>
+            <p className="pricingAnchor">{VALUE_ANCHOR} At the included property count, the first-year workspace cost is {perPropertyMonthly(pkg)} per property per month.</p>
             <p className="summary">
               {pkg.introCents && pkg.introMonths
                 ? `For ${pkg.introMonths} months, then ${dollars(pkg.listCents)}/mo. ${dollars(annualBillCents(pkg, 1))} the first year, then ${dollars(annualBillCents(pkg, 2))} a year. ${ANNUAL_BILLING_LINE}`
