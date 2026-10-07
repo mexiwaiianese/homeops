@@ -5,6 +5,7 @@ import { ChevronDown } from "lucide-react";
 import {
   ACH_LINE,
   ANNUAL_BILLING_LINE,
+  CANCEL_COMMITMENT_LINE,
   FLAT_PRICE_LINE,
   OVERAGE_FRAME,
   OVERAGE_LINE,
@@ -17,6 +18,7 @@ import {
   SCREENING_PUBLISHED,
   SCREENING_PUBLISHED_AS_OF,
   SCREENING_WHERE,
+  VALUE_ANCHOR,
   VENDOR_PUBLIC_OFFER,
   annualBillCents,
   dollars,
@@ -52,17 +54,19 @@ export default function PricingBoard() {
   const featureRows = featuresOpen ? ROWS : ROWS.slice(0, PREVIEW_ROWS);
   return (
     <div className="pricingBoard">
-      <p className="summary">{ANNUAL_BILLING_LINE} Cancel before the next annual invoice and you are not billed again.</p>
+      <p className="summary">{CANCEL_COMMITMENT_LINE}</p>
       <div className="pricingGrid">
         {PUBLIC_PACKAGES.map((pkg) => (
           <article key={pkg.id} className={pkg.popular ? "pricingCard popular" : "pricingCard"}>
             <div className="pricingCardBody">
             {pkg.popular && <span className="popularBadge">Most popular</span>}
             <h2>{pkg.name}</h2>
+            <p className="pricingWho">{pkg.who}</p>
             <p className="pricingAmount">
               <span>{dollars(pkg.introCents ?? pkg.listCents)}/mo</span>
               <span className="pricingIncluded">{pkg.includedProperties} properties included</span>
             </p>
+            <p className="pricingAnchor">{VALUE_ANCHOR}</p>
             <p className="summary">
               {pkg.introCents && pkg.introMonths
                 ? `For ${pkg.introMonths} months, then ${dollars(pkg.listCents)}/mo. ${dollars(annualBillCents(pkg, 1))} the first year, then ${dollars(annualBillCents(pkg, 2))} a year. ${ANNUAL_BILLING_LINE}`
@@ -75,6 +79,7 @@ export default function PricingBoard() {
             {pkg.devTime && <p>{pkg.devTime}</p>}
             </div>
             <a className="primary" href={`/register?package=${pkg.id}`}>Start {pkg.name}</a>
+            <p className="marketingTrust">{CANCEL_COMMITMENT_LINE} <a href="/terms">Terms</a>.</p>
           </article>
         ))}
       </div>

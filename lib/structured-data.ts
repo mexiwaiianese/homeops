@@ -1,4 +1,4 @@
-import { ACH_LINE, FAQ, HOME_DESCRIPTION, OVERAGE_LINE, PUBLIC_PACKAGES, SITE_ORIGIN, annualBillCents, packagePriceLine } from "@/lib/public-site";
+import { ACH_LINE, HOME_DESCRIPTION, OVERAGE_LINE, PUBLIC_PACKAGES, SITE_ORIGIN, annualBillCents, packagePriceLine } from "@/lib/public-site";
 
 export function organizationLd() {
   return {
@@ -57,5 +57,3 @@ export function faqLd(items: Array<{ question: string; answer: string }>) {
     })),
   };
 }
-
-export const homeFaqLd = faqLd(FAQ);

@@ -12,7 +12,8 @@ export default function StoryProof() {
             <blockquote>{story.quote}</blockquote>
             <figcaption>
               <strong>{story.name}</strong>
-              <span>{story.role}</span>
+              {story.role ? <span>{story.role}</span> : null}
+              {story.portfolioSize ? <span>{story.portfolioSize}</span> : null}
               {story.outcome ? <span>{story.outcome}</span> : null}
             </figcaption>
           </figure>

@@ -1,5 +1,5 @@
 import { MarketingFooter, MarketingNav } from "@/components/marketing-chrome";
-import { CHANGELOG } from "@/lib/public-site";
+import { CHANGELOG, founderByline } from "@/lib/public-site";
 import { pageMeta } from "@/lib/site-meta";
 
 const title = "portonOS Changelog for Small Managers";
@@ -19,6 +19,7 @@ export default function ChangelogPage() {
           {CHANGELOG.map((entry) => (
             <li key={entry.date + entry.title}>
               <time dateTime={entry.date}>{entry.date}</time>
+              <p className="changelogByline">{founderByline}</p>
               <h2>{entry.title}</h2>
               <p>{entry.body}</p>
             </li>

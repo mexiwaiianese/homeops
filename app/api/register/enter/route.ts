@@ -8,6 +8,7 @@ import {
   ensureAuthUser,
 } from "@/lib/platform-signup";
 import { blankWorkspaceCookie } from "@/lib/provision-org";
+import { saveOrgSubscription } from "@/lib/subscription-packages";
 import { createSupabaseAdminClient } from "@/lib/supabase/admin";
 import { getStripe } from "@/lib/stripe";
 
@@ -37,6 +38,8 @@ export async function GET(request: Request) {
   const admin = createSupabaseAdminClient();
   const user = admin ? await ensureAuthUser(signup.email, signup.fullName) : null;
   const workspace = await provisionSignup(signup, user?.id ?? null);
+  const checkoutId = sessionId || signup.stripeSessionId || "";
+  if (checkoutId) await attachCheckoutToWorkspace(checkoutId, workspace.organizationId, workspace.packageId);
 
   if (admin && user) {
     const { data } = await admin.auth.admin.generateLink({
@@ -57,4 +60,20 @@ export async function GET(request: Request) {
   response.cookies.set(demo.name, demo.value, demo.options);
   response.cookies.set(blankWorkspaceCookie, workspace.organizationId, baseCookieOptions(14 * 24 * 60 * 60));
   return response;
+}
+
+async function attachCheckoutToWorkspace(sessionId: string, organizationId: string, packageId: string) {
+  const stripe = getStripe();
+  if (!stripe) return;
+  const session = await stripe.checkout.sessions.retrieve(sessionId);
+  const customerId = typeof session.customer === "string" ? session.customer : session.customer?.id ?? null;
+  const subscriptionId = typeof session.subscription === "string" ? session.subscription : session.subscription?.id ?? null;
+  if (!customerId && !subscriptionId) return;
+  await saveOrgSubscription({
+    organizationId,
+    packageId,
+    status: "active",
+    stripeCustomerId: customerId,
+    stripeSubscriptionId: subscriptionId,
+  });
 }

@@ -7,6 +7,9 @@ export const HOME_DESCRIPTION = "Operations software for property managers, owne
 
 export const FLAT_PRICE_LINE = "One flat price. No per-transaction fees, no onboarding fee, no per-lead charges.";
 
+/** Sits under each tier amount. Screening is not included: it stays the partner's price. */
+export const VALUE_ANCHOR = "One flat price. The per-transaction fees and $99 bank setups rivals charge are included here.";
+
 export const ACH_LINE = "Free ACH payment processing on every included property.";
 
 export const PROPERTY_OVERAGE_CENTS = 150;
@@ -18,6 +21,20 @@ export const OVERAGE_LINE = "Each property past the included total is $18 a year
 export const OVERAGE_SHORT = "$18 a year, prorated to the renewal date if added mid-year, plus the transaction fee.";
 
 export const ANNUAL_BILLING_LINE = "Billed once a year.";
+
+/** Days after the workspace invoice during which that invoice is refunded. */
+export const MONEY_BACK_DAYS = 30;
+
+/** Optional reasons on the cancel form. The field can also be left blank. */
+export const CANCEL_REASONS = [
+  "Too expensive",
+  "Didn't fit how we work",
+  "Still using spreadsheets",
+  "Something else",
+] as const;
+
+/** Quoted at the Start buttons and at checkout. The refund is the workspace invoice only. */
+export const CANCEL_COMMITMENT_LINE = "Billed once a year. Cancel in the workspace within 30 days of the invoice and we refund it. After that, cancel before the next annual invoice and you are not billed again.";
 
 export const OVERAGE_FRAME = "Need more properties? Add them anytime at a flat rate. No tier upgrades, no surprises.";
 
@@ -78,6 +95,7 @@ export type PublicPackage = {
   introMonths?: number;
   popular?: boolean;
   includedProperties: number;
+  who: string;
   summary: string;
   includes: string[];
   devTime?: string;
@@ -91,6 +109,7 @@ export const PUBLIC_PACKAGES: PublicPackage[] = [
     introCents: 2500,
     introMonths: 3,
     includedProperties: 25,
+    who: "For a desk running homes, owners, and invited vendors.",
     summary: "Operations desk, owner portal, and vendor desk.",
     includes: [
       "25 properties included",
@@ -106,6 +125,7 @@ export const PUBLIC_PACKAGES: PublicPackage[] = [
     listCents: 14900,
     popular: true,
     includedProperties: 75,
+    who: "For the desk that also lists homes, takes applications, and collects rent.",
     summary: "Core, plus listings, applications, rent collection, and your approved vendor network.",
     includes: [
       "75 properties included",
@@ -124,6 +144,7 @@ export const PUBLIC_PACKAGES: PublicPackage[] = [
     name: "Portfolio",
     listCents: 29900,
     includedProperties: 250,
+    who: "For the desk that also keeps the books and a tenant portal.",
     summary: "The full desk: books and the tenant portal on top of Operations.",
     includes: [
       "250 properties included",
@@ -203,7 +224,7 @@ export const FAQ: Array<{ question: string; answer: string }> = [
   },
   {
     question: "Can I cancel?",
-    answer: "Yes. The workspace is billed once a year. Cancel before the next annual invoice and you are not billed again. There is no onboarding fee.",
+    answer: "Yes. Open Billing in the workspace and cancel there. You can leave a reason if you want. Within 30 days of an invoice we refund that invoice. After 30 days, cancel before the next annual invoice and you are not billed again. There is no onboarding fee. Applicant screening and card processing are the partner's charges, passed through, and are not part of the refund.",
   },
   {
     question: "Who is this not for?",
@@ -212,21 +233,65 @@ export const FAQ: Array<{ question: string; answer: string }> = [
 ];
 
 /**
- * Fill this in with a real person. Leave null until there is a name, a photo file
- * in the repo, and a real profile URL. Do not invent any of those.
+ * Public name, a photo file in this repo, and a real LinkedIn URL.
+ * Leave null until all three exist. Do not invent them.
  */
-export const founder: {
+export const founderIdentity: {
   name: string;
   photoSrc: string;
   profileUrl: string;
-  background: string;
-  whyBuilt: string;
 } | null = null;
+
+export type FounderPart =
+  | { kind: "text"; text: string }
+  | { kind: "tire"; text: string; src: string; alt: string; width: number; height: number };
+
+/** First person, in the operator's own words. */
+export const founderStory: FounderPart[] = [
+  {
+    kind: "text",
+    text: "On one of my earliest jobs I was installing a rain gutter system on a two story home out in the country and that home changed the way I thought about my work. The client was nice, but their roof was not. The job took twice as long as it should have. I was frustrated as I left the last day and started home.",
+  },
+  {
+    kind: "tire",
+    text: "Halfway back to civilization, still in the country, my tire went flat and before I knew it had become so shredded that my work van wouldn't even move. Not only did I not make the money I should have on the job, but now I was about to fork out twice as much as I earned just to fix my van.",
+    src: "/about/shredded-tire.jpg",
+    alt: "Shredded tire peeled off the wheel of a work van, still sitting in the wheel well",
+    width: 768,
+    height: 1024,
+  },
+  {
+    kind: "text",
+    text: "As a handyman you get used to everything being different every day. It is one of the perks and challenges of that line of work. Just repairing the tire and wheel felt straightforward, but then I saw the invoice. It wasn't so much the cost, but all the different \"nickels and dimes\" they were requiring of me to pay. I was torn up because of the job, because of the work van, and now because of the invoice. I vowed to never \"nickel and dime\" my clients. That was in 2019.",
+  },
+  {
+    kind: "text",
+    text: "Fast forward to 2026. Getting passed off from one property manager to the next, I had to change my processes and started looking for a solution that would help simplify my work. Every client's process was different, and I just needed a simple way to send invoices and to report and track the work and NOT get nickled and dimed to death. I needed a platform that could offer top tier USEFULNESS at a predictable cost.",
+  },
+  {
+    kind: "text",
+    text: "I was tired of fighting for my social and classifieds ad spend to be heard above the noise, and of being lined up against nameless competitors who were willing to do it cheaper. I wanted a way to work with property owners and managers who value trust over the lowest price.",
+  },
+  {
+    kind: "text",
+    text: "Those managers want the same thing, and they also need to handle maintenance requests, find vendors they trust, review applicants, collect rent, and send owners reports that are on time, complete, and beautiful. Large property-management software companies leave smaller portfolio managers with the scraps.",
+  },
+  {
+    kind: "text",
+    text: "I was using a payment system, an invoicing system, a job tracker, a marketing system, and a couple of spreadsheets. I built what I needed instead. Other people in that spot will probably want it too.",
+  },
+];
+
+export const founderSign = "- Nate, portonOS Founder";
+
+/** Changelog byline. A face photo and a LinkedIn URL are still missing. */
+export const founderByline = "Nate";
 
 export type CustomerStory = {
   quote: string;
   name: string;
   role: string;
+  portfolioSize: string;
   photoSrc: string;
   outcome: string;
 };
@@ -240,6 +305,16 @@ export const quantityProof: {
   homes: number;
   logos: Array<{ name: string; src: string }>;
 } | null = null;
+
+export type ThirdPartyMention = {
+  date: string;
+  source: string;
+  url: string;
+  label: string;
+};
+
+/** A real review profile or community mention, with the date it appeared. Empty renders nothing. */
+export const thirdPartyMentions: ThirdPartyMention[] = [];
 
 export const CHANGELOG: Array<{ date: string; title: string; body: string }> = [
   {
@@ -299,6 +374,16 @@ const coreLine = packagePriceLine(PUBLIC_PACKAGES[0]);
 const operationsLine = packagePriceLine(PUBLIC_PACKAGES[1]);
 const portfolioLine = packagePriceLine(PUBLIC_PACKAGES[2]);
 
+const LEARNING_FAQ = {
+  question: "How hard is it to learn?",
+  answer: "You confirm a work email and open an empty workspace: your homes, your owners, your vendors. The demo is that same desk with sample homes, so you are not learning a second product after you start. There is no sales call.",
+};
+
+const ADOPTION_FAQ = {
+  question: "What if we switch and the team does not use it?",
+  answer: "The desk is where the work already goes: dispatch, approvals, and the record, instead of email threads and spreadsheets. If it does not fit, cancel in the workspace within 30 days of the invoice and we refund it. After that, cancel before the next annual invoice and you are not billed again. There is no onboarding fee.",
+};
+
 export const COMPARISONS: ComparisonPage[] = [
   {
     slug: "portonos-vs-angi",
@@ -337,6 +422,12 @@ export const COMPARISONS: ComparisonPage[] = [
       {
         question: "Is portonOS a marketplace?",
         answer: "No. It is a workspace for your company, sold to your team, not a public board of leads.",
+      },
+      LEARNING_FAQ,
+      ADOPTION_FAQ,
+      {
+        question: "How do the fees compare?",
+        answer: "On a lead board the vendor pays to receive a lead or to look eligible. On portonOS the manager pays one flat annual workspace. Vendors do not pay to look eligible. This page does not quote a lead price, because those prices change by job and market and we have not published a verified number.",
       },
     ],
   },
@@ -383,6 +474,12 @@ export const COMPARISONS: ComparisonPage[] = [
         question: "What does Core cost?",
         answer: `Core is ${coreLine} and includes 25 properties, plus the operations desk, the owner portal, and the vendor desk. ACH is free on those properties. Past 25, each added property is $18 a year, prorated to the renewal date if you add it mid-year. The payment provider's transaction fee is charged in addition.`,
       },
+      LEARNING_FAQ,
+      ADOPTION_FAQ,
+      {
+        question: "How do the fees compare?",
+        answer: "Buildium's public starting prices are Essential at $62/month, Growth at $192/month, and Premium at $400/month, plus published add-ons: per-transaction EFT fees and a $99 bank setup. portonOS is one flat annual price. No per-transaction fee, no onboarding fee, and no per-lead charge. Applicant screening is still the screening partner's price, per adult, on Operations and Portfolio. Check Buildium before you decide. Their prices can change. As of October 2026.",
+      },
     ],
   },
   {
@@ -422,11 +519,17 @@ export const COMPARISONS: ComparisonPage[] = [
     faq: [
       {
         question: "Does portonOS bill yearly?",
-        answer: "Yes. Every workspace package is billed once a year. Core's first year is 3 months at $25 and 9 months at $99 ($966). After that, Core is $1,188 a year. Operations is $1,788 a year. Portfolio is $3,588 a year. Cancel before the next annual invoice and you are not billed again.",
+        answer: "Yes. Every workspace package is billed once a year. Core's first year is 3 months at $25 and 9 months at $99 ($966). After that, Core is $1,188 a year. Operations is $1,788 a year. Portfolio is $3,588 a year. Cancel in the workspace within 30 days of an invoice and we refund that invoice. After 30 days, cancel before the next annual invoice and you are not billed again.",
       },
       {
         question: "What happens past the included properties?",
         answer: "You keep the same plan. Each property past the included total is $18 a year. Add one before renewal and that $18 is prorated to the renewal date, including a partial month. Eleven months left is $16.50. About two weeks left is about $0.75. The payment provider's transaction fee is charged in addition. Core includes 25, Operations 75, and Portfolio 250. There is no forced upgrade.",
+      },
+      LEARNING_FAQ,
+      ADOPTION_FAQ,
+      {
+        question: "How do the fees compare?",
+        answer: "DoorLoop Starter is $99/mo, shown as $69/mo when billed yearly, capped at 10 units, and billed with an onboarding fee. portonOS Core is $966 the first year, then $1,188 a year, with 25 properties included. Each property past that is $18 a year, prorated to the renewal date. No onboarding fee. Check DoorLoop before you decide. As of October 2026.",
       },
     ],
   },
@@ -436,11 +539,15 @@ export function comparisonBySlug(slug: string) {
   return COMPARISONS.find((row) => row.slug === slug) || null;
 }
 
+export const CATEGORY_PATH = "/property-management-software";
+
 export const INDEXABLE_PATHS = [
   "/",
   "/pricing",
   "/about",
   "/changelog",
+  "/terms",
+  CATEGORY_PATH,
   "/register",
   "/vendors/signup",
   ...COMPARISONS.map((row) => `/vs/${row.slug}`),

@@ -1620,6 +1620,83 @@ button:disabled {
   font-size: 11px;
   color: var(--ink);
 }
+.migrateJourney {
+  display: flex;
+  flex-direction: column;
+  gap: 16px;
+}
+.migrateSteps {
+  display: flex;
+  gap: 8px;
+  flex-wrap: wrap;
+}
+.migrateSteps span {
+  border-radius: 999px;
+  background: #e7ede4;
+  color: #69726c;
+  font-size: 11px;
+  font-weight: 800;
+  padding: 7px 12px;
+}
+.migrateSteps span.active {
+  background: var(--ink);
+  color: #fff;
+}
+.noteField {
+  margin-top: 14px;
+  border: 1px solid var(--line);
+  border-radius: 11px;
+  padding: 12px 14px;
+  background: #fafbf9;
+}
+.noteField strong {
+  font-size: 12px;
+}
+.noteField p {
+  margin: 4px 0 0;
+  color: var(--muted);
+  font-size: 12px;
+}
+.migratePreview {
+  display: grid;
+  grid-template-columns: 1fr 1fr;
+  gap: 12px;
+}
+.migratePreview article {
+  border: 1px solid var(--line);
+  border-radius: 11px;
+  padding: 12px;
+  background: #fff;
+}
+.migratePreview header {
+  display: flex;
+  justify-content: space-between;
+  gap: 8px;
+  font-size: 13px;
+}
+.migratePreview header span,
+.migratePreview p {
+  color: var(--muted);
+  font-size: 11px;
+}
+.migratePreview textarea {
+  width: 100%;
+  min-height: 64px;
+  margin-top: 4px;
+  border: 1px solid #d9ddd9;
+  border-radius: 8px;
+  padding: 8px;
+  font: inherit;
+  font-size: 12px;
+}
+.migratePreview label {
+  display: flex;
+  flex-direction: column;
+  gap: 4px;
+  font-size: 10px;
+  font-weight: 800;
+  color: #606962;
+}
 @media (max-width: 1000px) {
   .finShell {
     grid-template-columns: 82px 1fr;
@@ -1676,7 +1753,8 @@ button:disabled {
   .finStats {
     grid-template-columns: 1fr 1fr;
   }
-  .mappingGrid {
+  .mappingGrid,
+  .migratePreview {
     grid-template-columns: 1fr;
   }
   .bulkBar {
@@ -5087,4 +5165,3 @@ a.statLink:hover {
     justify-content: center;
   }
 }
-

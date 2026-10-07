@@ -15,11 +15,19 @@ export type DemoRole = (typeof DEMO_ROLES)[number];
 export const demoSessionCookie = "homeops_demo";
 const TOKEN_MS = 7 * 24 * 60 * 60 * 1000;
 const SESSION_MAX_AGE = 14 * 24 * 60 * 60;
+/** The no-email peek lasts two hours. */
+const PEEK_MAX_AGE = 2 * 60 * 60;
+
+/** Cookie payload mode tokens. A read-only peek is "ro"; the emailed demo is "rw". */
+export const DEMO_MODE_READ_ONLY = "ro";
+const DEMO_MODE_READ_WRITE = "rw";
 
 export type DemoSession = {
   email: string;
   role: DemoRole;
   expires: number;
+  /** True for the "Peek first - no email" session. Mutating API calls are refused. */
+  readOnly: boolean;
 };
 
 type StoredToken = {
@@ -32,6 +40,9 @@ type StoredToken = {
 
 const memoryTokens: Map<string, StoredToken> =
   ((globalThis as typeof globalThis & { __homeopsDemoTokens?: Map<string, StoredToken> }).__homeopsDemoTokens ??= new Map());
+
+const revokedDemoNonces: Map<string, number> =
+  ((globalThis as typeof globalThis & { __homeopsRevokedDemoNonces?: Map<string, number> }).__homeopsRevokedDemoNonces ??= new Map());
 
 function secret() {
   return (
@@ -120,15 +131,22 @@ export async function consumeDemoAccessToken(token: string) {
   return { email: row.email, role: row.role };
 }
 
-export function issueDemoSessionCookie(session: { email: string; role: DemoRole }): CookieToSet {
-  const expires = Date.now() + SESSION_MAX_AGE * 1000;
+export function issueDemoSessionCookie(session: { email: string; role: DemoRole; readOnly?: boolean }): CookieToSet {
+  const maxAge = session.readOnly ? PEEK_MAX_AGE : SESSION_MAX_AGE;
+  const expires = Date.now() + maxAge * 1000;
   const nonce = randomBytes(8).toString("hex");
-  const payload = `${expires}.${session.role}.${Buffer.from(session.email).toString("base64url")}.${nonce}`;
+  const mode = session.readOnly ? DEMO_MODE_READ_ONLY : DEMO_MODE_READ_WRITE;
+  const payload = `${expires}.${session.role}.${Buffer.from(session.email).toString("base64url")}.${nonce}.${mode}`;
   return {
     name: demoSessionCookie,
     value: `${payload}.${hmac(payload)}`,
-    options: baseCookieOptions(SESSION_MAX_AGE),
+    options: baseCookieOptions(maxAge),
   };
+}
+
+/** The read-only manager peek. No email, no token, nothing saved. */
+export function issuePeekSessionCookie(): CookieToSet {
+  return issueDemoSessionCookie({ email: "", role: "manager", readOnly: true });
 }
 
 export function clearDemoSessionCookie(): CookieToSet {
@@ -142,16 +160,41 @@ export function verifyDemoSessionCookie(raw?: string | null): DemoSession | null
   const payload = raw.slice(0, dot);
   const signature = raw.slice(dot + 1);
   if (!safeEqual(signature, hmac(payload))) return null;
-  const [expires, role, emailB64] = payload.split(".");
+  const [expires, role, emailB64, nonce, mode] = payload.split(".");
+  const revokedUntil = nonce ? revokedDemoNonces.get(nonce) : undefined;
+  if (revokedUntil && revokedUntil > Date.now()) return null;
   if (!/^\d+$/.test(expires) || Number(expires) < Date.now() || !isDemoRole(role)) return null;
+  const readOnly = mode === DEMO_MODE_READ_ONLY;
+  if (readOnly && role !== "manager") return null;
   let email = "";
   try {
     email = Buffer.from(emailB64, "base64url").toString();
   } catch {
     return null;
   }
-  if (!validEmail(email)) return null;
-  return { email, role, expires: Number(expires) };
+  if (!readOnly && !validEmail(email)) return null;
+  return { email, role, expires: Number(expires), readOnly };
+}
+
+/**
+ * Cheap, unsigned read of the mode token, for the edge middleware that has no node crypto.
+ * Safe to trust for refusing writes: stripping the "ro" token breaks the HMAC, so the server
+ * then sees no demo session at all.
+ */
+/** Ends a demo or peek cookie even if the browser keeps sending it. */
+export function revokeDemoSessionCookie(raw?: string | null) {
+  if (!raw) return;
+  const dot = raw.lastIndexOf(".");
+  if (dot < 1) return;
+  const [expires, , , nonce] = raw.slice(0, dot).split(".");
+  if (!nonce || !/^\d+$/.test(expires || "")) return;
+  revokedDemoNonces.set(nonce, Number(expires));
+}
+
+export function demoCookieLooksReadOnly(raw?: string | null) {
+  if (!raw) return false;
+  const parts = raw.split(".");
+  return parts.length === 6 && parts[4] === DEMO_MODE_READ_ONLY;
 }
 
 function expireCookieHeader(name: string, secure: boolean) {

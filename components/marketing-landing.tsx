@@ -1,15 +1,15 @@
 "use client";
 
 import { FormEvent, MouseEvent, useLayoutEffect, useMemo, useState } from "react";
-import FounderBlock from "@/components/founder-block";
 import { MarketingFooter, MarketingNav } from "@/components/marketing-chrome";
 import { HeroRoleShots, RoleScreens } from "@/components/product-shots";
 import QuantityProof from "@/components/quantity-proof";
 import StoryProof from "@/components/story-proof";
+import ThirdPartyProof from "@/components/third-party-proof";
 import type { DemoRole } from "@/lib/demo-access";
-import { ACH_LINE, FAQ, FLAT_PRICE_LINE, OVERAGE_FRAME, OVERAGE_LINE, PUBLIC_PACKAGES, SCOPE_LINE, SPREADSHEET_LINE, packagePriceLine } from "@/lib/public-site";
+import { ACH_LINE, CANCEL_COMMITMENT_LINE, FLAT_PRICE_LINE, OVERAGE_FRAME, OVERAGE_LINE, PUBLIC_PACKAGES, SCOPE_LINE, SPREADSHEET_LINE, packagePriceLine } from "@/lib/public-site";
 
-const SECTION_IDS = ["product", "roles", "demo", "faq"] as const;
+const SECTION_IDS = ["product", "roles", "demo"] as const;
 
 function scrollToMarketingSection(id: string) {
   const el = document.getElementById(id);
@@ -20,19 +20,23 @@ function scrollToMarketingSection(id: string) {
 
 const ROLES: Array<{ id: DemoRole; title: string; lede: string; galleryEyebrow: string; galleryTitle: string }> = [
   { id: "manager", title: "Property manager", lede: "Your workspace: homes, maintenance, owner rules, and the vendors you already use.", galleryEyebrow: "FOR MANAGERS", galleryTitle: "What needs you, the home, and the tenant." },
-  { id: "owner", title: "Property owner", lede: "Cash, approvals, and a record of work on properties you own — without living in the inbox.", galleryEyebrow: "FOR OWNERS", galleryTitle: "Each home, and the monthly statement." },
+  { id: "owner", title: "Property owner", lede: "Cash, approvals, and reports that used to take hours to compile — without living in the inbox.", galleryEyebrow: "FOR OWNERS", galleryTitle: "Each home, and the monthly statement." },
   { id: "vendor", title: "Vendor", lede: "Awarded jobs and invited bids from managers who already have the home. No public lead board.", galleryEyebrow: "FOR VENDORS", galleryTitle: "The bid, and the invoice." },
 ];
 
-export default function MarketingLanding({ demoError, focus }: { demoError?: string; focus?: string }) {
+export default function MarketingLanding() {
   const [email, setEmail] = useState("");
   const [role, setRole] = useState<DemoRole>("manager");
   const [status, setStatus] = useState<"idle" | "sending" | "sent" | "error">("idle");
-  const [message, setMessage] = useState(demoError || "");
+  const [message, setMessage] = useState("");
   const [devLink, setDevLink] = useState("");
   const selected = useMemo(() => ROLES.find((row) => row.id === role) || ROLES[0], [role]);
 
   useLayoutEffect(() => {
+    const params = new URLSearchParams(window.location.search);
+    const demoError = params.get("demoError") || "";
+    const focus = params.get("focus") || "";
+    if (demoError) setMessage(demoError);
     const hash = window.location.hash.replace(/^#/, "");
     const target = SECTION_IDS.includes(hash as (typeof SECTION_IDS)[number])
       ? hash
@@ -43,7 +47,7 @@ export default function MarketingLanding({ demoError, focus }: { demoError?: str
           : "";
     if (!target) return;
     scrollToMarketingSection(target);
-  }, [demoError, focus]);
+  }, []);
 
   function onSectionLink(event: MouseEvent<HTMLAnchorElement>, id: string) {
     event.preventDefault();
@@ -88,16 +92,19 @@ export default function MarketingLanding({ demoError, focus }: { demoError?: str
           <h1>Operations software for managers, owners, and the vendors they already trust.</h1>
           <p>
             portonOS is built for small property managers, landlords, and owner-operator trades — sold as a workspace for your company, not a public marketplace.
-            Managers dispatch the work, owners see the money and the decisions, and vendors bid only on jobs they are invited to.
-            {" "}{SPREADSHEET_LINE} {SCOPE_LINE}
+            {" "}{SCOPE_LINE}
           </p>
           <div className="marketingActions">
             <a className="primary" href="#demo" onClick={(event) => onSectionLink(event, "demo")}>See it as your role</a>
             <a className="secondaryBtn" href="/register">Start your workspace</a>
             <a className="textLink" href="/pricing">See pricing</a>
+            <p className="marketingTrust">{CANCEL_COMMITMENT_LINE} <a href="/terms">Terms</a>.</p>
           </div>
         </div>
-        <HeroRoleShots />
+        <div className="marketingHeroVisual">
+          <HeroRoleShots />
+          <ThirdPartyProof />
+        </div>
       </section>
 
       <section className="marketingGrid" id="product">
@@ -109,7 +116,7 @@ export default function MarketingLanding({ demoError, focus }: { demoError?: str
         <article>
           <p className="eyebrow">FOR OWNERS</p>
           <h2>See the work and the money without chasing anyone.</h2>
-          <p>Authority limits, reserves, and preferred vendors live on each home. You see what happened, what it cost, and why it needed your approval.</p>
+          <p>Authority limits, reserves, and preferred vendors live on each home. Reports that take hours to compile, or that you cannot trust, are how owners usually find out what happened. Here you see what happened, what it cost, and why it needed your approval.</p>
         </article>
         <article>
           <p className="eyebrow">FOR VENDORS</p>
@@ -139,8 +146,6 @@ export default function MarketingLanding({ demoError, focus }: { demoError?: str
         </div>
       </section>
 
-      <StoryProof />
-
       <section className="marketingDemo" id="demo">
         <form className="marketingCard" onSubmit={(event) => void requestDemo(event)}>
           <p className="eyebrow">TRY YOUR VIEW</p>
@@ -166,6 +171,10 @@ export default function MarketingLanding({ demoError, focus }: { demoError?: str
             {status === "sending" ? "Emailing…" : "Email my demo"}
           </button>
           <p className="marketingTrust">No credit card required to tour.</p>
+          <p className="marketingPeek">
+            <a className="secondaryBtn" href="/api/demo/peek" target="_blank" rel="noopener">Peek first - no email</a>
+            <span>Opens the sample manager workspace, read-only, in a new tab.</span>
+          </p>
           {message && <div className={status === "error" ? "notice error" : "notice"}>{message}</div>}
           {devLink && <p className="summary">Open <a href={devLink}>your unique demo link</a>.</p>}
           {role === "vendor" && <p><a className="secondaryBtn" href="/vendors/signup">Register a New Vendor</a></p>}
@@ -191,26 +200,14 @@ export default function MarketingLanding({ demoError, focus }: { demoError?: str
             {ACH_LINE} {OVERAGE_FRAME} {OVERAGE_LINE} {FLAT_PRICE_LINE}
           </p>
           <a className="primary" href="/register">Create your workspace</a>
-          <p className="marketingTrust">Cancel anytime. <a href="/pricing">See pricing</a>. Paid workspaces are billed through the payment processor.</p>
+          <p className="marketingTrust">{CANCEL_COMMITMENT_LINE} <a href="/pricing">See pricing</a>. <a href="/terms">Terms</a>. Paid workspaces are billed through the payment processor.</p>
           {role === "vendor" && <a className="secondaryBtn" href="/vendors/signup">Register a New Vendor</a>}
           <p><a href="/login">Already have access? Sign in</a></p>
         </div>
       </section>
 
-      <section className="marketingFaq" id="faq">
-        <h2>Questions</h2>
-        {FAQ.map((item) => (
-          <details key={item.question}>
-            <summary>{item.question}</summary>
-            <p>
-              {item.answer}
-              {item.question === "What does it cost?" ? <> Full list on the <a href="/pricing">pricing page</a>.</> : null}
-            </p>
-          </details>
-        ))}
-      </section>
+      <StoryProof />
 
-      <FounderBlock />
       <MarketingFooter />
     </main>
   );

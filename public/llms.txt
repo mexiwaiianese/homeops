@@ -19,6 +19,8 @@ Operations software for small property managers, landlords, and owner-operator t
 - https://www.portonos.com/pricing
 - https://www.portonos.com/about
 - https://www.portonos.com/changelog
+- https://www.portonos.com/terms
+- https://www.portonos.com/property-management-software
 - https://www.portonos.com/vs/portonos-vs-angi
 - https://www.portonos.com/vs/portonos-vs-buildium
 - https://www.portonos.com/vs/portonos-vs-doorloop

@@ -13,7 +13,7 @@ const montserrat = Montserrat({
 
 const cormorant = Cormorant_Garamond({
   subsets: ["latin"],
-  weight: ["400", "500", "600"],
+  weight: "500",
   variable: "--font-display",
   display: "swap",
 });

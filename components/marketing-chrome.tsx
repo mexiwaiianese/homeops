@@ -60,6 +60,7 @@ export function MarketingNav({
         <a href={sectionHref("product")} onClick={(event) => onSection(event, "product")}>Product</a>
         <a href={sectionHref("roles")} onClick={(event) => onSection(event, "roles")}>Roles</a>
         <a href="/pricing">Pricing</a>
+        <a href="/about">About</a>
         <a href={sectionHref("demo")} onClick={(event) => onSection(event, "demo")}>Demo</a>
         <a href="/login">Sign in</a>
         <a className="primary" href="/register">Start your workspace</a>
@@ -85,8 +86,10 @@ export function MarketingFooter() {
       <span>For managers, owners, and invited vendors. Not a public marketplace. {SCOPE_LINE}</span>
       <nav className="marketingFootLinks" aria-label="Company">
         <a href="/pricing">Pricing</a>
-        <a href="/about">About</a>
+        <a href="/about">About portonOS</a>
         <a href="/changelog">Changelog</a>
+        <a href="/terms">Terms</a>
+        <a href="/property-management-software">Small portfolios</a>
         {COMPARISONS.map((row) => (
           <a key={row.slug} href={`/vs/${row.slug}`}>
             {row.slug.endsWith("angi") ? "vs lead boards" : row.slug.endsWith("buildium") ? "vs Buildium" : "vs DoorLoop"}

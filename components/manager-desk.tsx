@@ -27,7 +27,7 @@ type TenantUI = (typeof seedTenants)[number];
 type MaintenanceUI = (typeof initialMaintenance)[number];
 type BackendMode = "checking" | "demo" | "live" | "auth" | "error";
 
-export default function ManagerDesk({ surface }: { surface: "demo" | "live" }) {
+export default function ManagerDesk({ surface, readOnly = false }: { surface: "demo" | "live"; readOnly?: boolean }) {
   const [tab, setTab] = useState<Tab>("Today");
   const [homes, setHomes] = useState<HomeUI[]>(surface === "demo" ? seedHomes : []);
   const [owners, setOwners] = useState<OwnerUI[]>(surface === "demo" ? seedOwners : []);
@@ -268,6 +268,7 @@ export default function ManagerDesk({ surface }: { surface: "demo" | "live" }) {
         <a className="nav" href="/payments" style={{textDecoration:"none", display: featureEnabled(features, "payments") ? undefined : "none"}}><BrandIcon name="rent" className="navIcon" />Payments</a>
         <a className="nav" href="/financials" style={{textDecoration:"none", display: featureEnabled(features, "books") ? undefined : "none"}}><BrandIcon name="rent" className="navIcon" />Books</a>
         <a className="nav" href="/vendors" style={{textDecoration:"none", display: featureEnabled(features, "approved_vendors") ? undefined : "none"}}><BrandIcon name="applications" className="navIcon" />Approved Vendors</a>
+        <a className="nav" href="/billing" style={{ textDecoration: "none" }}><BrandIcon name="rent" className="navIcon" />Billing</a>
         <ManagerSignOut className="nav" />
         <div className="portfolio"><small>PORTFOLIO</small><strong>{homes.length} homes</strong><span>{money(monthlyRent)} monthly rent</span><span className={`mode ${backendMode}`}>{backendMode === "live" ? "● Supabase live" : backendMode === "demo" ? "○ Demo mode" : backendMode === "auth" ? "Sign-in required" : backendMode === "checking" ? "Checking backend…" : "Backend unavailable"}</span></div>
       </aside>
@@ -276,7 +277,8 @@ export default function ManagerDesk({ surface }: { surface: "demo" | "live" }) {
         <header><div><p className="eyebrow">HOME OPERATIONS</p><h1>{tab === "Today" ? "Good evening." : tab}</h1></div><div className="headerActions">{backendMode === "auth" && <a className="secondaryBtn" href="/login">Sign in</a>}<button className="secondaryBtn" onClick={() => setSettingsOpen(true)}>Settings</button><button className="primary" onClick={() => setAddingHome(true)}>+ Add home</button></div></header>
 
         {backendMode === "auth" && <div className="backendBanner"><strong>Sign-in required.</strong> <a href="/login">Open your workspace</a> or <a href="/?focus=demo">request a demo link</a>.</div>}
-        {backendMode === "demo" && <div className="backendBanner subtle"><strong>Demo workspace.</strong> Sample properties, owners, and vendors. Nothing here is a live customer organization.</div>}
+        {backendMode === "demo" && readOnly && <div className="backendBanner"><strong>Read-only peek.</strong> Sample homes, owners, and vendors. Look anywhere; nothing you click is saved. <a href="/?focus=demo">Email yourself a demo link</a> to work the desk.</div>}
+        {backendMode === "demo" && !readOnly && <div className="backendBanner subtle"><strong>Demo workspace.</strong> Sample properties, owners, and vendors. Nothing here is a live customer organization.</div>}
         {backendMode === "live" && !homes.length && <div className="backendBanner subtle"><strong>Blank workspace.</strong> Add an owner and a home to start the operating record. No demo data is loaded.</div>}
         {tab === "Today" && <Today maintenance={maintenance} onAdvance={nextStatus} onDispatch={setDispatching} onAuction={(item) => { if (openAuctions[item.id]) { setAuctioning(item); return; } void startAuction(item); }} onEndAuction={(item) => void endAuction(item)} collected={collected} rentSummary={rentSummary} homes={homes} tenants={tenants} jobAutoAssign={jobAutoAssign} onToggleAutoAssign={(id, value) => setJobAutoAssign((current) => ({ ...current, [id]: value }))} openAuctions={openAuctions} />}
         {tab === "Homes" && home && owner && <Homes homes={homes} selectedHome={selectedHome} setSelectedHome={setSelectedHome} home={home} owner={owner} tenant={tenant} onEditOwner={() => setEditingOwner(owner)} />}
