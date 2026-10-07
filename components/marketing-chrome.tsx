@@ -1,5 +1,6 @@
 "use client";
 
+import Image from "next/image";
 import { MouseEvent, useEffect, useState } from "react";
 import BrandLockup from "@/components/brand-lockup";
 import { useHomeHref } from "@/lib/home-href-client";
@@ -74,7 +75,7 @@ export function MarketingFooter() {
   return (
     <footer className="marketingFoot">
       <a className="brandHomeLink" href={home} aria-label="portonOS home">
-        <img
+        <Image
           src="/brand/portonos-wordmark.png"
           alt="portonOS"
           width={320}
