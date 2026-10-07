@@ -274,7 +274,7 @@ export default function ManagerDesk({ surface, readOnly = false }: { surface: "d
       </aside>
 
       <section className="content">
-        <header><div><p className="eyebrow">HOME OPERATIONS</p><h1>{tab === "Today" ? "Good evening." : tab}</h1></div><div className="headerActions">{backendMode === "auth" && <a className="secondaryBtn" href="/login">Sign in</a>}<button className="secondaryBtn" onClick={() => setSettingsOpen(true)}>Settings</button><button className="primary" onClick={() => setAddingHome(true)}>+ Add home</button></div></header>
+        <header><div><p className="eyebrow">HOME OPERATIONS</p><h1>{tab === "Today" ? "Property management workspace" : tab}</h1>{tab === "Today" && <p className="summary">portonOS is the operating desk for your homes, owners, maintenance, and approved vendors.</p>}</div><div className="headerActions">{backendMode === "auth" && <a className="secondaryBtn" href="/login">Sign in</a>}<button className="secondaryBtn" onClick={() => setSettingsOpen(true)}>Settings</button><button className="primary" onClick={() => setAddingHome(true)}>+ Add home</button></div></header>
 
         {backendMode === "auth" && <div className="backendBanner"><strong>Sign-in required.</strong> <a href="/login">Open your workspace</a> or <a href="/?focus=demo">request a demo link</a>.</div>}
         {backendMode === "demo" && readOnly && <div className="backendBanner"><strong>Read-only peek.</strong> Sample homes, owners, and vendors. Look anywhere; nothing you click is saved. <a href="/?focus=demo">Email yourself a demo link</a> to work the desk.</div>}
