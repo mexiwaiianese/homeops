@@ -117,6 +117,7 @@ export const PUBLIC_PACKAGES: PublicPackage[] = [
       "Operations desk: homes, owners, tenants, and maintenance",
       "Owner portal: the work, the cost, and the approval",
       "Vendor desk for invited bids and awarded jobs",
+      "Spreadsheet import: homes, tenants, history, and the vendors in that history",
     ],
   },
   {

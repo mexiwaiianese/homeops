@@ -37,6 +37,7 @@ const ROWS: Array<{ label: string; cell: (pkg: PublicPackage) => string }> = [
   { label: "Operations desk", cell: () => "Included" },
   { label: "Owner portal", cell: () => "Included" },
   { label: "Vendor desk", cell: () => "Included" },
+  { label: "Spreadsheet import", cell: () => "Included" },
   { label: "Listings, applications, rent", cell: (pkg) => (pkg.id === "core" ? "—" : "Included") },
   { label: "Applicant screening", cell: (pkg) => (pkg.id === "core" ? "—" : "Partner's price per adult") },
   { label: "Approved vendor network", cell: (pkg) => (pkg.id === "core" ? "—" : "Included") },
