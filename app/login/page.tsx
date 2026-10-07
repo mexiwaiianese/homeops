@@ -1,5 +1,6 @@
 "use client";
 
+import Image from "next/image";
 import AccessSignIn from "@/components/access-sign-in";
 import { useHomeHref } from "@/lib/home-href-client";
 
@@ -9,7 +10,7 @@ export default function LoginPage() {
     <main className="loginShell">
       <section className="loginBrand">
         <a className="brandHomeLink" href={home} aria-label="portonOS home">
-          <img className="loginBrandMark" src="/brand/portonos-mark.png" alt="portonOS" />
+          <Image className="loginBrandMark" src="/brand/portonos-mark.png" alt="portonOS" width={62} height={62} />
         </a>
         <p className="eyebrow">EVERYTHING BEHIND EVERY DOOR</p>
         <h1>Sign in to your account.</h1>
@@ -17,7 +18,7 @@ export default function LoginPage() {
       </section>
       <section className="loginCard">
         <a className="brandHomeLink" href={home} aria-label="portonOS home">
-          <img className="loginLockup" src="/brand/portonos-wordmark.png" alt="portonOS" />
+          <Image className="loginLockup" src="/brand/portonos-wordmark.png" alt="portonOS" width={320} height={96} />
         </a>
         <p className="eyebrow">SIGN IN</p>
         <AccessSignIn
