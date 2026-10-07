@@ -1,6 +1,7 @@
 "use client";
 
 import { ReactNode, useEffect, useRef, useState } from "react";
+import Image from "next/image";
 import { ChevronLeft, ChevronRight } from "lucide-react";
 
 function ProductPhoto({
@@ -18,7 +19,7 @@ function ProductPhoto({
 }) {
   return (
     <figure className="productPhoto">
-      <img src={src} alt={alt} width={width} height={height} sizes="(max-width: 900px) 90vw, 520px" />
+      <Image src={src} alt={alt} width={width} height={height} sizes="(max-width: 900px) 90vw, 520px" />
       <figcaption>{caption}</figcaption>
     </figure>
   );
