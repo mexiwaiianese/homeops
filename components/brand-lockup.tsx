@@ -40,7 +40,6 @@ export default function BrandLockup({
         width={320}
         height={96}
         sizes="(max-width: 900px) 160px, 180px"
-        srcSet={`${artworkSrc[artwork]} 320w`}
       />
       <Image
         className="brandMarkImg"
@@ -49,7 +48,6 @@ export default function BrandLockup({
         width={62}
         height={62}
         sizes="62px"
-        srcSet="/brand/portonos-mark.png 62w"
       />
     </>
   );
