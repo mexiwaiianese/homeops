@@ -30,7 +30,7 @@
   display: flex;
   align-items: center;
   gap: 8px;
-  font-size: 11px;
+  font-size: 14px;
   font-weight: 800;
   letter-spacing: 0.12em;
   text-transform: uppercase;
@@ -39,11 +39,11 @@
 .plLead {
   margin: 0 0 20px;
   color: var(--pl-muted);
-  font-size: 13px;
+  font-size: 15px;
   line-height: 1.6;
 }
 .plTag {
-  font-size: 10px;
+  font-size: 13px;
   letter-spacing: 0.06em;
   padding: 3px 8px;
   border-radius: 999px;
@@ -63,14 +63,14 @@
 .plGateReason {
   margin: 0 0 12px;
   color: var(--pl-muted);
-  font-size: 13px;
+  font-size: 15px;
 }
 .plUnlock label {
   display: flex;
   flex-direction: column;
   gap: 6px;
   margin: 0 0 12px;
-  font-size: 11px;
+  font-size: 14px;
   font-weight: 800;
   color: var(--pl-muted);
 }
@@ -92,7 +92,7 @@
 .plGroup { margin-top: 22px; }
 .plGroup h2 {
   margin: 0 0 8px;
-  font-size: 13px;
+  font-size: 15px;
   font-weight: 800;
   letter-spacing: 0.02em;
   color: var(--pl-muted);
@@ -123,7 +123,7 @@
   font-size: 14px;
 }
 .plRowText > span {
-  font-size: 11px;
+  font-size: 14px;
   color: var(--pl-muted);
   margin-top: 3px;
   overflow: hidden;
@@ -131,9 +131,9 @@
   white-space: nowrap;
 }
 .plBadge {
-  font-size: 9px;
-  font-weight: 800;
-  letter-spacing: 0.08em;
+  font-size: 13px;
+  font-weight: 700;
+  letter-spacing: 0.06em;
   text-transform: uppercase;
   padding: 2px 6px;
   border-radius: 999px;
@@ -149,7 +149,7 @@
   padding: 10px 16px;
   border-radius: 10px;
   font: inherit;
-  font-size: 13px;
+  font-size: 15px;
   font-weight: 700;
   cursor: pointer;
   white-space: nowrap;
@@ -163,7 +163,7 @@
   padding: 9px 14px;
   border-radius: 10px;
   font: inherit;
-  font-size: 12px;
+  font-size: 14px;
   font-weight: 700;
   cursor: pointer;
 }
@@ -180,10 +180,10 @@
   border-radius: 10px;
   padding: 16px;
   color: var(--pl-muted);
-  font-size: 12px;
+  font-size: 14px;
   margin-top: 16px;
 }
-.plEmpty code { font-size: 11px; }
+.plEmpty code { font-size: 14px; }
 .plEmpty p { margin: 0 0 10px; }
 .plEmpty .plPrimary { width: auto; margin: 0; }
 
@@ -191,7 +191,7 @@
   margin-top: 14px;
   padding: 10px 12px;
   border-radius: 10px;
-  font-size: 12px;
+  font-size: 14px;
   background: #eef5f1;
   color: #1f5a3a;
 }
@@ -205,12 +205,12 @@
   margin-top: 22px;
   padding-top: 14px;
   border-top: 1px solid var(--pl-line);
-  font-size: 11px;
+  font-size: 14px;
   color: var(--pl-muted);
 }
 .plLink {
   color: var(--pl-accent);
-  font-size: 12px;
+  font-size: 14px;
   font-weight: 700;
   text-decoration: none;
 }
@@ -244,7 +244,7 @@
   font-weight: 800;
 }
 .plQuickHead > span {
-  font-size: 11px;
+  font-size: 14px;
   color: var(--pl-muted);
 }
 .plGate-compact { padding: 14px; }
