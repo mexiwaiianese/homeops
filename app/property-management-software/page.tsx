@@ -1,3 +1,4 @@
+import { ContentBreadcrumbs, RelatedContent } from "@/components/content-navigation";
 import JsonLd from "@/components/json-ld";
 import { MarketingFooter, MarketingNav } from "@/components/marketing-chrome";
 import PricingBoard from "@/components/pricing-board";
@@ -7,7 +8,7 @@ import { pageMeta } from "@/lib/site-meta";
 import { faqLd } from "@/lib/structured-data";
 
 const title = "Property Management Software for Small Portfolios";
-const description = "Property management software for small portfolios. One workspace for maintenance, owner reports, and invited vendors. Flat annual price. Not a 10,000-unit suite and not a public marketplace.";
+const description = "Property management software for small portfolios, with maintenance, owner reports, rent, books, and invited vendors in one company workspace.";
 
 const FAQ = [
   {
@@ -36,6 +37,7 @@ export default function SmallPortfolioSoftwarePage() {
       <JsonLd data={faqLd(FAQ)} />
       <MarketingNav />
       <article className="marketingArticle">
+        <ContentBreadcrumbs items={[{ href: "/resources", label: "Resources" }, { href: "/property-management-software", label: "Small portfolios" }]} />
         <p className="eyebrow">For small portfolios</p>
         <h1>Property management software for small portfolios</h1>
         <p>
@@ -55,6 +57,12 @@ export default function SmallPortfolioSoftwarePage() {
             <p>{item.answer}</p>
           </details>
         ))}
+        <RelatedContent links={[
+          { href: "/pricing", label: "Pricing", description: "Compare annual plans and included property counts." },
+          { href: "/vs/portonos-vs-buildium", label: "portonOS vs Buildium", description: "Compare price, fees, screening, and vendor workflows." },
+          { href: "/vs/portonos-vs-doorloop", label: "portonOS vs DoorLoop", description: "Compare property limits, annual pricing, and workflows." },
+          { href: "/vs/portonos-vs-angi", label: "portonOS vs lead boards", description: "Compare a private vendor list with pay-per-lead marketplaces." },
+        ]} />
       </article>
       <section className="marketingArticle">
         <h2>Pricing</h2>

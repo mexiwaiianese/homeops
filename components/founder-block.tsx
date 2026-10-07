@@ -1,10 +1,11 @@
+import Image from "next/image";
 import { founderIdentity, founderSign, founderStory } from "@/lib/public-site";
 
 export default function FounderBlock() {
   return (
     <section className="founderBlock">
       {founderIdentity?.photoSrc ? (
-        <img className="founderPortrait" src={founderIdentity.photoSrc} alt={founderIdentity.name} width={96} height={96} />
+        <Image className="founderPortrait" src={founderIdentity.photoSrc} alt={founderIdentity.name} width={96} height={96} />
       ) : null}
       <div>
         <h2>{founderIdentity?.name ?? "Why I built this"}</h2>
@@ -17,7 +18,7 @@ export default function FounderBlock() {
           const after = founderStory.slice(index + 1);
           return (
             <div className="founderTire" key={part.src}>
-              <img src={part.src} alt={part.alt} width={part.width} height={part.height} />
+              <Image src={part.src} alt={part.alt} width={part.width} height={part.height} />
               <p>{part.text}</p>
               {after.map((row) => (row.kind === "text" ? <p key={row.text}>{row.text}</p> : null))}
               <p className="founderSign">{founderSign}</p>

@@ -1,3 +1,4 @@
+import { ContentBreadcrumbs, RelatedContent } from "@/components/content-navigation";
 import FounderBlock from "@/components/founder-block";
 import JsonLd from "@/components/json-ld";
 import { MarketingFooter, MarketingNav } from "@/components/marketing-chrome";
@@ -5,7 +6,7 @@ import { FAQ, SCOPE_LINE } from "@/lib/public-site";
 import { pageMeta } from "@/lib/site-meta";
 import { faqLd } from "@/lib/structured-data";
 
-const title = "About portonOS";
+const title = "About portonOS Property Management Software";
 const description = "Why portonOS exists, and answers on price, privacy, screening, vendors, and canceling. A workspace for your company, not a public marketplace.";
 
 export const metadata = pageMeta(title, description, "/about");
@@ -16,8 +17,9 @@ export default function AboutPage() {
       <JsonLd data={faqLd(FAQ)} />
       <MarketingNav />
       <article className="marketingArticle">
+        <ContentBreadcrumbs items={[{ href: "/about", label: "About" }]} />
         <p className="eyebrow">About</p>
-        <h1>About portonOS</h1>
+        <h1>About portonOS property management software</h1>
         <p className="aboutLede">A workspace for your company, not a public marketplace.</p>
         <p>
           portonOS is operations software for small property managers, landlords, and owner-operator trades.
@@ -25,6 +27,11 @@ export default function AboutPage() {
           {" "}{SCOPE_LINE}
         </p>
         <FounderBlock />
+        <RelatedContent links={[
+          { href: "/property-management-software", label: "Small-portfolio property management", description: "See the manager, owner, and vendor workflows." },
+          { href: "/pricing", label: "Pricing", description: "See the annual plans and included property counts." },
+          { href: "/changelog", label: "Changelog", description: "Read dated notes on what has shipped." },
+        ]} />
       </article>
       <section className="marketingFaq" id="faq">
         <h2>Questions</h2>

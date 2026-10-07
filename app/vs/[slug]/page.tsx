@@ -1,4 +1,5 @@
 import { notFound } from "next/navigation";
+import { ContentBreadcrumbs, RelatedContent } from "@/components/content-navigation";
 import JsonLd from "@/components/json-ld";
 import { MarketingFooter, MarketingNav } from "@/components/marketing-chrome";
 import { COMPARISONS, comparisonBySlug } from "@/lib/public-site";
@@ -20,11 +21,21 @@ export default async function ComparisonPage({ params }: { params: Promise<{ slu
   const { slug } = await params;
   const page = comparisonBySlug(slug);
   if (!page) notFound();
+  const related = [
+    { href: "/property-management-software", label: "Property management software for small portfolios", description: "See the full manager, owner, and vendor workflow." },
+    { href: "/pricing", label: "Pricing", description: "See portonOS annual plans and included property counts." },
+    ...COMPARISONS.filter((row) => row.slug !== page.slug).map((row) => ({
+      href: `/vs/${row.slug}`,
+      label: row.h1,
+      description: row.description,
+    })),
+  ];
   return (
     <main className="marketing">
       <JsonLd data={faqLd(page.faq)} />
       <MarketingNav />
       <article className="marketingArticle">
+        <ContentBreadcrumbs items={[{ href: "/resources", label: "Resources" }, { href: `/vs/${page.slug}`, label: page.h1 }]} />
         <p className="eyebrow">Comparison</p>
         <h1>{page.h1}</h1>
         <p>{page.lede}</p>
@@ -57,6 +68,7 @@ export default async function ComparisonPage({ params }: { params: Promise<{ slu
           </details>
         ))}
         <p><a className="primary" href="/pricing">See pricing</a></p>
+        <RelatedContent links={related} />
       </article>
       <MarketingFooter />
     </main>

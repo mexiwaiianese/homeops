@@ -1,6 +1,7 @@
 "use client";
 
 import { ReactNode, useEffect, useRef, useState } from "react";
+import Image from "next/image";
 import { ChevronLeft, ChevronRight } from "lucide-react";
 
 function ProductPhoto({
@@ -9,22 +10,24 @@ function ProductPhoto({
   caption,
   width,
   height,
+  priority = false,
 }: {
   src: string;
   alt: string;
   caption: string;
   width: number;
   height: number;
+  priority?: boolean;
 }) {
   return (
     <figure className="productPhoto">
-      <img src={src} alt={alt} width={width} height={height} sizes="(max-width: 900px) 90vw, 520px" />
+      <Image src={src} alt={alt} width={width} height={height} sizes="(max-width: 900px) 90vw, 520px" priority={priority} />
       <figcaption>{caption}</figcaption>
     </figure>
   );
 }
 
-export function ManagerInboxShot() {
+export function ManagerInboxShot({ priority = false }: { priority?: boolean } = {}) {
   return (
     <ProductPhoto
       src="/product/manager-inbox.png"
@@ -32,6 +35,7 @@ export function ManagerInboxShot() {
       height={867}
       alt="portonOS manager desk showing the operations inbox, with a no-heat emergency and a water-heater job waiting on owner approval"
       caption="Manager desk · what needs you"
+      priority={priority}
     />
   );
 }
@@ -149,7 +153,7 @@ export function HeroRoleShots() {
     <div className="marketingShots" aria-label="One screen for managers, owners, and vendors">
       <div className="marketingShot marketingShot-manager">
         <span className="marketingShotBadge">Manager</span>
-        <ManagerInboxShot />
+        <ManagerInboxShot priority />
       </div>
       <div className="marketingShot marketingShot-owner">
         <span className="marketingShotBadge">Owner</span>

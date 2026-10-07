@@ -1,3 +1,5 @@
+import Image from "next/image";
+
 export type BrandIconName = "listing" | "applications" | "rent" | "maintenance" | "tenants";
 
 const src: Record<BrandIconName, string> = {
@@ -17,5 +19,5 @@ export default function BrandIcon({
   className?: string;
   title?: string;
 }) {
-  return <img className={className} src={src[name]} alt={title || ""} width={24} height={24} />;
+  return <Image className={className} src={src[name]} alt={title || ""} width={24} height={24} />;
 }

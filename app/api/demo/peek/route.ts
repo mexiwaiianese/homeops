@@ -11,5 +11,6 @@ export async function GET(request: Request) {
   const response = NextResponse.redirect(new URL("/demo", request.url));
   const session = issuePeekSessionCookie();
   response.cookies.set(session.name, session.value, session.options);
+  response.headers.set("X-Robots-Tag", "noindex, nofollow");
   return response;
 }

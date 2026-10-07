@@ -1,4 +1,4 @@
-import { ACH_LINE, HOME_DESCRIPTION, OVERAGE_LINE, PUBLIC_PACKAGES, SITE_ORIGIN, annualBillCents, packagePriceLine } from "@/lib/public-site";
+import { ACH_LINE, HOME_DESCRIPTION, ORGANIZATION_SAME_AS, OVERAGE_LINE, PUBLIC_PACKAGES, SITE_ORIGIN, annualBillCents, packagePriceLine } from "@/lib/public-site";
 
 export function organizationLd() {
   return {
@@ -8,6 +8,7 @@ export function organizationLd() {
     url: SITE_ORIGIN,
     logo: `${SITE_ORIGIN}/brand/portonos-mark.png`,
     description: HOME_DESCRIPTION,
+    ...(ORGANIZATION_SAME_AS.length >= 3 ? { sameAs: ORGANIZATION_SAME_AS } : {}),
   };
 }
 

@@ -1,5 +1,6 @@
 "use client";
 
+import Image from "next/image";
 import { MouseEvent, useEffect, useState } from "react";
 import BrandLockup from "@/components/brand-lockup";
 import { useHomeHref } from "@/lib/home-href-client";
@@ -61,6 +62,7 @@ export function MarketingNav({
         <a href={sectionHref("roles")} onClick={(event) => onSection(event, "roles")}>Roles</a>
         <a href="/pricing">Pricing</a>
         <a href="/about">About</a>
+        <a href="/resources">Resources</a>
         <a href={sectionHref("demo")} onClick={(event) => onSection(event, "demo")}>Demo</a>
         <a href="/login">Sign in</a>
         <a className="primary" href="/register">Start your workspace</a>
@@ -74,13 +76,12 @@ export function MarketingFooter() {
   return (
     <footer className="marketingFoot">
       <a className="brandHomeLink" href={home} aria-label="portonOS home">
-        <img
+        <Image
           src="/brand/portonos-wordmark.png"
           alt="portonOS"
           width={320}
           height={96}
           sizes="(max-width: 900px) 160px, 180px"
-          srcSet="/brand/portonos-wordmark.png 320w"
         />
       </a>
       <span>For managers, owners, and invited vendors. Not a public marketplace. {SCOPE_LINE}</span>
@@ -88,6 +89,7 @@ export function MarketingFooter() {
         <a href="/pricing">Pricing</a>
         <a href="/about">About portonOS</a>
         <a href="/changelog">Changelog</a>
+        <a href="/resources">Resources</a>
         <a href="/terms">Terms</a>
         <a href="/property-management-software">Small portfolios</a>
         {COMPARISONS.map((row) => (

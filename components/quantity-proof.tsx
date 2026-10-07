@@ -1,3 +1,4 @@
+import Image from "next/image";
 import { quantityProof } from "@/lib/public-site";
 
 export default function QuantityProof() {
@@ -11,7 +12,7 @@ export default function QuantityProof() {
       {quantityProof.logos.length > 0 && (
         <ul className="marketingLogos">
           {quantityProof.logos.map((logo) => (
-            <li key={logo.name}><img src={logo.src} alt={logo.name} /></li>
+            <li key={logo.name}><Image src={logo.src} alt={logo.name} width={160} height={48} /></li>
           ))}
         </ul>
       )}

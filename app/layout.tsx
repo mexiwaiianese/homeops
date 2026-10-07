@@ -1,7 +1,9 @@
 import type { Metadata } from "next";
 import { Cormorant_Garamond, Montserrat } from "next/font/google";
 import AuthHashNotice from "@/components/auth-hash-notice";
+import JsonLd from "@/components/json-ld";
 import { HOME_DESCRIPTION, SITE_ORIGIN } from "@/lib/public-site";
+import { organizationLd } from "@/lib/structured-data";
 import "./globals.css";
 
 const montserrat = Montserrat({
@@ -41,6 +43,7 @@ export default function RootLayout({ children }: Readonly<{ children: React.Reac
   return (
     <html lang="en" className={`${montserrat.variable} ${cormorant.variable}`}>
       <body className={montserrat.className}>
+        <JsonLd data={organizationLd()} />
         <AuthHashNotice />
         {children}
       </body>

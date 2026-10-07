@@ -1,5 +1,6 @@
 "use client";
 
+import Image from "next/image";
 import { useHomeHref } from "@/lib/home-href-client";
 
 const artworkSrc = {
@@ -32,23 +33,21 @@ export default function BrandLockup({
   const classes = ["brand", "brandLockup", className].filter(Boolean).join(" ");
   const inner = (
     <>
-      <img
+      <Image
         className="brandArtwork brandLockupImg"
         src={artworkSrc[artwork]}
         alt="portonOS"
         width={320}
         height={96}
         sizes="(max-width: 900px) 160px, 180px"
-        srcSet={`${artworkSrc[artwork]} 320w`}
       />
-      <img
+      <Image
         className="brandMarkImg"
         src="/brand/portonos-mark.png"
         alt="portonOS"
         width={62}
         height={62}
         sizes="62px"
-        srcSet="/brand/portonos-mark.png 62w"
       />
     </>
   );
