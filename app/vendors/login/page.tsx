@@ -9,7 +9,7 @@ export default function VendorLoginPage() {
       <section className="intakeCard jobCard">
         <BrandLockup artwork="lockup" />
         <p className="eyebrow">VENDOR DESK</p>
-        <h1>Sign in as your company.</h1>
+        <h1>Sign in to your Vendor Desk.</h1>
         <p>The portonOS Vendor Desk is your private workspace for awarded jobs, crew, and invoices.</p>
         <p>Sign in with the email your company registered. Crews still use a no-login job link.</p>
         <AccessSignIn
