@@ -16,6 +16,7 @@ export default function RegisterForm({ processorOn }: { processorOn: boolean }) 
   const [message, setMessage] = useState("");
   const [devLink, setDevLink] = useState("");
   const [stripe, setStripe] = useState(processorOn);
+  const [overlap, setOverlap] = useState<{ blocked: boolean; message: string } | null>(null);
 
   useEffect(() => {
     const params = new URLSearchParams(window.location.search);
@@ -41,27 +42,36 @@ export default function RegisterForm({ processorOn }: { processorOn: boolean }) 
   const selectedOffer = publicPackageById(selected?.id);
   const chargeCents = selectedOffer?.listCents ?? selected?.monthlyCents ?? 0;
 
-  async function submit(event: FormEvent) {
+  async function submit(event: FormEvent, proceed = false) {
     event.preventDefault();
     setStatus("sending");
     setMessage("");
     setDevLink("");
+    if (!proceed) setOverlap(null);
     try {
       const controller = new AbortController();
       const timer = window.setTimeout(() => controller.abort(), 25000);
       const response = await fetch("/api/register", {
         method: "POST",
         headers: { "Content-Type": "application/json" },
-        body: JSON.stringify({ email, fullName, organizationName, packageId }),
+        body: JSON.stringify({ email, fullName, organizationName, packageId, proceed }),
         signal: controller.signal,
       });
       window.clearTimeout(timer);
       const body = await response.json().catch(() => ({}));
+      if (response.status === 409 && body.overlap) {
+        setStatus("error");
+        setOverlap({ blocked: Boolean(body.blocked), message: body.error || "This email overlaps an existing organization." });
+        setMessage(body.error || "This email overlaps an existing organization.");
+        return;
+      }
       if (!response.ok) {
         setStatus("error");
+        setOverlap(null);
         setMessage(body.error || "Could not start registration.");
         return;
       }
+      setOverlap(null);
       if (body.checkoutUrl) {
         window.location.assign(body.checkoutUrl);
         return;
@@ -116,6 +126,9 @@ export default function RegisterForm({ processorOn }: { processorOn: boolean }) 
         {stripe ? <PaymentTrustMark /> : null}
         <p className="marketingTrust"><a href="/pricing">See pricing</a>. {stripe ? "The card is taken on the next step." : "No card is charged on this server."}</p>
         {message && <div className={status === "error" ? "notice error" : "notice"}>{message}</div>}
+        {overlap && !overlap.blocked && (
+          <button className="secondaryBtn" type="button" disabled={status === "sending"} onClick={(event) => void submit(event, true)}>Proceed</button>
+        )}
         {devLink && <p className="summary">Email is not configured locally. Open <a href={devLink}>your unique workspace link</a>.</p>}
         <p><a href="/">Back to portonOS</a></p>
       </form>

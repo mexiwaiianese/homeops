@@ -1,5 +1,6 @@
 import type { SupabaseClient, User } from "@supabase/supabase-js";
 import type { VendorInvoice, VendorInvoiceLine } from "@/lib/vendor-billing-demo";
+import { findOrgOverlap } from "@/lib/org-overlap";
 import { vendorMonthlyCents } from "@/lib/vendor-plans";
 
 const VENDOR_ONLY_PACKAGE_ID = "vendor_only";
@@ -207,6 +208,8 @@ export async function linkLiveSignup(admin: SupabaseClient, user: User) {
     }
     return signup.data.vendor_id as string;
   }
+  const overlap = await findOrgOverlap(email, admin);
+  if (overlap.blocked) return null;
   const org = await admin.from("organizations").insert({ name: signup.data.company_name, slug: slug(email) }).select("id").single();
   if (org.error || !org.data) return null;
   const vendor = await admin.from("vendors").insert({

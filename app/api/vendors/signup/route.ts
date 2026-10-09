@@ -1,6 +1,7 @@
 import { NextResponse } from "next/server";
 import { issueResendMagicLink } from "@/lib/auth-magic-link";
 import { applyClearedDemoCookies } from "@/lib/demo-access";
+import { findOrgOverlap } from "@/lib/org-overlap";
 import { quoteVendorSignup } from "@/lib/vendor-billing-demo";
 import { createVendorCheckoutSession } from "@/lib/vendor-checkout";
 import { provisionVendorAccount } from "@/lib/vendor-provision";
@@ -22,6 +23,10 @@ export async function POST(request: Request) {
     promoCode: String(body.promoCode || ""),
   });
   if ("error" in quoted) return NextResponse.json({ error: quoted.error }, { status: quoted.status });
+  const overlap = await findOrgOverlap(quoted.draft.email);
+  if (overlap.matches.length && (overlap.blocked || body.proceed !== true)) {
+    return NextResponse.json({ error: overlap.message, overlap: true, blocked: overlap.blocked }, { status: 409 });
+  }
 
   const draft = quoted.draft;
   const plan = draft.monthlyCents === 0 ? "Free" : `${dollars(draft.monthlyCents)}/mo`;

@@ -19,6 +19,7 @@ export default function VendorSignupPage() {
   const [promoNote, setPromoNote] = useState("");
   const [message, setMessage] = useState("");
   const [busy, setBusy] = useState(false);
+  const [overlap, setOverlap] = useState<{ blocked: boolean; message: string } | null>(null);
   const listCents = vendorMonthlyCents(payments);
   const dueCents = pricedMonthlyCents(payments, promo);
   const dueLabel = dueCents === 0 ? "Free" : `${dollars(dueCents)}/mo`;
@@ -59,9 +60,10 @@ export default function VendorSignupPage() {
     if (error) setMessage(error);
   }, []);
 
-  async function submit(event: FormEvent) {
+  async function submit(event: FormEvent, proceed = false) {
     event.preventDefault();
     setBusy(true);
+    if (!proceed) setOverlap(null);
     const applied = promo && promo.code === promoInput.trim().toUpperCase() ? promo : await checkPromo(promoInput);
     if (promoInput.trim() && !applied) {
       setBusy(false);
@@ -70,11 +72,17 @@ export default function VendorSignupPage() {
     const response = await fetch("/api/vendors/signup", {
       method: "POST",
       headers: { "Content-Type": "application/json" },
-      body: JSON.stringify({ companyName, contactName, email, phone, city, state, trade, payments, promoCode: applied?.code || "" }),
+      body: JSON.stringify({ companyName, contactName, email, phone, city, state, trade, payments, promoCode: applied?.code || "", proceed }),
     });
     const body = await response.json();
     setBusy(false);
-    if (!response.ok) { setMessage(body.error || "Could not create the account."); return; }
+    if (response.status === 409 && body.overlap) {
+      setOverlap({ blocked: Boolean(body.blocked), message: body.error || "This email overlaps an existing organization." });
+      setMessage(body.error || "This email overlaps an existing organization.");
+      return;
+    }
+    if (!response.ok) { setOverlap(null); setMessage(body.error || "Could not create the account."); return; }
+    setOverlap(null);
     if (body.checkoutUrl) {
       window.location.assign(body.checkoutUrl);
       return;
@@ -156,6 +164,9 @@ export default function VendorSignupPage() {
           <button className="primary" type="submit" disabled={busy}>{busy ? "Creating…" : `Create account · ${dueLabel}`}</button>
         </form>
         {message && <div className="notice">{message}</div>}
+        {overlap && !overlap.blocked && (
+          <button className="secondaryBtn" type="button" disabled={busy} onClick={(event) => void submit(event, true)}>Proceed</button>
+        )}
         <a href="/vendors/login">Already registered? Sign in</a>
       </section>
     </main>

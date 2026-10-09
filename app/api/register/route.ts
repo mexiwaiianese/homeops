@@ -1,6 +1,7 @@
 import { NextResponse } from "next/server";
 import { validEmail } from "@/lib/demo-access";
 import { clientKey, unlockAttemptAllowed } from "@/lib/persona-login/gate";
+import { findOrgOverlap } from "@/lib/org-overlap";
 import { createPlatformSignup } from "@/lib/platform-signup";
 import { annualBillCents, publicPackageById } from "@/lib/public-site";
 import { listPackages } from "@/lib/subscription-packages";
@@ -43,6 +44,10 @@ export async function POST(request: Request) {
   if (!validEmail(email)) return NextResponse.json({ error: "Enter a valid email address." }, { status: 400 });
   if (!fullName) return NextResponse.json({ error: "Enter your name." }, { status: 400 });
   if (!organizationName) return NextResponse.json({ error: "Enter an organization name." }, { status: 400 });
+  const overlap = await findOrgOverlap(email);
+  if (overlap.matches.length && (overlap.blocked || body.proceed !== true)) {
+    return NextResponse.json({ error: overlap.message, overlap: true, blocked: overlap.blocked }, { status: 409 });
+  }
 
   const packages = (await listPackages()).filter((row) => Boolean(publicPackageById(row.id)));
   const requestedPackage = String(body.packageId || "");

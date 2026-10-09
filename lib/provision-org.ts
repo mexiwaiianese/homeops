@@ -1,4 +1,5 @@
 import type { SupabaseClient } from "@supabase/supabase-js";
+import { findOrgOverlap } from "@/lib/org-overlap";
 import { packageById } from "@/lib/product-features";
 import { ensureWorkspaceRenewal } from "@/lib/property-overage-billing";
 import { listPackages, saveOrgSubscription } from "@/lib/subscription-packages";
@@ -46,6 +47,8 @@ export async function provisionBlankOrganization(input: {
   admin?: SupabaseClient | null;
 }): Promise<BlankWorkspace> {
   const email = input.email.trim().toLowerCase();
+  const overlap = await findOrgOverlap(email, input.admin);
+  if (overlap.blocked) throw new Error(overlap.message);
   const name = input.organizationName.trim() || `${input.fullName.trim() || email}'s organization`;
   const db = input.admin || createSupabaseAdminClient();
   const packages = await listPackages(db);
