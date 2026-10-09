@@ -1,6 +1,7 @@
 "use client";
 
 import { FormEvent, useEffect, useState } from "react";
+import DeskTour from "@/components/desk-tour";
 import { CANCEL_REASONS } from "@/lib/public-site";
 
 type BillingView = {
@@ -55,7 +56,7 @@ export default function WorkspaceBilling() {
   }
 
   return (
-    <article className="marketingArticle billingCancel">
+    <article className="marketingArticle billingCancel" data-tour-tab="/billing">
       <p className="eyebrow">Billing</p>
       <h1>Cancel the workspace</h1>
       <p>
@@ -104,6 +105,7 @@ export default function WorkspaceBilling() {
       )}
       {!done && view && !view.canCancel && <p>The workspace owner cancels billing.</p>}
       <p><a href="/app">Back to the workspace</a></p>
+      <DeskTour persona="manager" />
     </article>
   );
 }

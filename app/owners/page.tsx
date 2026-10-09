@@ -2,6 +2,7 @@
 
 import { FormEvent, useCallback, useEffect, useMemo, useRef, useState } from "react";
 import BrandLockup from "@/components/brand-lockup";
+import DeskTour from "@/components/desk-tour";
 import { leavePersona } from "@/lib/persona-sign-out-client";
 import OwnerDashboardGrid, { type GridItem } from "@/components/owner-dashboard-grid";
 import {
@@ -247,7 +248,7 @@ export default function OwnerPortalPage() {
 
       {status === "ready" && data && snapshot && (
         <div className="opContent">
-          <section className="opFilters" aria-label="Filters">
+          <section className="opFilters" aria-label="Filters" data-tour-tab="#owner-scope">
             <div className="opFilterRow">
               <span className="opFilterLabel">Period</span>
               <div className="opChips">
@@ -290,7 +291,7 @@ export default function OwnerPortalPage() {
             </p>
           </section>
 
-          <section className="opAsk" aria-label="Ask about your portfolio">
+          <section className="opAsk" aria-label="Ask about your portfolio" data-tour-tab="#owner-ask">
             <form onSubmit={(event) => void ask(event)}>
               <label htmlFor="ownerAsk">Ask for a number</label>
               <div className="opAskRow">
@@ -347,6 +348,7 @@ export default function OwnerPortalPage() {
             </div>
           )}
 
+          <div data-tour-tab="#owner-results #owner-work">
           <OwnerDashboardGrid
             items={items}
             arrange={arrange}
@@ -355,12 +357,14 @@ export default function OwnerPortalPage() {
             onHide={(id) => persistLayout({ ...layout, hidden: [...layout.hidden, id] })}
             onResize={(id, size: WidgetSize) => persistLayout({ ...layout, sizes: { ...(layout.sizes || {}), [id]: size } })}
           />
+          </div>
 
           <footer className="opFoot">
             Figures come from the books your manager keeps in portonOS: rent posts when collected, bills post when paid. Security deposits are held for tenants and are not counted as your income. {data.owner.managerName ? `Managed by ${data.owner.managerName}.` : ""}
           </footer>
         </div>
       )}
+      <DeskTour persona="owner" />
     </main>
   );
 }

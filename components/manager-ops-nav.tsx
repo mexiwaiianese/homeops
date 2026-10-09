@@ -5,6 +5,7 @@ import BrandIcon from "@/components/brand-icon";
 import BrandLockup from "@/components/brand-lockup";
 import ManagerSignOut from "@/components/manager-sign-out";
 import NavToggle from "@/components/nav-toggle";
+import DeskTour from "@/components/desk-tour";
 import { ALL_FEATURES_ON, featureEnabled, opsHomePath, type FeatureMap } from "@/lib/product-features";
 
 type NavKey = "operations" | "listings" | "applications" | "payments" | "books" | "vendors";
@@ -43,7 +44,7 @@ export default function ManagerOpsNav({ active }: { active: NavKey }) {
           if (!featureEnabled(features, link.feature)) return null;
           const href = link.key === "operations" ? ops : link.href!;
           return (
-            <a key={link.key} className={active === link.key ? "finNav active" : "finNav"} href={href}>
+            <a key={link.key} className={active === link.key ? "finNav active" : "finNav"} href={href} data-tour-tab={href}>
               <BrandIcon name={link.icon} className="navIcon" />
               {link.label}
             </a>
@@ -51,6 +52,7 @@ export default function ManagerOpsNav({ active }: { active: NavKey }) {
         })}
         <ManagerSignOut className="finNav" />
       </nav>
+      <DeskTour persona="manager" />
     </>
   );
 }

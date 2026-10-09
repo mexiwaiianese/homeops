@@ -8,11 +8,13 @@ import NavToggle from "@/components/nav-toggle";
 import { homes as seedHomes, initialMaintenance, owners as seedOwners, tenants as seedTenants, type MaintenanceStatus } from "@/lib/data";
 import { parseOrgSettings } from "@/lib/org-settings";
 import { ALL_FEATURES_ON, featureEnabled, type FeatureMap } from "@/lib/product-features";
+import DeskTour from "@/components/desk-tour";
 import SettingsModal from "@/components/settings-modal";
 import AuctionBoard from "@/components/auction-board";
 
 const money = (v: number) => new Intl.NumberFormat("en-US", { style: "currency", currency: "USD", maximumFractionDigits: 0 }).format(v);
 const nav = ["Today", "Homes", "Owners", "Tenants", "Maintenance"] as const;
+const deskTabs = new Set<string>(nav);
 const navIcons = {
   Today: "applications",
   Homes: "listing",
@@ -28,6 +30,7 @@ type MaintenanceUI = (typeof initialMaintenance)[number];
 type BackendMode = "checking" | "demo" | "live" | "auth" | "error";
 
 export default function ManagerDesk({ surface, readOnly = false }: { surface: "demo" | "live"; readOnly?: boolean }) {
+  const deskHome = surface === "demo" ? "/demo" : "/app";
   const [tab, setTab] = useState<Tab>("Today");
   const [homes, setHomes] = useState<HomeUI[]>(surface === "demo" ? seedHomes : []);
   const [owners, setOwners] = useState<OwnerUI[]>(surface === "demo" ? seedOwners : []);
@@ -47,6 +50,16 @@ export default function ManagerDesk({ surface, readOnly = false }: { surface: "d
   const [openAuctions, setOpenAuctions] = useState<Record<string, boolean>>({});
   const [rentSummary, setRentSummary] = useState<{ paidCount: number; dueCount: number; paidCents: number; dueCents: number } | null>(null);
   const [features, setFeatures] = useState<FeatureMap>(surface === "demo" ? ALL_FEATURES_ON : ALL_FEATURES_ON);
+
+  useEffect(() => {
+    function openHashedTab() {
+      const name = decodeURIComponent(window.location.hash.replace(/^#/, ""));
+      if (deskTabs.has(name)) setTab(name as Tab);
+    }
+    openHashedTab();
+    window.addEventListener("hashchange", openHashedTab);
+    return () => window.removeEventListener("hashchange", openHashedTab);
+  }, []);
 
   useEffect(() => {
     fetch("/api/bootstrap")
@@ -257,18 +270,18 @@ export default function ManagerDesk({ surface, readOnly = false }: { surface: "d
         <NavToggle />
         <nav>
           {nav.map((item) => (
-            <button key={item} className={tab === item ? "nav active" : "nav"} onClick={() => setTab(item)}>
+            <button key={item} className={tab === item ? "nav active" : "nav"} data-tour-tab={`${deskHome}#${item}`} onClick={() => setTab(item)}>
               <BrandIcon name={navIcons[item]} className="navIcon" />
               {item}{item === "Today" && attention > 0 && <b>{attention}</b>}
             </button>
           ))}
         </nav>
-        <a className="nav" href="/listings" style={{textDecoration:"none", display: featureEnabled(features, "listings") ? undefined : "none"}}><BrandIcon name="listing" className="navIcon" />Listings</a>
-        <a className="nav" href="/applications" style={{textDecoration:"none", display: featureEnabled(features, "applications") ? undefined : "none"}}><BrandIcon name="applications" className="navIcon" />Applications</a>
-        <a className="nav" href="/payments" style={{textDecoration:"none", display: featureEnabled(features, "payments") ? undefined : "none"}}><BrandIcon name="rent" className="navIcon" />Payments</a>
-        <a className="nav" href="/financials" style={{textDecoration:"none", display: featureEnabled(features, "books") ? undefined : "none"}}><BrandIcon name="rent" className="navIcon" />Books</a>
-        <a className="nav" href="/vendors" style={{textDecoration:"none", display: featureEnabled(features, "approved_vendors") ? undefined : "none"}}><BrandIcon name="applications" className="navIcon" />Approved Vendors</a>
-        <a className="nav" href="/billing" style={{ textDecoration: "none" }}><BrandIcon name="rent" className="navIcon" />Billing</a>
+        <a className="nav" href="/listings" data-tour-tab="/listings" style={{textDecoration:"none", display: featureEnabled(features, "listings") ? undefined : "none"}}><BrandIcon name="listing" className="navIcon" />Listings</a>
+        <a className="nav" href="/applications" data-tour-tab="/applications" style={{textDecoration:"none", display: featureEnabled(features, "applications") ? undefined : "none"}}><BrandIcon name="applications" className="navIcon" />Applications</a>
+        <a className="nav" href="/payments" data-tour-tab="/payments" style={{textDecoration:"none", display: featureEnabled(features, "payments") ? undefined : "none"}}><BrandIcon name="rent" className="navIcon" />Payments</a>
+        <a className="nav" href="/financials" data-tour-tab="/financials" style={{textDecoration:"none", display: featureEnabled(features, "books") ? undefined : "none"}}><BrandIcon name="rent" className="navIcon" />Books</a>
+        <a className="nav" href="/vendors" data-tour-tab="/vendors" style={{textDecoration:"none", display: featureEnabled(features, "approved_vendors") ? undefined : "none"}}><BrandIcon name="applications" className="navIcon" />Approved Vendors</a>
+        <a className="nav" href="/billing" data-tour-tab="/billing" style={{ textDecoration: "none" }}><BrandIcon name="rent" className="navIcon" />Billing</a>
         <ManagerSignOut className="nav" />
         <div className="portfolio"><small>PORTFOLIO</small><strong>{homes.length} homes</strong><span>{money(monthlyRent)} monthly rent</span><span className={`mode ${backendMode}`}>{backendMode === "live" ? "● Supabase live" : backendMode === "demo" ? "○ Demo mode" : backendMode === "auth" ? "Sign-in required" : backendMode === "checking" ? "Checking backend…" : "Backend unavailable"}</span></div>
       </aside>
@@ -293,6 +306,7 @@ export default function ManagerDesk({ surface, readOnly = false }: { surface: "d
       {auctioning && <AuctionBoard requestId={auctioning.id} title={auctioning.title} onClose={() => setAuctioning(null)} onAwarded={(vendor) => { setMaintenance((rows) => rows.map((row) => row.id === auctioning.id ? { ...row, status: "Dispatch", vendorId: vendor.id, vendorName: vendor.name } : row)); setOpenAuctions((current) => ({ ...current, [auctioning.id]: false })); setAuctioning(null); setToast(`Awarded to ${vendor.name}`); }} />}
       {dispatching&&<DispatchPicker request={dispatching} mode={backendMode} onClose={()=>setDispatching(null)} onAssigned={(vendor)=>{setMaintenance(rows=>rows.map(r=>r.id===dispatching.id?{...r,status:"Dispatch",vendorId:vendor.id,vendorName:vendor.name}:r));setDispatching(null);setToast("Eligible vendor assigned")}}/>}
       {closing&&<CloseWorkOrderModal request={closing} mode={backendMode} onClose={()=>setClosing(null)} onSave={async (performance)=>{const ok=await persistStatus(closing,"Documented",performance);if(ok){setClosing(null);setToast(closing.vendorName||closing.vendorId?"Work order documented with vendor performance":"Work order documented")}}}/>}
+      <DeskTour persona="manager" />
     </main>
   );
 }

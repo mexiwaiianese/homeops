@@ -1,7 +1,6 @@
 "use client";
 
 import { useEffect, useState } from "react";
-import { usePathname, useRouter } from "next/navigation";
 
 export type TourScreen = {
   id: string;
@@ -11,20 +10,23 @@ export type TourScreen = {
   body: string;
 };
 
-type SessionState = { status: "open" | "done"; index: number };
+type Visit = { dismissed: boolean; index: number };
 
-function readSession(key: string): SessionState | null {
-  try {
-    const parsed = JSON.parse(window.sessionStorage.getItem(key) || "null");
-    if (parsed && (parsed.status === "open" || parsed.status === "done")) {
-      return { status: parsed.status, index: Number(parsed.index) || 0 };
-    }
-  } catch {}
-  return null;
+const visits = new Map<string, Visit>();
+// React remounts once in development. This lets that remount keep the tour open
+// after the session flag is written, without showing it again on the next page.
+const strictRemount = new Set<string>();
+
+function visitFor(prefix: string) {
+  const current = visits.get(prefix);
+  if (current) return current;
+  const created = { dismissed: false, index: 0 };
+  visits.set(prefix, created);
+  return created;
 }
 
-function writeSession(key: string, state: SessionState) {
-  window.sessionStorage.setItem(key, JSON.stringify(state));
+function sessionKey(storageKey: string) {
+  return `${storageKey}:session`;
 }
 
 export default function ProductTour({
@@ -38,26 +40,31 @@ export default function ProductTour({
   userKey: string;
   screens: TourScreen[];
 }) {
-  const pathname = usePathname();
-  const router = useRouter();
-  const [index, setIndex] = useState(0);
+  const visit = visitFor(storagePrefix);
+  const [index, setIndex] = useState(visit.index);
   const [open, setOpen] = useState(false);
   const [hideOnLaunch, setHideOnLaunch] = useState(false);
   const storageKey = `${storagePrefix}${userKey}`;
-  // Shown once per browser session. Moving between tabs during the tour resumes the same step.
-  const sessionKey = `${storageKey}:session`;
 
   useEffect(() => {
     if (!screens.length || !userKey) return;
-    if (window.localStorage.getItem(storageKey) === "1") return;
-    const state = readSession(sessionKey);
-    if (state?.status === "done") return;
-    const start = Math.min(state?.index ?? 0, screens.length - 1);
-    if (!state) writeSession(sessionKey, { status: "open", index: start });
+    if (window.localStorage.getItem(storageKey) === "1" || visit.dismissed) return;
+    const seenKey = sessionKey(storageKey);
+    const page = window.location.pathname;
+    const seen = window.sessionStorage.getItem(seenKey);
+    if (seen) {
+      if (!(strictRemount.has(seenKey) && seen === page)) return;
+      strictRemount.delete(seenKey);
+      setIndex(visit.index);
+      setOpen(true);
+      return;
+    }
+    window.sessionStorage.setItem(seenKey, page);
+    strictRemount.add(seenKey);
     setHideOnLaunch(false);
-    setIndex(start);
+    setIndex(visit.index);
     setOpen(true);
-  }, [screens, storageKey, sessionKey, userKey]);
+  }, [screens, storageKey, userKey, visit]);
 
   useEffect(() => {
     const screen = screens[index];
@@ -70,34 +77,17 @@ export default function ProductTour({
     };
   }, [open, index, screens]);
 
-  useEffect(() => {
-    if (!open) return;
-    const screen = screens[index];
-    if (!screen?.href) return;
-    const hashAt = screen.href.indexOf("#");
-    const path = hashAt >= 0 ? screen.href.slice(0, hashAt) : screen.href;
-    if (path.startsWith("/") && path !== pathname) {
-      router.push(screen.href);
-      return;
-    }
-    if (hashAt < 0) return;
-    document.querySelectorAll<HTMLElement>("[data-tour-tab]").forEach((node) => {
-      if (node.dataset.tourTab !== screen.href) return;
-      if (node instanceof HTMLButtonElement && !node.classList.contains("active")) node.click();
-    });
-  }, [open, index, pathname, router, screens]);
-
   if (!open || !screens.length) return null;
   const screen = screens[Math.min(index, screens.length - 1)];
   const last = index >= screens.length - 1;
 
   function move(next: number) {
-    writeSession(sessionKey, { status: "open", index: next });
+    visit.index = next;
     setIndex(next);
   }
 
   function finish() {
-    writeSession(sessionKey, { status: "done", index });
+    visit.dismissed = true;
     setOpen(false);
   }
 
@@ -108,6 +98,7 @@ export default function ProductTour({
         <p className="tourStep">Tab {index + 1} of {screens.length} · {screen.tab}</p>
         <h2 id={`${storagePrefix}title`}>{screen.title}</h2>
         <p>{screen.body}</p>
+        <a className="textBtn tourOpenTab" href={screen.href}>Open {screen.tab}</a>
         <label className="checkRow tourOptOut">
           <input
             type="checkbox"
