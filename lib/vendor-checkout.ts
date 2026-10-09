@@ -107,7 +107,10 @@ export async function createVendorCheckoutSession(draft: VendorSignupDraft, orig
   const coupon = promo && promo.percentOff > 0 ? await basePercentCoupon(stripe, base.productId, promo.percentOff) : "";
   const session = await stripe.checkout.sessions.create({
     mode: "subscription",
+    // Managed Payments is on by default for this account and rejects products without a tax code.
+    // Turning it off also drops the dashboard payment methods, so card has to be named here.
     managed_payments: { enabled: false },
+    payment_method_types: ["card"],
     customer_email: draft.email,
     client_reference_id: draft.email.slice(0, 200),
     metadata: meta(draft),
