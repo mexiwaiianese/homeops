@@ -13,6 +13,7 @@ const links = [
   ["/vendors/invoices", "Invoices"],
   ["/vendors/receivables", "Receivables"],
   ["/vendors/payouts", "Bank account"],
+  ["/vendors/account", "Account"],
 ];
 
 export default function VendorPortalFrame({

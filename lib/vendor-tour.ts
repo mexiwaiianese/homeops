@@ -67,6 +67,14 @@ export const VENDOR_TOUR: VendorTourScreen[] = [
     body: "Connect the company bank account here before clients pay you online. Only the company owner sets this up. Dispatchers and technicians do not see this tab in the tour.",
     access: ["owner"],
   },
+  {
+    id: "account",
+    href: "/vendors/account",
+    tab: "Account",
+    title: "Keep the company record current",
+    body: "Update the company name, phone, address, and trades here. Managers and bid notifications use this list. The sign-in email is separate and does not change from this screen.",
+    access: ["owner", "dispatcher"],
+  },
 ];
 
 const ACCESS_LABEL: Record<VendorAccess, string> = {
