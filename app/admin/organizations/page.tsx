@@ -10,14 +10,19 @@ type OrgRow = {
   slug: string;
   memberCount: number;
   demo: boolean;
+  packageId: string;
   packageName: string;
   status: string;
   ownerEmail?: string;
 };
 
+type PackageOption = { id: string; name: string };
+
 export default function AdminOrganizationsPage() {
   const router = useRouter();
   const [rows, setRows] = useState<OrgRow[]>([]);
+  const [packages, setPackages] = useState<PackageOption[]>([]);
+  const [packageId, setPackageId] = useState("all");
   const [error, setError] = useState("");
 
   useEffect(() => {
@@ -27,9 +32,16 @@ export default function AdminOrganizationsPage() {
         if (status === 403) { router.replace("/admin/login"); return; }
         if (!ok) { setError(body.error || "Could not load organizations."); return; }
         setRows(body.organizations || []);
+        setPackages((body.packages || []).map((row: PackageOption) => ({ id: row.id, name: row.name })));
       })
       .catch(() => setError("Could not load organizations."));
   }, [router]);
+
+  const typeOptions = packages.length
+    ? packages
+    : [...new Map(rows.map((row) => [row.packageId, row.packageName])).entries()].map(([id, name]) => ({ id, name }));
+  const visible = packageId === "all" ? rows : rows.filter((row) => row.packageId === packageId);
+  const selected = typeOptions.find((row) => row.id === packageId);
 
   return (
     <AdminChrome title="Organizations" active="organizations">
@@ -41,6 +53,18 @@ export default function AdminOrganizationsPage() {
       </header>
       <p className="summary">Open an organization to override features independently of its subscription package.</p>
       {error && <div className="notice">{error}</div>}
+      <div className="orgTypeFilter">
+        <label>
+          Org type
+          <select value={packageId} onChange={(event) => setPackageId(event.target.value)}>
+            <option value="all">All types</option>
+            {typeOptions.map((row) => (
+              <option key={row.id} value={row.id}>{row.name}</option>
+            ))}
+          </select>
+        </label>
+        <span>{visible.length} of {rows.length}</span>
+      </div>
       <section className="panel tablePanel">
         <div className="table">
           <div className="tr head">
@@ -50,7 +74,7 @@ export default function AdminOrganizationsPage() {
             <span>Status</span>
             <span></span>
           </div>
-          {rows.map((row) => (
+          {visible.map((row) => (
             <div className="tr" key={row.id}>
               <span>
                 <strong>{row.name}</strong>
@@ -62,7 +86,7 @@ export default function AdminOrganizationsPage() {
               <span><a className="textBtn" href={`/admin/organizations/${row.id}`}>Feature flags</a></span>
             </div>
           ))}
-          {!rows.length && <div className="empty">No organizations yet.</div>}
+          {!visible.length && <div className="empty">{rows.length ? `No organizations on ${selected?.name || "this type"}.` : "No organizations yet."}</div>}
         </div>
       </section>
     </AdminChrome>

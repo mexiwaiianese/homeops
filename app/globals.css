@@ -566,6 +566,43 @@ textarea {
 .access li {
   margin: 7px 0;
 }
+.orgTypeFilter {
+  display: flex;
+  align-items: end;
+  justify-content: space-between;
+  gap: 12px;
+  margin: 0 0 12px;
+}
+.orgTypeFilter label {
+  display: flex;
+  flex-direction: column;
+  gap: 6px;
+  min-width: min(280px, 100%);
+  font-size: 13px;
+  font-weight: 800;
+  letter-spacing: 0.04em;
+  text-transform: uppercase;
+  color: #858d88;
+}
+.orgTypeFilter select {
+  width: 100%;
+  border: 1px solid #d9ddd9;
+  background: #fff;
+  padding: 10px 12px;
+  border-radius: 9px;
+  font: inherit;
+  font-size: 15px;
+  font-weight: 600;
+  letter-spacing: 0;
+  text-transform: none;
+  color: var(--ink);
+}
+.orgTypeFilter > span {
+  color: #858d88;
+  font-size: 14px;
+  font-weight: 700;
+  padding-bottom: 10px;
+}
 .table {
   width: 100%;
 }
