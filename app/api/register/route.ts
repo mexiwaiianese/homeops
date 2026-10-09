@@ -2,7 +2,6 @@ import { NextResponse } from "next/server";
 import { validEmail } from "@/lib/demo-access";
 import { clientKey, unlockAttemptAllowed } from "@/lib/persona-login/gate";
 import { createPlatformSignup } from "@/lib/platform-signup";
-import { packageById } from "@/lib/product-features";
 import { annualBillCents, publicPackageById } from "@/lib/public-site";
 import { listPackages } from "@/lib/subscription-packages";
 import { getStripe, sandboxSubscriptionPriceId, sandboxSubscriptionProductId, STRIPE_SANDBOX_CORE_PROMOTION_CODE, stripeReady } from "@/lib/stripe";
@@ -29,7 +28,7 @@ async function coreFirstYearCoupon(stripe: NonNullable<ReturnType<typeof getStri
 }
 
 export async function GET() {
-  const packages = await listPackages();
+  const packages = (await listPackages()).filter((row) => Boolean(publicPackageById(row.id)));
   return NextResponse.json({ packages, stripe: stripeReady() });
 }
 
@@ -45,8 +44,10 @@ export async function POST(request: Request) {
   if (!fullName) return NextResponse.json({ error: "Enter your name." }, { status: 400 });
   if (!organizationName) return NextResponse.json({ error: "Enter an organization name." }, { status: 400 });
 
-  const packages = await listPackages();
-  const pkg = packageById(String(body.packageId || ""), packages);
+  const packages = (await listPackages()).filter((row) => Boolean(publicPackageById(row.id)));
+  const requestedPackage = String(body.packageId || "");
+  const pkg = packages.find((row) => row.id === requestedPackage);
+  if (!pkg) return NextResponse.json({ error: "Choose a workspace package." }, { status: 400 });
   const origin = new URL(request.url).origin;
   const { signup, token } = await createPlatformSignup({
     email,

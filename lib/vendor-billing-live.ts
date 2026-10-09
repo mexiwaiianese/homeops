@@ -2,6 +2,8 @@ import type { SupabaseClient, User } from "@supabase/supabase-js";
 import type { VendorInvoice, VendorInvoiceLine } from "@/lib/vendor-billing-demo";
 import { vendorMonthlyCents } from "@/lib/vendor-plans";
 
+const VENDOR_ONLY_PACKAGE_ID = "vendor_only";
+
 function slug(email: string) {
   const local = email.split("@")[0].replace(/[^a-z0-9]+/gi, "-").replace(/^-|-$/g, "").slice(0, 24) || "vendor";
   return `vendor-${local}-${Math.random().toString(36).slice(2, 8)}`.toLowerCase();
@@ -74,12 +76,76 @@ async function writeSignup(admin: SupabaseClient, id: string, patch: Record<stri
   return { ok: true as const };
 }
 
+async function ensureVendorOnlyOrganization(admin: SupabaseClient, organizationId: string, userId: string) {
+  const features = {
+    operations: false,
+    listings: false,
+    applications: false,
+    payments: false,
+    books: false,
+    approved_vendors: false,
+    owner_portal: false,
+    tenant_portal: false,
+    vendor_portal: true,
+  };
+  const packageWrite = await admin.from("subscription_packages").upsert({
+    id: VENDOR_ONLY_PACKAGE_ID,
+    name: "Vendor only",
+    description: "Vendor Desk access only. No property-management workspace access.",
+    sort_order: 0,
+    monthly_cents: 1900,
+    features,
+    is_default: false,
+    updated_at: new Date().toISOString(),
+  });
+  if (packageWrite.error) return { error: packageWrite.error.message };
+  const subscriptionWrite = await admin.from("organization_subscriptions").upsert({
+    organization_id: organizationId,
+    package_id: VENDOR_ONLY_PACKAGE_ID,
+    feature_overrides: {},
+    status: "active",
+    updated_at: new Date().toISOString(),
+  });
+  if (subscriptionWrite.error) return { error: subscriptionWrite.error.message };
+  // A Vendor Desk login is not a manager workspace member. Vendor APIs use vendor_users instead.
+  const removed = await admin.from("organization_members").delete().eq("organization_id", organizationId).eq("user_id", userId);
+  return removed.error ? { error: removed.error.message } : { ok: true as const };
+}
+
+/** A vendor created by Vendor Desk self-signup, as opposed to a vendor user invited into a manager organization. */
+export async function selfSignupVendorOrganization(admin: SupabaseClient, userId: string) {
+  const linked = await admin
+    .from("vendor_users")
+    .select("vendor_id, organization_id")
+    .eq("auth_user_id", userId)
+    .maybeSingle();
+  if (!linked.data?.vendor_id || !linked.data.organization_id) return null;
+  const signup = await admin.from("vendor_self_signups").select("id").eq("vendor_id", linked.data.vendor_id).maybeSingle();
+  if (!signup.data) return null;
+  return {
+    vendorId: linked.data.vendor_id as string,
+    organizationId: linked.data.organization_id as string,
+  };
+}
+
+/** Repair old self-signups and enforce their Vendor-only entitlement. */
+export async function ensureSelfSignupVendorAccess(admin: SupabaseClient, userId: string) {
+  const linked = await selfSignupVendorOrganization(admin, userId);
+  if (!linked) return null;
+  const ensured = await ensureVendorOnlyOrganization(admin, linked.organizationId, userId);
+  if ("error" in ensured) return null;
+  return linked;
+}
+
 /** After the magic link, attach the signup to a vendor company the desk can sign in as. */
 export async function linkLiveSignup(admin: SupabaseClient, user: User) {
   const email = user.email?.trim().toLowerCase();
   if (!email) return null;
   const have = await admin.from("vendor_users").select("vendor_id").eq("auth_user_id", user.id).maybeSingle();
-  if (have.data?.vendor_id) return have.data.vendor_id as string;
+  if (have.data?.vendor_id) {
+    await ensureSelfSignupVendorAccess(admin, user.id);
+    return have.data.vendor_id as string;
+  }
   const signup = await admin.from("vendor_self_signups").select("*").eq("email", email).maybeSingle();
   if (signup.error || !signup.data) return null;
   if (signup.data.vendor_id) {
@@ -98,7 +164,6 @@ export async function linkLiveSignup(admin: SupabaseClient, user: User) {
   }
   const org = await admin.from("organizations").insert({ name: signup.data.company_name, slug: slug(email) }).select("id").single();
   if (org.error || !org.data) return null;
-  await admin.from("organization_members").insert({ organization_id: org.data.id, user_id: user.id, role: "owner" });
   const vendor = await admin.from("vendors").insert({
     organization_id: org.data.id,
     name: signup.data.company_name,
@@ -116,6 +181,8 @@ export async function linkLiveSignup(admin: SupabaseClient, user: User) {
     auth_user_id: user.id,
   });
   await admin.from("vendor_self_signups").update({ vendor_id: vendor.data.id }).eq("id", signup.data.id);
+  const ensured = await ensureVendorOnlyOrganization(admin, org.data.id, user.id);
+  if ("error" in ensured) return null;
   return vendor.data.id as string;
 }
 

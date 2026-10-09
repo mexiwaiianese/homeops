@@ -1,6 +1,8 @@
 import { getDemoSession } from "@/lib/demo-access";
 import { blankWorkspaceCookie, memoryWorkspaceById } from "@/lib/provision-org";
 import { createSupabaseServerClient } from "@/lib/supabase/server";
+import { createSupabaseAdminClient } from "@/lib/supabase/admin";
+import { selfSignupVendorOrganization } from "@/lib/vendor-billing-live";
 import { cookies } from "next/headers";
 
 export async function getAuthedContext() {
@@ -24,6 +26,11 @@ export async function getAuthedContext() {
     .limit(1)
     .maybeSingle();
   if (membership?.organization_id) {
+    const admin = createSupabaseAdminClient();
+    const vendorOnly = admin ? await selfSignupVendorOrganization(admin, user.id) : null;
+    if (vendorOnly?.organizationId === membership.organization_id) {
+      return { supabase, user, organizationId: null, role: null, demoSession };
+    }
     return { supabase, user, organizationId: membership.organization_id, role: membership.role, demoSession };
   }
   return { supabase, user, organizationId: null, role: membership?.role ?? null, demoSession };

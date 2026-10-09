@@ -6,6 +6,8 @@ import { getAuthedContext } from "@/lib/backend";
 import { pageMeta } from "@/lib/site-meta";
 import { getDemoSession } from "@/lib/demo-access";
 import { blankWorkspaceCookie, memoryWorkspaceById } from "@/lib/provision-org";
+import { createSupabaseAdminClient } from "@/lib/supabase/admin";
+import { ensureSelfSignupVendorAccess } from "@/lib/vendor-billing-live";
 
 export const dynamic = "force-dynamic";
 
@@ -21,7 +23,12 @@ export const metadata: Metadata = {
 };
 
 export default async function AppDeskPage() {
-  const { organizationId } = await getAuthedContext();
+  const { organizationId, user } = await getAuthedContext();
+  if (user) {
+    const admin = createSupabaseAdminClient();
+    const vendor = admin ? await ensureSelfSignupVendorAccess(admin, user.id) : null;
+    if (vendor) redirect("/vendors/desk");
+  }
   const blankId = (await cookies()).get(blankWorkspaceCookie)?.value;
   const blank = blankId ? memoryWorkspaceById(blankId) : null;
   if (organizationId || blank) return <ManagerDesk surface="live" />;

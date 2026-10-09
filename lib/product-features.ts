@@ -49,6 +49,15 @@ function mapOf(on: FeatureKey[]): FeatureMap {
 
 export const DEFAULT_PACKAGES: SubscriptionPackage[] = [
   {
+    id: "vendor_only",
+    name: "Vendor only",
+    description: "Vendor Desk access only. No property-management workspace access.",
+    sortOrder: 0,
+    monthlyCents: 1900,
+    isDefault: false,
+    features: { ...ALL_FEATURES_OFF, vendor_portal: true },
+  },
+  {
     id: "core",
     name: "Core",
     description: "Operations desk, owner portal, and vendor desk. Free ACH on included properties.",
