@@ -5608,9 +5608,10 @@ a.statLink:hover {
   border-radius: 16px;
 }
 .founderTire img.founderPhoto {
+  float: left;
   clear: right;
   width: min(260px, 40%);
-  margin: 6px 0 12px 24px;
+  margin: 6px 24px 12px 0;
 }
 .founderSign {
   color: var(--ink);
