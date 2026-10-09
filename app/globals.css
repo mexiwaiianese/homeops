@@ -4174,10 +4174,6 @@ a.statLink:hover {
   letter-spacing: 0.04em;
   text-transform: uppercase;
 }
-.tourOpenTab {
-  display: inline-block;
-  margin-bottom: 14px;
-}
 .tourOptOut {
   margin: 4px 0 16px;
 }
