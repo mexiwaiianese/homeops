@@ -60,7 +60,7 @@ export async function PATCH(request: Request, { params }: { params: Promise<{ id
   if (toStage === "approved") updates.approved_at = new Date().toISOString();
   if (toStage === "suspended") updates.suspended_at = new Date().toISOString();
   if (toStage === "monitored") updates.last_monitored_at = new Date().toISOString();
-  if (platformAdmin && vendorOrgId === orgId && (toStage === "documents_reviewed" || toStage === "approved" || toStage === "monitored")) {
+  if (platformAdmin && (toStage === "prescreened" || (vendorOrgId === orgId && (toStage === "documents_reviewed" || toStage === "approved" || toStage === "monitored")))) {
     updates.catalog_released = true;
     updates.catalog_released_at = new Date().toISOString();
   }

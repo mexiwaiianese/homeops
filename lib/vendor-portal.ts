@@ -46,6 +46,30 @@ export function defaultNotifyRule(vendor?: { services?: string[]; trade?: string
   };
 }
 
+/** Whether this vendor may edit autobid settings. Network access needs completed jobs. One manager grant unlocks settings for that manager's properties. */
+export function settingsBidAccess(input: {
+  successfulJobs: number;
+  grants: Array<{ managerName?: string | null }>;
+}): BidAccess {
+  const jobsRequired = JOBS_BEFORE_OPEN_BIDDING;
+  const base = { successfulJobs: input.successfulJobs, jobsRequired };
+  if (input.successfulJobs >= jobsRequired) {
+    return { ...base, allowed: true, scope: "network", reason: null, managers: [] };
+  }
+  const managers = [...new Set(input.grants.map((grant) => grant.managerName?.trim()).filter((name): name is string => Boolean(name)))];
+  if (managers.length) {
+    return { ...base, allowed: true, scope: "manager", reason: null, managers };
+  }
+  const remaining = Math.max(1, jobsRequired - input.successfulJobs);
+  return {
+    ...base,
+    allowed: false,
+    scope: "locked",
+    reason: `Autobid settings stay locked until this company finishes ${remaining} more successful job${remaining === 1 ? "" : "s"} (${input.successfulJobs} of ${jobsRequired} on record), or a property manager grants this company bidding access on their properties. Complete awarded jobs from the vendor desk. A manager grant covers only that manager's properties, and network-wide autobid still waits for ${jobsRequired} successful jobs.`,
+    managers: [],
+  };
+}
+
 export function biddingAccess(input: {
   successfulJobs: number;
   grants: Array<{ homeIds: string[]; managerName: string }>;

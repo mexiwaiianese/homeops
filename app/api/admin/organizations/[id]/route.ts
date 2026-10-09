@@ -4,12 +4,17 @@ import { FEATURE_CATALOG, parseOverrides } from "@/lib/product-features";
 import { memoryWorkspaceById } from "@/lib/provision-org";
 import { getOrgSubscription, listPackages, saveOrgSubscription } from "@/lib/subscription-packages";
 import { createSupabaseAdminClient } from "@/lib/supabase/admin";
+import { repairSelfSignupOrganizations } from "@/lib/vendor-billing-live";
 
 export async function GET(_request: Request, { params }: { params: Promise<{ id: string }> }) {
   const gate = await requirePlatformAdmin();
   if (!gate.ok) return gate.response;
   const { id } = await params;
   const admin = createSupabaseAdminClient();
+  if (admin) {
+    const repaired = await repairSelfSignupOrganizations(admin);
+    if ("error" in repaired) return NextResponse.json({ error: repaired.error }, { status: 500 });
+  }
   let org: { id: string; name: string; slug: string } | null = null;
   if (admin) {
     const { data } = await admin.from("organizations").select("id, name, slug").eq("id", id).maybeSingle();

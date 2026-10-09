@@ -14,7 +14,7 @@ export async function GET() {
   if (!user) {
     const vendor = await demoVendorFromCookies();
     if (!vendor) return NextResponse.json({ mode: "demo", vendor: null }, { status: 401 });
-    return NextResponse.json({ mode: "demo", vendor });
+    return NextResponse.json({ mode: "demo", vendor: { ...vendor, role: "dispatcher" } });
   }
   // Vendor desk users are not organization members, so the user-scoped client cannot see vendor_users under RLS.
   const admin = createSupabaseAdminClient() || supabase;

@@ -3,6 +3,7 @@ export type VendorWorkflowStage =
   | "invited"
   | "application_submitted"
   | "documents_reviewed"
+  | "prescreened"
   | "approved"
   | "monitored"
   | "renewal_required"
@@ -17,7 +18,7 @@ export function isNetworkAdmin(role?: string | null) {
 }
 
 /** Stages at which platform admin may flag a catalog vendor for org review. */
-export const catalogReleaseStages: VendorWorkflowStage[] = ["documents_reviewed", "approved", "monitored"];
+export const catalogReleaseStages: VendorWorkflowStage[] = ["documents_reviewed", "prescreened", "approved", "monitored"];
 
 export function canReleaseToOrganizations(stage?: string | null) {
   return catalogReleaseStages.includes(stage as VendorWorkflowStage);
@@ -28,6 +29,7 @@ export const vendorStageOrder: VendorWorkflowStage[] = [
   "invited",
   "application_submitted",
   "documents_reviewed",
+  "prescreened",
   "approved",
   "monitored",
   "renewal_required",

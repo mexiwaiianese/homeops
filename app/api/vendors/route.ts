@@ -1,7 +1,7 @@
 import { NextResponse } from "next/server";
 import { getAuthedContext } from "@/lib/backend";
 import { getOperatorAdmin } from "@/lib/operator-admin";
-import { getPlatformCatalog, listAllVendorsForAdmin, listReleasedCatalogForOrg, stripCatalogDocuments, vendorOnRecruitmentBoard } from "@/lib/platform-catalog";
+import { getPlatformCatalog, listAllVendorsForAdmin, listPrescreenedVendors, listReleasedCatalogForOrg, stripCatalogDocuments, vendorOnRecruitmentBoard } from "@/lib/platform-catalog";
 import { findCatalogDuplicates, queueCatalogIntake } from "@/lib/catalog-intake";
 import { buildVendorFingerprint, canReleaseToOrganizations, isNetworkAdmin, normalizeVendorName } from "@/lib/vendors";
 import { vendors as demoVendors } from "@/lib/vendor-demo";
@@ -134,15 +134,21 @@ export async function GET(request: Request) {
   ]);
 
   let catalogRows: unknown[] = [];
-  if (isNetworkAdmin(role)) {
-    const catalog = await getPlatformCatalog();
-    if (catalog.ok) {
-      const released = await listReleasedCatalogForOrg(catalog.admin, catalog.organizationId);
-      const adoptedIds = new Set((data ?? []).map((row: { catalog_vendor_id?: string | null }) => row.catalog_vendor_id).filter(Boolean));
-      catalogRows = (released.data ?? [])
-        .filter((row: { id: string }) => !adoptedIds.has(row.id))
-        .map((row) => stripCatalogDocuments(row as Record<string, unknown>));
+  const catalog = await getPlatformCatalog();
+  if (catalog.ok) {
+    const [released, prescreened] = await Promise.all([
+      isNetworkAdmin(role) ? listReleasedCatalogForOrg(catalog.admin, catalog.organizationId) : Promise.resolve({ data: [] }),
+      listPrescreenedVendors(catalog.admin),
+    ]);
+    const adoptedIds = new Set((data ?? []).map((row: { catalog_vendor_id?: string | null; id?: string }) => row.catalog_vendor_id).filter(Boolean));
+    const ownIds = new Set((data ?? []).map((row: { id: string }) => row.id));
+    const merged = new Map<string, Record<string, unknown>>();
+    for (const row of [...(released.data ?? []), ...(prescreened.data ?? [])]) {
+      const record = row as { id: string };
+      if (ownIds.has(record.id) || adoptedIds.has(record.id) || merged.has(record.id)) continue;
+      merged.set(record.id, stripCatalogDocuments(row as Record<string, unknown>));
     }
+    catalogRows = [...merged.values()];
   }
 
   return NextResponse.json({

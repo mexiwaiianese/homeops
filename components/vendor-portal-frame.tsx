@@ -4,6 +4,7 @@ import { usePathname } from "next/navigation";
 import BrandLockup from "@/components/brand-lockup";
 import NavToggle from "@/components/nav-toggle";
 import { leavePersona } from "@/lib/persona-sign-out-client";
+import VendorTour from "@/components/vendor-tour";
 
 const links = [
   ["/vendors/desk", "Jobs"],
@@ -39,7 +40,7 @@ export default function VendorPortalFrame({
         </div>
         <nav className="vendorDeskNav">
           {links.map(([href, label]) => (
-            <a key={href} href={href} className={pathname === href ? "active" : ""}>{label}</a>
+            <a key={href} href={href} data-tour-tab={href} className={pathname === href ? "active" : ""}>{label}</a>
           ))}
         </nav>
         </div>
@@ -47,6 +48,7 @@ export default function VendorPortalFrame({
         <h1>{title}</h1>
         {lede && <p className="summary">{lede}</p>}
         {children}
+        <VendorTour />
       </section>
     </main>
   );

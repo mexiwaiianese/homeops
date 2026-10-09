@@ -2,19 +2,22 @@ import { NextResponse } from "next/server";
 import { getDemoAutobid, getDemoCalendar, setDemoAutobid, setDemoCalendar, syncDemoInvites } from "@/lib/vendor-auction-demo";
 import { vendors as demoVendors } from "@/lib/vendor-demo";
 import {
-  demoBidAccess,
   demoManagerHomes,
+  demoSuccessfulJobs,
   getDemoGrants,
   getDemoNotify,
   setDemoNotify,
 } from "@/lib/vendor-portal-demo";
-import { accessSummary, normalizeAutobidInput, normalizeNotifyInput } from "@/lib/vendor-portal";
+import { accessSummary, normalizeAutobidInput, normalizeNotifyInput, settingsBidAccess } from "@/lib/vendor-portal";
 import { missingPortalTable, requireVendorActor } from "@/lib/vendor-session";
 
 function demoPayload(vendorId: string) {
   const vendor = demoVendors.find((row) => row.id === vendorId);
   const grants = getDemoGrants(vendorId);
-  const access = demoBidAccess(vendorId, grants[0]?.homeIds[0] || "");
+  const access = settingsBidAccess({
+    successfulJobs: demoSuccessfulJobs(vendorId),
+    grants: grants.map((grant) => ({ managerName: grant.managerName })),
+  });
   const homes = demoManagerHomes();
   return {
     mode: "demo" as const,

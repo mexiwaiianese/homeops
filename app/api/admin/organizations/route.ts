@@ -4,12 +4,17 @@ import { requirePlatformAdmin } from "@/lib/operator-admin";
 import { listMemoryWorkspaces } from "@/lib/provision-org";
 import { getOrgSubscription, listPackages } from "@/lib/subscription-packages";
 import { createSupabaseAdminClient } from "@/lib/supabase/admin";
+import { repairSelfSignupOrganizations } from "@/lib/vendor-billing-live";
 
 export async function GET() {
   const gate = await requirePlatformAdmin();
   if (!gate.ok) return gate.response;
-  const packages = await listPackages();
   const admin = createSupabaseAdminClient();
+  if (admin) {
+    const repaired = await repairSelfSignupOrganizations(admin);
+    if ("error" in repaired) return NextResponse.json({ error: repaired.error }, { status: 500 });
+  }
+  const packages = await listPackages(admin);
   if (!admin) {
     const rows = await Promise.all(listMemoryWorkspaces().map(async (row) => {
       const sub = await getOrgSubscription(row.organizationId);
@@ -53,7 +58,7 @@ export async function GET() {
       memberCount: memberCount.get(org.id) || 0,
       demo: isDemoOrganizationSlug(org.slug),
       packageId: stored?.package_id || sub.packageId,
-      packageName: sub.package.name,
+      packageName: packages.find((row) => row.id === stored?.package_id)?.name || sub.package.name,
       status: sub.status,
       features: sub.features,
     };

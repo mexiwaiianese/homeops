@@ -59,6 +59,14 @@ export async function listCatalogVendors(admin: SupabaseClient, organizationId: 
   return query;
 }
 
+export async function listPrescreenedVendors(admin: SupabaseClient) {
+  return admin
+    .from("vendors")
+    .select(ORG_CATALOG_SELECT)
+    .eq("workflow_stage", "prescreened")
+    .order("name");
+}
+
 export async function listReleasedCatalogForOrg(admin: SupabaseClient, catalogOrgId: string) {
   return admin.from("vendors").select(ORG_CATALOG_SELECT).eq("organization_id", catalogOrgId).eq("catalog_released", true).order("name");
 }
@@ -295,10 +303,13 @@ export async function adoptCatalogVendor(input: {
     .from("vendors")
     .select("*")
     .eq("id", input.catalogVendorId)
-    .eq("organization_id", input.catalogOrgId)
     .maybeSingle();
   if (error || !catalog) return { ok: false as const, error: "Catalog vendor not found" };
-  if (!catalog.catalog_released) return { ok: false as const, error: "This vendor has not been released to organizations" };
+  const prescreened = catalog.workflow_stage === "prescreened";
+  if (!catalog.catalog_released && !prescreened) return { ok: false as const, error: "This vendor has not been released to organizations" };
+  if (catalog.organization_id !== input.catalogOrgId && !prescreened) {
+    return { ok: false as const, error: "Catalog vendor not found" };
+  }
 
   const { data: existing } = await input.admin
     .from("vendors")

@@ -67,6 +67,7 @@ const stages: VendorWorkflowStage[] = [
   "invited",
   "application_submitted",
   "documents_reviewed",
+  "prescreened",
   "approved",
   "monitored",
   "renewal_required",
@@ -307,7 +308,7 @@ export default function VendorsPage() {
 
         {platformAdmin && <RecruitmentBoard />}
 
-        {!catalogAdmin && networkAdmin && (
+        {!catalogAdmin && (
           <section className="panel">
             <div className="panelHead">
               <div>
@@ -316,16 +317,17 @@ export default function VendorsPage() {
               </div>
               <span className="pill">{catalog.length} available</span>
             </div>
-            <p className="summary">These shops were recruited and qualified at the platform. Approving copies them into this organization for dispatch. Tax files stay with platform admin.</p>
+            <p className="summary">Platform admin moves a shop to Prescreened after qualification. These vendors are visible here before you approve them for dispatch. Tax files stay with platform admin.</p>
             {catalog.length === 0 ? (
-              <div className="empty">No released vendors yet. Platform admin flags them after documents are reviewed.</div>
+              <div className="empty">No prescreened vendors yet. Platform admin advances a shop to Prescreened to show it here.</div>
             ) : catalog.map((row) => (
               <div className="vendorRow" key={row.id}>
                 <div>
                   <strong>{row.name}</strong>
                   <span>{row.trade || "General vendor"} • {[row.city, row.state].filter(Boolean).join(", ") || "Service area not set"} • {stageLabel(row.workflow_stage)}</span>
                 </div>
-                <button className="secondaryBtn" onClick={() => void adoptVendor(row.id)}>Approve for this org</button>
+                <span className="vendorStatus conditional">Prescreened</span>
+                {networkAdmin && <button className="secondaryBtn" onClick={() => void adoptVendor(row.id)}>Approve for this org</button>}
               </div>
             ))}
           </section>

@@ -4131,6 +4131,74 @@ a.statLink:hover {
 .vendorDeskNav a.active {
   text-decoration: underline;
 }
+.vendorDeskNav a.tourTarget {
+  outline: 2px solid var(--gold, #e4c48a);
+  outline-offset: 4px;
+  border-radius: 6px;
+}
+.tourShade {
+  position: fixed;
+  inset: 0;
+  z-index: 80;
+  display: grid;
+  place-items: end center;
+  padding: 16px;
+  background: rgba(10, 36, 28, 0.55);
+}
+.tourCard {
+  width: min(440px, 100%);
+  max-height: min(88vh, 640px);
+  overflow: auto;
+  padding: 22px 20px 18px;
+  border-radius: 18px 18px 0 0;
+  background: var(--ivory, #f4f1ea);
+  color: var(--ink, #1c241c);
+  box-shadow: 0 -12px 40px rgba(10, 36, 28, 0.28);
+}
+.tourCard h2 {
+  margin: 6px 0 8px;
+  font-family: var(--font-display), Georgia, serif;
+  font-size: 28px;
+  line-height: 1.15;
+  letter-spacing: -0.02em;
+}
+.tourCard p {
+  margin: 0 0 12px;
+  font-size: 16px;
+  line-height: 1.5;
+}
+.tourStep {
+  color: var(--teal);
+  font-size: 13px;
+  font-weight: 800;
+  letter-spacing: 0.04em;
+  text-transform: uppercase;
+}
+.tourOpenTab {
+  display: inline-block;
+  margin-bottom: 14px;
+}
+.tourOptOut {
+  margin: 4px 0 16px;
+}
+.tourActions {
+  display: flex;
+  gap: 10px;
+}
+.tourActions .primary,
+.tourActions .secondaryBtn {
+  flex: 1;
+  min-height: 44px;
+}
+@media (min-width: 720px) {
+  .tourShade {
+    place-items: center;
+  }
+  .tourCard {
+    border-radius: 18px;
+    box-shadow: 0 24px 60px rgba(10, 36, 28, 0.28);
+  }
+}
 .deskHeadTools {
   display: flex;
   align-items: center;
