@@ -48,36 +48,40 @@ export async function POST(request: Request) {
   const publishableKey = stripePublishableKey();
 
   if (body.action === "setup" && stripe && publishableKey) {
+    const accountEmail = actor.mode === "live" ? actor.user.email?.trim().toLowerCase() || null : null;
     let customerId: string | null = null;
+    let customerName: string | undefined;
+    let recordEmail: string | undefined;
     if (actor.mode === "demo") customerId = getDemoPayout(actor.vendorId).stripeCustomerId;
     else {
       const { data } = await actor.admin.from("vendors").select("name, email, stripe_customer_id").eq("id", actor.vendorId).maybeSingle();
       customerId = data?.stripe_customer_id || null;
-      if (!customerId) {
-        const customer = await stripe.customers.create({
-          name: data?.name || undefined,
-          email: data?.email || undefined,
-          metadata: { vendorId: actor.vendorId, source: "homeops_vendor_payout" },
-        });
-        customerId = customer.id;
-        await actor.admin.from("vendors").update({ stripe_customer_id: customerId }).eq("id", actor.vendorId);
-      }
+      customerName = data?.name || undefined;
+      recordEmail = data?.email || undefined;
     }
-    if (actor.mode === "demo" && !customerId) {
+    const email = accountEmail || recordEmail || undefined;
+    if (customerId && email) {
+      const existing = await stripe.customers.retrieve(customerId);
+      const existingEmail = !existing.deleted ? existing.email?.trim().toLowerCase() : null;
+      if (existing.deleted || existingEmail !== email.toLowerCase()) customerId = null;
+    }
+    if (!customerId) {
       const customer = await stripe.customers.create({
-        name: actor.vendorId,
-        metadata: { vendorId: actor.vendorId, source: "homeops_vendor_payout_demo" },
+        name: customerName || (actor.mode === "demo" ? actor.vendorId : undefined),
+        email,
+        metadata: { vendorId: actor.vendorId, source: "homeops_vendor_payout", accountEmail: email || "" },
       });
       customerId = customer.id;
-      setDemoPayout(actor.vendorId, { stripeCustomerId: customerId });
+      if (actor.mode === "demo") setDemoPayout(actor.vendorId, { stripeCustomerId: customerId });
+      else await actor.admin.from("vendors").update({ stripe_customer_id: customerId }).eq("id", actor.vendorId);
     }
     const intent = await stripe.setupIntents.create({
-      customer: customerId!,
+      customer: customerId,
       payment_method_types: ["us_bank_account"],
       payment_method_options: { us_bank_account: { verification_method: "automatic" } },
-      metadata: { vendorId: actor.vendorId, source: "homeops_vendor_payout" },
+      metadata: { vendorId: actor.vendorId, source: "homeops_vendor_payout", accountEmail: email || "" },
     });
-    return NextResponse.json({ clientSecret: intent.client_secret, publishableKey });
+    return NextResponse.json({ clientSecret: intent.client_secret, publishableKey, accountEmail: email || null });
   }
 
   if (body.action === "confirm" && body.paymentMethodId && stripe) {

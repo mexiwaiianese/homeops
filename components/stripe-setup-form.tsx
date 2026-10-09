@@ -7,7 +7,7 @@ import { Elements, PaymentElement, useElements, useStripe } from "@stripe/react-
 // Saves a card or US bank account to the tenant's Stripe customer via a SetupIntent.
 // No card data touches HomeOps servers.
 
-function InnerForm({ onSaved, onCancel }: { onSaved: (paymentMethodId?: string) => void; onCancel?: () => void }) {
+function InnerForm({ accountEmail, onSaved, onCancel }: { accountEmail?: string | null; onSaved: (paymentMethodId?: string) => void; onCancel?: () => void }) {
   const stripe = useStripe();
   const elements = useElements();
   const [message, setMessage] = useState("");
@@ -30,7 +30,14 @@ function InnerForm({ onSaved, onCancel }: { onSaved: (paymentMethodId?: string) 
 
   return (
     <form onSubmit={submit}>
-      <PaymentElement options={{ layout: "tabs" }} />
+      <p className="summary">This payment method is saved for {accountEmail || "the account you are signed into"}. A payment-platform login already stored in this browser is not used. Enter the details again to authorize this account.</p>
+      <PaymentElement
+        options={{
+          layout: "tabs",
+          wallets: { link: "never" },
+          defaultValues: accountEmail ? { billingDetails: { email: accountEmail } } : undefined,
+        }}
+      />
       <div className="visitActions">
         <button className="primary" type="submit" disabled={!stripe || busy}>{busy ? "Saving…" : "Save payment method"}</button>
         {onCancel && <button className="secondaryBtn" type="button" onClick={onCancel} disabled={busy}>Cancel</button>}
@@ -43,18 +50,20 @@ function InnerForm({ onSaved, onCancel }: { onSaved: (paymentMethodId?: string) 
 export default function StripeSetupForm({
   publishableKey,
   clientSecret,
+  accountEmail,
   onSaved,
   onCancel,
 }: {
   publishableKey: string;
   clientSecret: string;
+  accountEmail?: string | null;
   onSaved: (paymentMethodId?: string) => void;
   onCancel?: () => void;
 }) {
   const stripePromise = useMemo(() => loadStripe(publishableKey), [publishableKey]);
   return (
     <Elements stripe={stripePromise} options={{ clientSecret, appearance: { theme: "stripe" } }}>
-      <InnerForm onSaved={onSaved} onCancel={onCancel} />
+      <InnerForm accountEmail={accountEmail} onSaved={onSaved} onCancel={onCancel} />
     </Elements>
   );
 }

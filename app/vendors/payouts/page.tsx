@@ -18,6 +18,7 @@ export default function VendorPayoutPage() {
   const [stripeOn, setStripeOn] = useState(false);
   const [secret, setSecret] = useState("");
   const [publishableKey, setPublishableKey] = useState("");
+  const [accountEmail, setAccountEmail] = useState("");
   const [bankName, setBankName] = useState("");
   const [last4, setLast4] = useState("");
   const [message, setMessage] = useState("");
@@ -47,6 +48,7 @@ export default function VendorPayoutPage() {
     if (!response.ok) { setMessage(body.error || "Could not start the payment processor."); return; }
     setSecret(body.clientSecret || "");
     setPublishableKey(body.publishableKey || "");
+    setAccountEmail(body.accountEmail || "");
   }
 
   async function confirmDemo(event: FormEvent) {
@@ -99,6 +101,7 @@ export default function VendorPayoutPage() {
           <StripeSetupForm
             publishableKey={publishableKey}
             clientSecret={secret}
+            accountEmail={accountEmail}
             onCancel={() => setSecret("")}
             onSaved={(paymentMethodId) => {
               void fetch("/api/vendors/payouts", {
