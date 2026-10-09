@@ -5,15 +5,25 @@ import { lookupVendorPromo, VENDOR_BASE_CENTS, VENDOR_PAYMENTS_ADDON_CENTS } fro
 
 const BASE_LOOKUP = "portonos_vendor_desk_monthly";
 const ADDON_LOOKUP = "portonos_vendor_payments_monthly";
+/** SaaS for business use. Required so this account can sell the desk through Managed Payments. */
+const SAAS_TAX_CODE = "txcd_10103001";
 
 function missingResource(error: unknown) {
   return Boolean(error && typeof error === "object" && "code" in error && (error as { code?: string }).code === "resource_missing");
 }
 
+async function ensureSaasTaxCode(stripe: Stripe, productId: string) {
+  const product = await stripe.products.retrieve(productId);
+  const code = typeof product.tax_code === "string" ? product.tax_code : product.tax_code?.id;
+  if (code === SAAS_TAX_CODE) return;
+  await stripe.products.update(productId, { tax_code: SAAS_TAX_CODE });
+}
+
 async function monthlyPrice(stripe: Stripe, lookupKey: string, name: string, unitAmount: number) {
+  const matches = (row: Stripe.Price) => row.unit_amount === unitAmount && row.recurring?.interval === "month" && row.currency === "usd";
   const load = async () => {
     const listed = await stripe.prices.list({ lookup_keys: [lookupKey], active: true, limit: 1 });
-    return listed.data.find((row) => row.unit_amount === unitAmount && row.recurring?.interval === "month" && row.currency === "usd") || null;
+    return listed.data.find(matches) || null;
   };
   let found = await load();
   if (!found) {
@@ -24,7 +34,8 @@ async function monthlyPrice(stripe: Stripe, lookupKey: string, name: string, uni
         recurring: { interval: "month" },
         lookup_key: lookupKey,
         transfer_lookup_key: true,
-        product_data: { name },
+        tax_behavior: "inclusive",
+        product_data: { name, tax_code: SAAS_TAX_CODE },
       });
     } catch (error) {
       found = await load();
@@ -32,6 +43,19 @@ async function monthlyPrice(stripe: Stripe, lookupKey: string, name: string, uni
     }
   }
   const productId = typeof found.product === "string" ? found.product : found.product.id;
+  await ensureSaasTaxCode(stripe, productId);
+  // Prices are immutable. An older price has no inclusive tax behavior, so Managed Payments would add tax on top of the advertised rate.
+  if (found.tax_behavior !== "inclusive") {
+    found = await stripe.prices.create({
+      currency: "usd",
+      unit_amount: unitAmount,
+      recurring: { interval: "month" },
+      lookup_key: lookupKey,
+      transfer_lookup_key: true,
+      tax_behavior: "inclusive",
+      product: productId,
+    });
+  }
   return { priceId: found.id, productId };
 }
 
@@ -107,10 +131,8 @@ export async function createVendorCheckoutSession(draft: VendorSignupDraft, orig
   const coupon = promo && promo.percentOff > 0 ? await basePercentCoupon(stripe, base.productId, promo.percentOff) : "";
   const session = await stripe.checkout.sessions.create({
     mode: "subscription",
-    // Managed Payments is on by default for this account and rejects products without a tax code.
-    // Turning it off also drops the dashboard payment methods, so card has to be named here.
-    managed_payments: { enabled: false },
-    payment_method_types: ["card"],
+    // This account sells through Managed Payments. Turning it off creates a session that fails on Subscribe.
+    managed_payments: { enabled: true },
     customer_email: draft.email,
     client_reference_id: draft.email.slice(0, 200),
     metadata: meta(draft),
@@ -124,7 +146,9 @@ export async function createVendorCheckoutSession(draft: VendorSignupDraft, orig
       ...(addon ? [{ price: addon.priceId, quantity: 1 }] : []),
     ],
   });
-  if (session.amount_total !== draft.monthlyCents) {
+  const discount = session.total_details?.amount_discount ?? 0;
+  const net = (session.amount_subtotal ?? 0) - discount;
+  if (net !== draft.monthlyCents && session.amount_total !== draft.monthlyCents) {
     if (session.status === "open") await stripe.checkout.sessions.expire(session.id).catch(() => undefined);
     throw new Error(`Stripe quoted ${session.amount_total ?? "no"} cents. This plan is ${draft.monthlyCents} cents.`);
   }
