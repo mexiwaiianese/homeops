@@ -14,22 +14,36 @@ export async function GET() {
   if (!user) {
     const vendor = await demoVendorFromCookies();
     if (!vendor) return NextResponse.json({ mode: "demo", vendor: null }, { status: 401 });
-    return NextResponse.json({ mode: "demo", vendor: { ...vendor, role: "dispatcher" } });
+    const seeded = demoVendors.find((row) => row.id === vendor.id);
+    return NextResponse.json({
+      mode: "demo",
+      vendor: { ...vendor, role: "dispatcher", workflowStage: seeded?.workflow_stage || "candidate", approvalStatus: seeded?.approval_status || "conditional" },
+    });
   }
   // Vendor desk users are not organization members, so the user-scoped client cannot see vendor_users under RLS.
   const admin = createSupabaseAdminClient() || supabase;
   if (!admin) return NextResponse.json({ error: "Sign in to the vendor desk.", status: 503 });
-  let { data } = await admin.from("vendor_users").select("*, vendors(id,name,trade,email,city)").eq("auth_user_id", user.id).maybeSingle();
+  const select = "*, vendors(id,name,trade,email,city,workflow_stage,approval_status)";
+  let { data } = await admin.from("vendor_users").select(select).eq("auth_user_id", user.id).maybeSingle();
   if (!data) {
     await linkLiveSignup(admin, user);
-    const again = await admin.from("vendor_users").select("*, vendors(id,name,trade,email,city)").eq("auth_user_id", user.id).maybeSingle();
+    const again = await admin.from("vendor_users").select(select).eq("auth_user_id", user.id).maybeSingle();
     data = again.data;
   }
   if (!data) return NextResponse.json({ error: "This login is not linked to a vendor company." }, { status: 403 });
   const company = Array.isArray(data.vendors) ? data.vendors[0] : data.vendors;
   return NextResponse.json({
     mode: "live",
-    vendor: { id: data.vendor_id, name: company?.name, trade: company?.trade, email: data.email, city: company?.city, role: data.role },
+    vendor: {
+      id: data.vendor_id,
+      name: company?.name,
+      trade: company?.trade,
+      email: data.email,
+      city: company?.city,
+      role: data.role,
+      workflowStage: company?.workflow_stage || "candidate",
+      approvalStatus: company?.approval_status || "conditional",
+    },
   });
 }
 

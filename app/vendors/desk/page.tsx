@@ -3,6 +3,7 @@
 import { useEffect, useState } from "react";
 import { useRouter } from "next/navigation";
 import VendorPortalFrame from "@/components/vendor-portal-frame";
+import { vendorApplicationStatus, vendorApplicationSteps } from "@/lib/vendors";
 
 type DeskJob = {
   id: string;
@@ -47,6 +48,8 @@ export default function VendorDeskPage() {
   const [opportunities, setOpportunities] = useState<Opportunity[]>([]);
   const [summary, setSummary] = useState("");
   const [message, setMessage] = useState("Loading vendor desk…");
+  const [workflowStage, setWorkflowStage] = useState<string | null>(null);
+  const [approvalStatus, setApprovalStatus] = useState<string | null>(null);
 
   useEffect(() => {
     Promise.all([
@@ -56,6 +59,8 @@ export default function VendorDeskPage() {
     ]).then(([session, desk, opportunitiesResponse]) => {
       if (!session.ok) { router.replace("/vendors/login"); return; }
       setVendorName(session.body.vendor?.name || "Your jobs");
+      setWorkflowStage(session.body.vendor?.workflowStage || "candidate");
+      setApprovalStatus(session.body.vendor?.approvalStatus || null);
       if (!desk.ok) { setMessage(desk.body.error || "Could not load jobs."); return; }
       setJobs(desk.body.jobs || []);
       setOpportunities(opportunitiesResponse.body.opportunities || []);
@@ -64,12 +69,40 @@ export default function VendorDeskPage() {
     }).catch(() => setMessage("Could not load the vendor desk."));
   }, [router]);
 
+  const application = workflowStage ? vendorApplicationStatus(workflowStage) : null;
+
   return (
     <VendorPortalFrame
       eyebrow="VENDOR DESK"
       title={vendorName}
       lede="Awarded jobs are here. Open opportunities are the bids the property manager has out that match your notification rules. Crews use the job link with no account."
     >
+      {application && (
+        <section className="appStatus" aria-label="Application status">
+          <div className="appStatusHead">
+            <h3>Application status</h3>
+            <div className="appStatusBadges">
+              {application.prescreened && <span className="vendorStatus approved">Prescreened</span>}
+              <span className={`vendorStatus ${application.stage === "suspended" ? "suspended" : application.stage === "renewal_required" ? "conditional" : ""}`}>Workflow: {application.label}</span>
+              {approvalStatus && <span className={`vendorStatus ${approvalStatus}`}>Approval: {approvalStatus}</span>}
+            </div>
+          </div>
+          {application.stepIndex >= 0 && (
+            <ol className="appSteps">
+              {vendorApplicationSteps.map((step, index) => (
+                <li
+                  key={step.stage}
+                  className={index < application.stepIndex ? "done" : index === application.stepIndex ? "current" : ""}
+                  aria-current={index === application.stepIndex ? "step" : undefined}
+                >
+                  {step.label}
+                </li>
+              ))}
+            </ol>
+          )}
+          <p>{application.next}</p>
+        </section>
+      )}
       {message && <div className="notice">{message}</div>}
       {summary && <div className="notice">{summary}</div>}
       <div className="sectionTitle"><h3>Open opportunities</h3><span>{opportunities.length}</span></div>

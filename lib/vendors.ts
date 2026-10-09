@@ -36,6 +36,40 @@ export const vendorStageOrder: VendorWorkflowStage[] = [
   "suspended",
 ];
 
+/** The application path a vendor sees on the vendor desk. */
+export const vendorApplicationSteps: Array<{ stage: VendorWorkflowStage; label: string }> = [
+  { stage: "candidate", label: "Candidate" },
+  { stage: "application_submitted", label: "Application submitted" },
+  { stage: "documents_reviewed", label: "Documents reviewed" },
+  { stage: "prescreened", label: "Prescreened" },
+  { stage: "approved", label: "Approved" },
+];
+
+const applicationNext: Record<VendorWorkflowStage, string> = {
+  candidate: "portonOS has your company on file. Add your services, license, and insurance in Bid settings so platform admin can review the application.",
+  invited: "You were invited to apply. Add your services, license, and insurance in Bid settings so platform admin can review the application.",
+  application_submitted: "Your application is in. Platform admin is reviewing your license, insurance, and services.",
+  documents_reviewed: "Your documents are reviewed. Platform admin decides next whether to prescreen your company for property managers.",
+  prescreened: "Property managers can now see your company as Prescreened. A manager approves you for their properties before they can dispatch work to you.",
+  approved: "A property manager approved your company. You can receive and bid on their work.",
+  monitored: "You are approved and in good standing. portonOS keeps checking credentials and job performance.",
+  renewal_required: "A license or insurance document expired. Upload the renewal so managers can keep sending you work.",
+  suspended: "Your company is suspended. Contact portonOS support to find out what is needed to reinstate it.",
+};
+
+export function vendorApplicationStatus(stage?: string | null) {
+  const current = (vendorStageOrder.includes(stage as VendorWorkflowStage) ? stage : "candidate") as VendorWorkflowStage;
+  const pathStage: VendorWorkflowStage = current === "invited" ? "candidate" : current === "monitored" ? "approved" : current;
+  const stepIndex = vendorApplicationSteps.findIndex((step) => step.stage === pathStage);
+  return {
+    stage: current,
+    label: current.replaceAll("_", " ").replace(/\b\w/g, (c) => c.toUpperCase()),
+    stepIndex,
+    prescreened: vendorStageOrder.indexOf(current) >= vendorStageOrder.indexOf("prescreened") && current !== "suspended",
+    next: applicationNext[current],
+  };
+}
+
 export function normalizeVendorName(value: string) {
   return value
     .toLowerCase()

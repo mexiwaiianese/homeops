@@ -1,6 +1,7 @@
 "use client";
 
 import { useEffect, useState } from "react";
+import { usePathname, useRouter } from "next/navigation";
 
 export type TourScreen = {
   id: string;
@@ -29,26 +30,59 @@ function sessionKey(storageKey: string) {
   return `${storageKey}:session`;
 }
 
+type FollowState = { status: "open" | "done"; index: number };
+
+function readFollow(key: string): FollowState | null {
+  try {
+    const parsed = JSON.parse(window.sessionStorage.getItem(key) || "null");
+    if (parsed && (parsed.status === "open" || parsed.status === "done")) {
+      return { status: parsed.status, index: Number(parsed.index) || 0 };
+    }
+  } catch {}
+  return null;
+}
+
+function writeFollow(key: string, state: FollowState) {
+  window.sessionStorage.setItem(key, JSON.stringify(state));
+}
+
 export default function ProductTour({
   storagePrefix,
   persona,
   userKey,
   screens,
+  followTab = false,
 }: {
   storagePrefix: string;
   persona: string;
   userKey: string;
   screens: TourScreen[];
+  /** Open each step's page behind the card. The tour keeps its step across those page loads. */
+  followTab?: boolean;
 }) {
+  const pathname = usePathname();
+  const router = useRouter();
   const visit = visitFor(storagePrefix);
   const [index, setIndex] = useState(visit.index);
   const [open, setOpen] = useState(false);
   const [hideOnLaunch, setHideOnLaunch] = useState(false);
   const storageKey = `${storagePrefix}${userKey}`;
+  const followKey = `${storageKey}:follow`;
 
   useEffect(() => {
     if (!screens.length || !userKey) return;
-    if (window.localStorage.getItem(storageKey) === "1" || visit.dismissed) return;
+    if (window.localStorage.getItem(storageKey) === "1") return;
+    if (followTab) {
+      const state = readFollow(followKey);
+      if (state?.status === "done") return;
+      const start = Math.min(state?.index ?? 0, screens.length - 1);
+      if (!state) writeFollow(followKey, { status: "open", index: start });
+      setHideOnLaunch(false);
+      setIndex(start);
+      setOpen(true);
+      return;
+    }
+    if (visit.dismissed) return;
     const seenKey = sessionKey(storageKey);
     const page = window.location.pathname;
     const seen = window.sessionStorage.getItem(seenKey);
@@ -64,7 +98,15 @@ export default function ProductTour({
     setHideOnLaunch(false);
     setIndex(visit.index);
     setOpen(true);
-  }, [screens, storageKey, userKey, visit]);
+  }, [screens, storageKey, followKey, followTab, userKey, visit]);
+
+  useEffect(() => {
+    if (!followTab || !open) return;
+    const screen = screens[index];
+    if (!screen?.href.startsWith("/")) return;
+    const path = screen.href.split("#")[0];
+    if (path !== pathname) router.push(screen.href);
+  }, [followTab, open, index, pathname, router, screens]);
 
   useEffect(() => {
     const screen = screens[index];
@@ -83,11 +125,13 @@ export default function ProductTour({
 
   function move(next: number) {
     visit.index = next;
+    if (followTab) writeFollow(followKey, { status: "open", index: next });
     setIndex(next);
   }
 
   function finish() {
     visit.dismissed = true;
+    if (followTab) writeFollow(followKey, { status: "done", index });
     setOpen(false);
   }
 
@@ -98,7 +142,7 @@ export default function ProductTour({
         <p className="tourStep">Tab {index + 1} of {screens.length} · {screen.tab}</p>
         <h2 id={`${storagePrefix}title`}>{screen.title}</h2>
         <p>{screen.body}</p>
-        <a className="textBtn tourOpenTab" href={screen.href}>Open {screen.tab}</a>
+        {!followTab && <a className="textBtn tourOpenTab" href={screen.href}>Open {screen.tab}</a>}
         <label className="checkRow tourOptOut">
           <input
             type="checkbox"

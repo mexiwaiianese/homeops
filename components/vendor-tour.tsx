@@ -35,5 +35,5 @@ export default function VendorTour() {
   }, []);
 
   if (!screens.length || !userKey) return null;
-  return <ProductTour storagePrefix="portonos-vendor-tour-hide:" persona={persona} userKey={userKey} screens={screens} />;
+  return <ProductTour storagePrefix="portonos-vendor-tour-hide:" persona={persona} userKey={userKey} screens={screens} followTab />;
 }

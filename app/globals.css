@@ -4131,6 +4131,88 @@ a.statLink:hover {
 .vendorDeskNav a.active {
   text-decoration: underline;
 }
+.appStatus {
+  margin: 0 0 18px;
+  padding: 16px 18px;
+  border: 1px solid var(--line, #e2ddd3);
+  border-radius: 14px;
+  background: #fff;
+}
+.appStatusHead {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  justify-content: space-between;
+  gap: 10px;
+}
+.appStatusHead h3 {
+  margin: 0;
+}
+.appStatusBadges {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 6px;
+}
+.appStatusBadges .vendorStatus {
+  border-radius: 999px;
+  background: #f1ece6;
+}
+.appStatusBadges .vendorStatus.approved,
+.appStatusBadges .vendorStatus.preferred {
+  background: var(--green2);
+}
+.appStatusBadges .vendorStatus.conditional {
+  background: var(--amber2);
+}
+.appStatusBadges .vendorStatus.suspended,
+.appStatusBadges .vendorStatus.blocked {
+  background: var(--red2);
+}
+.appSteps {
+  display: grid;
+  grid-template-columns: repeat(5, minmax(0, 1fr));
+  gap: 6px;
+  margin: 14px 0 10px;
+  padding: 0;
+  list-style: none;
+  counter-reset: appstep;
+}
+.appSteps li {
+  counter-increment: appstep;
+  padding: 8px 6px 0;
+  border-top: 4px solid var(--line, #e2ddd3);
+  color: var(--muted, #6f776f);
+  font-size: 13px;
+  font-weight: 700;
+  line-height: 1.3;
+}
+.appSteps li::before {
+  content: counter(appstep) ". ";
+}
+.appSteps li.done {
+  border-color: var(--teal, #2f6f63);
+  color: var(--ink, #1c241c);
+}
+.appSteps li.current {
+  border-color: var(--gold, #c99b45);
+  color: var(--ink, #1c241c);
+}
+.appStatus p {
+  margin: 0;
+  font-size: 15px;
+  line-height: 1.5;
+}
+@media (max-width: 640px) {
+  .appSteps {
+    grid-template-columns: 1fr;
+    gap: 4px;
+  }
+  .appSteps li {
+    padding: 6px 0 6px 10px;
+    border-top: 0;
+    border-left: 4px solid var(--line, #e2ddd3);
+  }
+}
 .vendorDeskNav a.tourTarget {
   outline: 2px solid var(--gold, #e4c48a);
   outline-offset: 4px;
