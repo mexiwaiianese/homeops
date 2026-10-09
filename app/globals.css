@@ -5607,11 +5607,27 @@ a.statLink:hover {
   margin: 4px 0 12px 24px;
   border-radius: 16px;
 }
-.founderTire img.founderPhoto {
-  float: left;
-  clear: right;
-  width: min(260px, 40%);
-  margin: 6px 24px 12px 0;
+.founderClose {
+  display: flex;
+  align-items: flex-end;
+  gap: 24px;
+  clear: both;
+  margin: 0 0 18px;
+}
+.founderClose .founderCopy {
+  min-width: 0;
+  flex: 1 1 auto;
+}
+.founderClose .founderCopy p:last-child {
+  margin-bottom: 0;
+}
+.founderTire .founderClose img.founderPhoto {
+  float: none;
+  clear: none;
+  width: min(260px, 42%);
+  height: auto;
+  margin: 0;
+  flex: 0 0 auto;
 }
 .founderSign {
   color: var(--ink);
@@ -5696,13 +5712,24 @@ a.statLink:hover {
   }
 }
 @media (max-width: 640px) {
-  .founderTire img,
-  .founderTire img.founderPhoto {
+  .founderTire img {
     float: none;
     clear: none;
     display: block;
     width: min(280px, 100%);
     margin: 0 0 12px;
+  }
+  .founderClose {
+    display: block;
+    margin-bottom: 0;
+  }
+  .founderTire .founderClose img.founderPhoto {
+    display: block;
+    width: min(280px, 100%);
+    margin: 0 0 12px;
+  }
+  .founderClose .founderCopy p:last-child {
+    margin-bottom: 12px;
   }
 }
 

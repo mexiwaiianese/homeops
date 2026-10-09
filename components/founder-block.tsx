@@ -17,26 +17,29 @@ export default function FounderBlock() {
             return <p key={part.text}>{part.text}</p>;
           }
           const after = founderStory.slice(index + 1);
+          const portraitAt = after.findIndex((row) => row.kind === "portrait");
+          const lead = portraitAt === -1 ? after : after.slice(0, portraitAt);
+          const portrait = portraitAt === -1 ? null : after[portraitAt];
+          const beside = portraitAt === -1 ? [] : after.slice(portraitAt + 1);
           return (
             <div className="founderTire" key={part.src}>
               <Image src={part.src} alt={part.alt} width={part.width} height={part.height} />
               <p>{part.text}</p>
-              {after.map((row) => {
-                if (row.kind === "portrait") {
-                  return (
-                    <Image
-                      key={row.src}
-                      className="founderPhoto"
-                      src={row.src}
-                      alt={row.alt}
-                      width={row.width}
-                      height={row.height}
-                    />
-                  );
-                }
-                if (row.kind === "text") return <p key={row.text}>{row.text}</p>;
-                return null;
-              })}
+              {lead.map((row) => (row.kind === "text" ? <p key={row.text}>{row.text}</p> : null))}
+              {portrait?.kind === "portrait" ? (
+                <div className="founderClose">
+                  <Image
+                    className="founderPhoto"
+                    src={portrait.src}
+                    alt={portrait.alt}
+                    width={portrait.width}
+                    height={portrait.height}
+                  />
+                  <div className="founderCopy">
+                    {beside.map((row) => (row.kind === "text" ? <p key={row.text}>{row.text}</p> : null))}
+                  </div>
+                </div>
+              ) : null}
               <p className="founderSign">{founderSign}</p>
             </div>
           );
