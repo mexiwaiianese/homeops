@@ -27,6 +27,7 @@
   --brand-night: #0a241c;
   --brand-gold: #c1915a;
   --brand-cream: #f3d8b1;
+  --copyright-bar: 42px;
 }
 * {
   box-sizing: border-box;
@@ -65,15 +66,50 @@ textarea {
   font-family: inherit;
   font-size: inherit;
 }
-.shell {
+.site {
   min-height: 100vh;
+  display: flex;
+  flex-direction: column;
+}
+.siteMain {
+  flex: 1 1 auto;
+  display: flex;
+  flex-direction: column;
+  min-width: 0;
+}
+.siteCopyright {
+  box-sizing: border-box;
+  flex: 0 0 auto;
+  height: var(--copyright-bar);
+  margin: 0;
+  padding: 0 16px;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  border-top: 1px solid var(--line);
+  background: var(--ivory);
+  color: var(--muted);
+  font-size: 13px;
+  line-height: 1.3;
+  text-align: center;
+}
+.siteCopyright p {
+  margin: 0;
+}
+@media print {
+  .siteCopyright {
+    display: none;
+  }
+}
+.shell {
+  min-height: calc(100vh - var(--copyright-bar));
   display: grid;
   grid-template-columns: 238px 1fr;
 }
 .sidebar {
   position: sticky;
   top: 0;
-  height: 100vh;
+  height: calc(100vh - var(--copyright-bar));
   background: var(--nav);
   color: #f4f1ea;
   padding: 28px 18px;
@@ -1120,14 +1156,14 @@ button:disabled {
 }
 .authShell,
 .intakeShell {
-  min-height: 100vh;
+  min-height: calc(100vh - var(--copyright-bar));
   display: grid;
   place-items: center;
   padding: 24px;
   background: linear-gradient(145deg, #e7ede4, #f4f1ea);
 }
 .loginShell {
-  min-height: 100vh;
+  min-height: calc(100vh - var(--copyright-bar));
   display: grid;
   grid-template-columns: minmax(280px, 1fr) minmax(320px, 480px);
   background: var(--navy);
@@ -1178,7 +1214,7 @@ button:disabled {
   display: flex;
   flex-direction: column;
   justify-content: center;
-  min-height: 100vh;
+  min-height: calc(100vh - var(--copyright-bar));
   padding: 48px 40px;
   background: var(--ivory);
   box-shadow: -24px 0 60px rgba(10, 36, 28, 0.22);
@@ -1406,14 +1442,14 @@ button:disabled {
 
 /* Phase 2 financial onboarding/controller workspace */
 .finShell {
-  min-height: 100vh;
+  min-height: calc(100vh - var(--copyright-bar));
   display: grid;
   grid-template-columns: 238px 1fr;
 }
 .finSide {
   position: sticky;
   top: 0;
-  height: 100vh;
+  height: calc(100vh - var(--copyright-bar));
   background: var(--nav);
   color: #f4f1ea;
   padding: 28px 18px;
@@ -1962,7 +1998,7 @@ button:disabled {
 
 /* Approved Vendor Network */
 .vendorShell {
-  min-height: 100vh;
+  min-height: calc(100vh - var(--copyright-bar));
   display: grid;
   grid-template-columns: 238px minmax(0, 1fr);
 }
@@ -2851,7 +2887,7 @@ a.statLink:hover {
 
 /* ---------- Owner portal ---------- */
 .opShell {
-  min-height: 100vh;
+  min-height: calc(100vh - var(--copyright-bar));
   background: var(--bg);
 }
 .opTop {
@@ -3882,7 +3918,7 @@ a.statLink:hover {
 
 /* ---------- Tenant portal ---------- */
 .tenantShell {
-  min-height: 100vh;
+  min-height: calc(100vh - var(--copyright-bar));
   padding: 24px 16px 64px;
   background: linear-gradient(145deg, #e7ede4, #f4f1ea);
   display: flex;
@@ -4544,7 +4580,7 @@ a.statLink:hover {
 
 .marketing {
   --marketing-width: 90%;
-  min-height: 100vh;
+  min-height: calc(100vh - var(--copyright-bar));
   width: 100%;
   max-width: 100%;
   overflow-x: clip;

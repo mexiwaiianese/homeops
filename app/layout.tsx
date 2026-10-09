@@ -1,6 +1,7 @@
 import type { Metadata } from "next";
 import { Cormorant_Garamond, Montserrat } from "next/font/google";
 import AuthHashNotice from "@/components/auth-hash-notice";
+import CopyrightFooter from "@/components/copyright-footer";
 import HeyCatchAnalytics from "@/components/heycatch-analytics";
 import JsonLd from "@/components/json-ld";
 import { HOME_DESCRIPTION, SITE_ORIGIN } from "@/lib/public-site";
@@ -46,8 +47,13 @@ export default function RootLayout({ children }: Readonly<{ children: React.Reac
       <body className={montserrat.className}>
         <JsonLd data={organizationLd()} />
         <HeyCatchAnalytics />
-        <AuthHashNotice />
-        {children}
+        <div className="site">
+          <div className="siteMain">
+            <AuthHashNotice />
+            {children}
+          </div>
+          <CopyrightFooter />
+        </div>
       </body>
     </html>
   );
