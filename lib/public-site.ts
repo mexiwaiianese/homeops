@@ -61,7 +61,7 @@ export const PAYMENT_PROCESSOR = "the payment processor";
 export const PAYMENT_PROCESSOR_TITLE = "The payment processor";
 export const PROCESSOR_RATE = "2.9% + $0.30";
 export const PROCESSOR_RATE_AS_OF = "September 29, 2026";
-export const PROCESSOR_RATE_LINE = `Card processing is ${PAYMENT_PROCESSOR}'s rate, ${PROCESSOR_RATE}, passed through.`;
+export const PROCESSOR_RATE_LINE = `The ${dollars(VENDOR_PAYMENTS_ADDON_CENTS)}/month add-on enables online payments. Each card payment also incurs ${PAYMENT_PROCESSOR}'s processing fee, currently ${PROCESSOR_RATE}, in addition to that monthly add-on.`;
 export const PROCESSOR_RATE_NOTE = `Processing rates are accurate as of ${PROCESSOR_RATE_AS_OF} and can change.`;
 
 export const SCREENING_PUBLISHED: Array<{ product: string; report: string; price: string }> = [
@@ -228,7 +228,7 @@ export const FAQ: Array<{ question: string; answer: string }> = [
   },
   {
     question: "How do vendors get paid or invited?",
-    answer: `You invite vendors you already trust. ${VENDOR_PUBLIC_OFFER.note} They bid from a private link and run awarded work from a vendor desk. They do not pay to look eligible. The vendor desk is ${dollars(VENDOR_PUBLIC_OFFER.baseCents)} a month. Online payments on invoices add ${dollars(VENDOR_PUBLIC_OFFER.paymentsAddonCents)} a month. ${PROCESSOR_RATE_LINE} ${PROCESSOR_RATE_NOTE} You still pay the vendor for the job. portonOS keeps the bid, the visit, and the invoice on the work order.`,
+    answer: `You invite vendors you already trust. ${VENDOR_PUBLIC_OFFER.note} They bid from a private link and run awarded work from a vendor desk. They do not pay to look eligible. The vendor desk is ${dollars(VENDOR_PUBLIC_OFFER.baseCents)} a month. ${PROCESSOR_RATE_LINE} portonOS adds no percentage. ${PROCESSOR_RATE_NOTE} You still pay the vendor for the job. portonOS keeps the bid, the visit, and the invoice on the work order.`,
   },
   {
     question: "Can I cancel?",
@@ -480,7 +480,7 @@ export const COMPARISONS: ComparisonPage[] = [
     faq: [
       {
         question: "Does portonOS charge per-transaction fees?",
-        answer: "No. The workspace price is flat. No per-transaction fee, no onboarding fee, and no per-lead charge. Card processing on a vendor invoice is the payment processor's rate, passed through, and only if that vendor turns payments on. Processing rates are accurate as of September 29, 2026 and can change. Applicant screening is the screening partner's price, passed through, per adult.",
+        answer: `No. The workspace price is flat. No per-transaction fee, no onboarding fee, and no per-lead charge. For a vendor to accept online invoice payments, the feature costs ${dollars(VENDOR_PAYMENTS_ADDON_CENTS)} a month. Each card payment also incurs the payment processor's fee, currently ${PROCESSOR_RATE}, on top of that monthly add-on. portonOS adds no percentage. ${PROCESSOR_RATE_NOTE} Applicant screening is the screening partner's price, passed through, per adult.`,
       },
       {
         question: "What does Core cost?",

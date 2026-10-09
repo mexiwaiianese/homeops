@@ -18,6 +18,11 @@ export async function saveLiveSignup(admin: SupabaseClient, input: {
   payments: boolean;
   promoCode: string | null;
   monthlyCents: number;
+  /** Completed checkout replaces the plan on an existing row. */
+  refreshPlan?: boolean;
+  stripeCustomerId?: string | null;
+  stripeSubscriptionId?: string | null;
+  stripeCheckoutSessionId?: string | null;
 }) {
   const email = input.email.trim().toLowerCase();
   const row = {
@@ -32,12 +37,41 @@ export async function saveLiveSignup(admin: SupabaseClient, input: {
     promo_code: input.promoCode,
     monthly_cents: input.monthlyCents,
   };
+  const stripePatch = {
+    ...(input.stripeCustomerId ? { stripe_customer_id: input.stripeCustomerId } : {}),
+    ...(input.stripeSubscriptionId ? { stripe_subscription_id: input.stripeSubscriptionId } : {}),
+    ...(input.stripeCheckoutSessionId ? { stripe_checkout_session_id: input.stripeCheckoutSessionId } : {}),
+  };
   const existing = await admin.from("vendor_self_signups").select("id, payments, monthly_cents, company_name").eq("email", email).maybeSingle();
   if (existing.error) return { error: existing.error.message };
-  if (existing.data) return { id: existing.data.id as string, created: false, payments: Boolean(existing.data.payments), monthlyCents: existing.data.monthly_cents as number, companyName: existing.data.company_name as string };
-  const inserted = await admin.from("vendor_self_signups").insert(row).select("id, payments, monthly_cents, company_name").single();
+  if (existing.data && !input.refreshPlan) {
+    return { id: existing.data.id as string, created: false, payments: Boolean(existing.data.payments), monthlyCents: existing.data.monthly_cents as number, companyName: existing.data.company_name as string };
+  }
+  if (existing.data) {
+    const updated = await writeSignup(admin, existing.data.id as string, { ...row, ...stripePatch }, Boolean(Object.keys(stripePatch).length));
+    if ("error" in updated) return updated;
+    return { id: existing.data.id as string, created: false, payments: input.payments, monthlyCents: input.monthlyCents, companyName: row.company_name };
+  }
+  const inserted = await admin.from("vendor_self_signups").insert({ ...row, ...stripePatch }).select("id, payments, monthly_cents, company_name").single();
+  if (inserted.error && Object.keys(stripePatch).length && /stripe_/i.test(inserted.error.message)) {
+    const retry = await admin.from("vendor_self_signups").insert(row).select("id, payments, monthly_cents, company_name").single();
+    if (retry.error || !retry.data) return { error: retry.error?.message || "Could not save the signup." };
+    return { id: retry.data.id as string, created: true, payments: Boolean(retry.data.payments), monthlyCents: retry.data.monthly_cents as number, companyName: retry.data.company_name as string };
+  }
   if (inserted.error || !inserted.data) return { error: inserted.error?.message || "Could not save the signup." };
   return { id: inserted.data.id as string, created: true, payments: Boolean(inserted.data.payments), monthlyCents: inserted.data.monthly_cents as number, companyName: inserted.data.company_name as string };
+}
+
+async function writeSignup(admin: SupabaseClient, id: string, patch: Record<string, unknown>, dropStripeOnMissingColumn: boolean) {
+  const updated = await admin.from("vendor_self_signups").update(patch).eq("id", id);
+  if (updated.error && dropStripeOnMissingColumn && /stripe_/i.test(updated.error.message)) {
+    const rest = Object.fromEntries(Object.entries(patch).filter(([key]) => !key.startsWith("stripe_")));
+    const retry = await admin.from("vendor_self_signups").update(rest).eq("id", id);
+    if (retry.error) return { error: retry.error.message };
+    return { ok: true as const };
+  }
+  if (updated.error) return { error: updated.error.message };
+  return { ok: true as const };
 }
 
 /** After the magic link, attach the signup to a vendor company the desk can sign in as. */

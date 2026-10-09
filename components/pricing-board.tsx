@@ -149,7 +149,7 @@ export default function PricingBoard() {
         <p>
           {VENDOR_PUBLIC_OFFER.note} The vendor desk is {dollars(VENDOR_PUBLIC_OFFER.baseCents)} a month.
           Online payments on invoices add {dollars(VENDOR_PUBLIC_OFFER.paymentsAddonCents)} a month.
-          Card processing is {PAYMENT_PROCESSOR}&apos;s rate, {PROCESSOR_RATE}<sup><a href="#processing-rate-note" aria-label="Footnote about processing rates">1</a></sup>, passed through. Vendors do not pay to look eligible.
+          Each card payment also incurs {PAYMENT_PROCESSOR}&apos;s processing fee, currently {PROCESSOR_RATE}<sup><a href="#processing-rate-note" aria-label="Footnote about processing rates">1</a></sup>, on top of that monthly add-on. portonOS adds no percentage. Vendors do not pay to look eligible.
         </p>
         <a href={VENDOR_PUBLIC_OFFER.href}>Vendor signup</a>
         <p className="summary pricingFootnote" id="processing-rate-note"><sup>1</sup> {PROCESSOR_RATE_NOTE}</p>

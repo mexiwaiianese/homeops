@@ -1,5 +1,5 @@
 import { MarketingFooter, MarketingNav } from "@/components/marketing-chrome";
-import { CANCEL_COMMITMENT_LINE, MONEY_BACK_DAYS, SCOPE_LINE } from "@/lib/public-site";
+import { CANCEL_COMMITMENT_LINE, MONEY_BACK_DAYS, SCOPE_LINE, VENDOR_PUBLIC_OFFER, dollars } from "@/lib/public-site";
 import { pageMeta } from "@/lib/site-meta";
 
 const title = "portonOS Terms";
@@ -37,7 +37,7 @@ export default function TermsPage() {
 
         <h2>What the refund does not cover</h2>
         <p>
-          Applicant screening is the screening partner&apos;s price, passed through, per adult. Card processing on a vendor invoice is the payment processor&apos;s rate, passed through. Those charges are not part of the workspace refund.
+          Applicant screening is the screening partner&apos;s price, passed through, per adult. Enabling online payments on vendor invoices costs {dollars(VENDOR_PUBLIC_OFFER.paymentsAddonCents)} a month. Each card payment also incurs the payment processor&apos;s fee on top of that monthly add-on. Those charges are not part of the workspace refund.
         </p>
 
         <h2>Your records</h2>

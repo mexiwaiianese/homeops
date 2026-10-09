@@ -62,7 +62,22 @@ export function getVendorSubscriber(id: string) {
   return store.subscribers.get(id) || null;
 }
 
-export function registerVendorSubscriber(input: {
+export type VendorSignupDraft = {
+  companyName: string;
+  contactName: string;
+  email: string;
+  phone: string;
+  city: string;
+  state: string;
+  trade: string;
+  payments: boolean;
+  promoCode: string | null;
+  monthlyCents: number;
+};
+
+export type VendorSignupQuote = { error: string; status: 400 } | { draft: VendorSignupDraft };
+
+export function quoteVendorSignup(input: {
   companyName: string;
   contactName: string;
   email: string;
@@ -71,8 +86,8 @@ export function registerVendorSubscriber(input: {
   state?: string;
   trade?: string;
   payments: boolean;
-  promoCode?: string;
-}) {
+  promoCode?: string | null;
+}): VendorSignupQuote {
   const email = input.email.trim().toLowerCase();
   if (!input.companyName.trim()) return { error: "Enter the company name.", status: 400 as const };
   if (!input.contactName.trim()) return { error: "Enter your name.", status: 400 as const };
@@ -82,11 +97,7 @@ export function registerVendorSubscriber(input: {
   const promoRaw = (input.promoCode || "").trim();
   const promo = promoRaw ? lookupVendorPromo(promoRaw) : null;
   if (promoRaw && !promo) return { error: "That promo code is not active.", status: 400 as const };
-  const existing = [...store.subscribers.values()].find((row) => row.email === email);
-  if (existing) return { subscriber: existing, created: false as const };
-  const id = `vs-${Date.now().toString(36)}${Math.random().toString(36).slice(2, 6)}`;
-  const subscriber: VendorSubscriber = {
-    id,
+  const draft: VendorSignupDraft = {
     companyName: input.companyName.trim(),
     contactName: input.contactName.trim(),
     email,
@@ -97,10 +108,39 @@ export function registerVendorSubscriber(input: {
     payments: input.payments,
     promoCode: promo?.code || null,
     monthlyCents: pricedMonthlyCents(input.payments, promo),
-    createdAt: new Date().toISOString(),
   };
+  return { draft };
+}
+
+function subscriberByEmail(email: string) {
+  return [...store.subscribers.values()].find((row) => row.email === email) || null;
+}
+
+function insertDraft(draft: VendorSignupDraft) {
+  const id = `vs-${Date.now().toString(36)}${Math.random().toString(36).slice(2, 6)}`;
+  const subscriber: VendorSubscriber = { id, ...draft, createdAt: new Date().toISOString() };
   store.subscribers.set(id, subscriber);
-  return { subscriber, created: true as const };
+  return subscriber;
+}
+
+export function registerVendorSubscriber(input: Parameters<typeof quoteVendorSignup>[0]): { error: string; status: number } | { subscriber: VendorSubscriber; created: boolean } {
+  const quoted = quoteVendorSignup(input);
+  if ("error" in quoted) return quoted;
+  const existing = subscriberByEmail(quoted.draft.email);
+  if (existing) return { subscriber: existing, created: false as const };
+  return { subscriber: insertDraft(quoted.draft), created: true as const };
+}
+
+/** Paid checkout wins over an earlier unpaid draft for the same email. */
+export function upsertVendorSubscriber(input: Parameters<typeof quoteVendorSignup>[0]): { error: string; status: number } | { subscriber: VendorSubscriber; created: boolean } {
+  const quoted = quoteVendorSignup(input);
+  if ("error" in quoted) return quoted;
+  const existing = subscriberByEmail(quoted.draft.email);
+  if (existing) {
+    Object.assign(existing, quoted.draft);
+    return { subscriber: existing, created: false as const };
+  }
+  return { subscriber: insertDraft(quoted.draft), created: true as const };
 }
 
 /** Seeded demo companies can send invoices without a separate signup. */

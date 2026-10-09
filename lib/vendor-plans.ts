@@ -32,7 +32,7 @@ export function pricedMonthlyCents(payments: boolean, promo: VendorPromo | null)
 
 /** Share this link; the code is filled in when the page opens. */
 export function vendorSignupPromoUrl(origin: string, code: string) {
-  return `${origin.replace(/\/$/, "")}/vendors/signup?code=${encodeURIComponent(code.trim().toUpperCase())}`;
+  return `${origin.replace(/\/$/, "")}/vendors/signup?promo=${encodeURIComponent(code.trim().toUpperCase())}`;
 }
 
 export function dollars(cents: number) {

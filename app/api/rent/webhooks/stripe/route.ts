@@ -1,4 +1,5 @@
 import { NextResponse } from "next/server";
+import type Stripe from "stripe";
 import { getStripe } from "@/lib/stripe";
 import { createSupabaseAdminClient } from "@/lib/supabase/admin";
 import { livePaymentExists, recordLivePayment } from "@/lib/rent-live";
@@ -18,6 +19,25 @@ export async function POST(request: Request) {
     event = stripe.webhooks.constructEvent(raw, signature, secret);
   } catch (error) {
     return NextResponse.json({ error: error instanceof Error ? error.message : "Invalid signature" }, { status: 400 });
+  }
+
+  if (event.type === "checkout.session.completed") {
+    const session = event.data.object as Stripe.Checkout.Session;
+    if (session.metadata?.flow !== "vendor_signup") return NextResponse.json({ received: true, ignored: event.type });
+    const { draftFromCheckoutSession } = await import("@/lib/vendor-checkout");
+    const { provisionVendorAccount } = await import("@/lib/vendor-provision");
+    const quoted = draftFromCheckoutSession(session);
+    if ("ignored" in quoted) return NextResponse.json({ received: true, ignored: event.type });
+    if (!("draft" in quoted)) return NextResponse.json({ received: true, error: quoted.error }, { status: quoted.status });
+    const customerId = typeof session.customer === "string" ? session.customer : session.customer?.id ?? null;
+    const subscriptionId = typeof session.subscription === "string" ? session.subscription : session.subscription?.id ?? null;
+    const saved = await provisionVendorAccount(quoted.draft, {
+      customerId,
+      subscriptionId,
+      checkoutSessionId: session.id,
+    });
+    if (!("subscriber" in saved)) return NextResponse.json({ received: true, error: saved.error }, { status: 500 });
+    return NextResponse.json({ received: true, mode: saved.mode, vendorSignup: true });
   }
 
   if (event.type !== "payment_intent.succeeded" && event.type !== "payment_intent.payment_failed") {

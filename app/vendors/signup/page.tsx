@@ -48,11 +48,15 @@ export default function VendorSignupPage() {
   }
 
   useEffect(() => {
-    const code = new URLSearchParams(window.location.search).get("code");
+    const params = new URLSearchParams(window.location.search);
+    const code = params.get("promo");
     if (code) {
       setPromoInput(code);
       void checkPromo(code);
     }
+    if (params.get("canceled")) setMessage("Checkout was canceled. No charge was made.");
+    const error = params.get("error");
+    if (error) setMessage(error);
   }, []);
 
   async function submit(event: FormEvent) {
@@ -71,6 +75,10 @@ export default function VendorSignupPage() {
     const body = await response.json();
     setBusy(false);
     if (!response.ok) { setMessage(body.error || "Could not create the account."); return; }
+    if (body.checkoutUrl) {
+      window.location.assign(body.checkoutUrl);
+      return;
+    }
     if (body.mode === "live") {
       setMessage(body.message || `Check ${email} for a one-time sign-in link.`);
       if (body.devLink) window.location.assign(body.devLink);
@@ -104,7 +112,10 @@ export default function VendorSignupPage() {
             <span>Online payments</span>
             <ul className="planList">
               <li>A pay-by-card link on every invoice.</li>
-              <li>Card processing is {PAYMENT_PROCESSOR}&apos;s rate, {PROCESSOR_RATE}, passed through. No added percentage. <small>{PROCESSOR_RATE_NOTE}</small></li>
+              <li>
+                The {dollars(VENDOR_PAYMENTS_ADDON_CENTS)}/month add-on enables online payments. Each card payment also incurs {PAYMENT_PROCESSOR}&apos;s processing fee, currently {PROCESSOR_RATE}, in addition to the monthly add-on. portonOS adds no percentage.{" "}
+                <small>{PROCESSOR_RATE_NOTE}</small>
+              </li>
               <li>Promo codes do not discount this add-on.</li>
             </ul>
           </label>

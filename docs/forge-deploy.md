@@ -24,7 +24,7 @@ Copy `.env.example` into Forge Environment. Required for production:
 
 - `NEXT_PUBLIC_APP_URL` = the public Forge hostname (`https://ops.yourdomain.com`)
 - Supabase keys if you want live data
-- `STRIPE_SECRET_KEY`, `NEXT_PUBLIC_STRIPE_PUBLISHABLE_KEY`, `STRIPE_WEBHOOK_SECRET` when you are ready to take real rent
+- `STRIPE_SECRET_KEY`, `NEXT_PUBLIC_STRIPE_PUBLISHABLE_KEY`, `STRIPE_WEBHOOK_SECRET` for workspace and vendor-desk subscriptions
 
 Stripe webhook URL:
 
@@ -32,7 +32,7 @@ Stripe webhook URL:
 https://ops.yourdomain.com/api/rent/webhooks/stripe
 ```
 
-Events: `payment_intent.succeeded`, `payment_intent.payment_failed`.
+Events: `checkout.session.completed`, `payment_intent.succeeded`, `payment_intent.payment_failed`.
 
 Leave Stripe keys empty to keep demo pay. Do not invent live keys.
 
