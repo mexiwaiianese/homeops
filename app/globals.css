@@ -5607,6 +5607,11 @@ a.statLink:hover {
   margin: 4px 0 12px 24px;
   border-radius: 16px;
 }
+.founderTire img.founderPhoto {
+  clear: right;
+  width: min(260px, 40%);
+  margin: 6px 0 12px 24px;
+}
 .founderSign {
   color: var(--ink);
   font-weight: 650;
@@ -5690,8 +5695,10 @@ a.statLink:hover {
   }
 }
 @media (max-width: 640px) {
-  .founderTire img {
+  .founderTire img,
+  .founderTire img.founderPhoto {
     float: none;
+    clear: none;
     display: block;
     width: min(280px, 100%);
     margin: 0 0 12px;

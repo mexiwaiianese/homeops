@@ -252,7 +252,8 @@ export const founderIdentity: {
 
 export type FounderPart =
   | { kind: "text"; text: string }
-  | { kind: "tire"; text: string; src: string; alt: string; width: number; height: number };
+  | { kind: "tire"; text: string; src: string; alt: string; width: number; height: number }
+  | { kind: "portrait"; src: string; alt: string; width: number; height: number };
 
 /** First person, in the operator's own words. */
 export const founderStory: FounderPart[] = [
@@ -279,6 +280,13 @@ export const founderStory: FounderPart[] = [
   {
     kind: "text",
     text: "Fast forward to 2026. Getting passed off from one property manager to the next, I had to change my processes and started looking for a solution that would help simplify my work. Every client's process was different, and I just needed a simple way to send invoices and to report and track the work and NOT get nickled and dimed to death. I needed a platform that could offer top tier USEFULNESS at a predictable cost.",
+  },
+  {
+    kind: "portrait",
+    src: "/about/nate.jpg",
+    alt: "Nate, portonOS founder",
+    width: 1024,
+    height: 1016,
   },
   {
     kind: "text",
