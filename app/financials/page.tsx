@@ -8,8 +8,9 @@ import { moneyCents } from "@/lib/rent";
 import { buildPortfolioIntelligence, type IntelligenceHome as Home, type IntelligenceTransaction as Tx } from "@/lib/portfolio-intelligence";
 import BooksReportView from "@/components/books-report-view";
 import CsvMigration from "@/components/csv-migration";
+import QboSync from "@/components/qbo-sync";
 
-type View = "owners" | "doors" | "bills" | "tenants" | "insights" | "reports" | "migrate";
+type View = "owners" | "doors" | "bills" | "tenants" | "insights" | "reports" | "migrate" | "quickbooks";
 type InsightView = "overview" | "properties" | "services" | "trends" | "review";
 type Charge = {
   id: string;
@@ -86,6 +87,10 @@ export default function BooksPage() {
   }
 
   useEffect(() => { void load(); }, []);
+  useEffect(() => {
+    const flag = new URLSearchParams(window.location.search).get("qbo");
+    if (flag) setView("quickbooks");
+  }, []);
 
   const range = useMemo(() => monthRange(period), [period]);
   const statements = useMemo(
@@ -189,6 +194,7 @@ export default function BooksPage() {
     { id: "tenants", label: "Tenants" },
     { id: "insights", label: "Insights" },
     { id: "reports", label: "Reports" },
+    { id: "quickbooks", label: "QuickBooks" },
     { id: "migrate", label: "Bring in a file" },
   ];
 
@@ -208,7 +214,7 @@ export default function BooksPage() {
           <div>
             <p className="eyebrow">BOOKS</p>
             <h1>Cash by door, owner, and tenant</h1>
-            <p>portonOS is the books. Rent posts when it is collected. Bills post when you mark them paid. Owner draws are recorded here; the bank still moves the money.</p>
+            <p>portonOS reads cash by door, owner, and tenant. Rent posts when it is collected. Bills post when you mark them paid. QuickBooks can stay in sync from the QuickBooks tab.</p>
           </div>
           <div className="headerActions">
             <label className="periodSelectLabel">Period
@@ -496,6 +502,14 @@ export default function BooksPage() {
 
         {view === "reports" && (
           <BooksReportView report={yearReport} variant="app" year={reportYear} onYear={setReportYear} />
+        )}
+
+        {view === "quickbooks" && (
+          <QboSync
+            mode={mode}
+            onSynced={() => void load()}
+            onReview={() => { setView("insights"); setInsightView("review"); }}
+          />
         )}
 
         {view === "migrate" && <CsvMigration mode={mode} onSaved={(message) => { setMsg(message); void load(); }} />}

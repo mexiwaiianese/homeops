@@ -73,12 +73,14 @@ function toRow(organizationId: string, entry: BookEntry) {
 }
 
 export async function listLiveEntries(supabase: SupabaseClient, organizationId: string) {
-  const { data, error } = await supabase
+  const base = () => supabase
     .from("financial_transactions")
     .select("*")
     .eq("organization_id", organizationId)
     .order("tx_date", { ascending: false })
     .limit(2000);
+  let { data, error } = await base().not("qbo_cash", "eq", false);
+  if (error && /qbo_cash/i.test(error.message)) ({ data, error } = await base());
   if (error) throw new Error(error.message);
   return (data ?? []).map(mapEntry);
 }

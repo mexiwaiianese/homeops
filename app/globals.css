@@ -1017,6 +1017,43 @@ button:disabled {
 .span2 {
   grid-column: span 2;
 }
+.qboActions {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 10px;
+  align-items: center;
+  margin: 12px 0 18px;
+}
+.qboActions a.primary {
+  display: inline-block;
+  text-decoration: none;
+}
+.qboModes {
+  display: grid;
+  gap: 8px;
+  margin: 8px 0 14px;
+  padding: 0;
+  border: 0;
+}
+.qboModes legend {
+  margin-bottom: 4px;
+}
+.qboModes label {
+  display: grid;
+  grid-template-columns: auto 1fr;
+  gap: 10px;
+  align-items: start;
+  padding: 10px 12px;
+  border: 1px solid var(--line);
+  border-radius: 10px;
+  background: #fff;
+}
+.qboModes label strong { display: block; }
+.qboModes label span span {
+  color: #59625c;
+  font-size: 14px;
+  font-weight: 500;
+}
 .modalActions {
   display: flex;
   justify-content: flex-end;
