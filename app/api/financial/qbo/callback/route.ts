@@ -1,4 +1,4 @@
-import { NextResponse } from "next/server";
+import { foundRedirect, sameOriginPath } from "@/lib/http-security";
 import { saveQboConnection, sessionFor, updateQboConnection } from "@/lib/qbo/connection";
 import { createSupabaseAdminClient } from "@/lib/supabase/admin";
 import { appOrigin, exchangeQuickBooksCode, quickBooksRedirectUri, quickBooksRequest, verifyOauthState } from "@/lib/qbo/quickbooks";
@@ -11,9 +11,9 @@ export async function GET(request: Request) {
   const state = verifyOauthState(url.searchParams.get("state") || "");
   const code = url.searchParams.get("code") || "";
   const realmId = url.searchParams.get("realmId") || "";
-  if (!state || !code || !realmId) return NextResponse.redirect(new URL("/financials?qbo=invalid", origin));
+  if (!state || !code || !realmId) return foundRedirect(new URL("/financials?qbo=invalid", origin));
   const admin = createSupabaseAdminClient();
-  if (!admin) return NextResponse.redirect(new URL("/financials?qbo=setup", origin));
+  if (!admin) return foundRedirect(new URL("/financials?qbo=setup", origin));
   try {
     const credentials = await exchangeQuickBooksCode({ code, redirectUri: quickBooksRedirectUri(origin) });
     const connection = await saveQboConnection(admin, {
@@ -29,8 +29,9 @@ export async function GET(request: Request) {
     } catch {
       // The connection is saved. The next sync can read the company name.
     }
-    return NextResponse.redirect(new URL(state.returnTo || "/financials?qbo=connected", origin));
+    const next = sameOriginPath(state.returnTo, "/financials?qbo=connected");
+    return foundRedirect(new URL(next, origin));
   } catch {
-    return NextResponse.redirect(new URL("/financials?qbo=failed", origin));
+    return foundRedirect(new URL("/financials?qbo=failed", origin));
   }
 }

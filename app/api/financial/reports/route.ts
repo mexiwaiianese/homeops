@@ -11,7 +11,8 @@ function csvFile(filename: string, body: string) {
     headers: {
       "Content-Type": "text/csv; charset=utf-8",
       "Content-Disposition": `attachment; filename="${filename}"`,
-      "Cache-Control": "no-store",
+      "Cache-Control": "no-cache, no-store",
+      Pragma: "no-cache",
     },
   });
 }

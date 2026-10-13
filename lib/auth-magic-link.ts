@@ -1,11 +1,12 @@
 import { validEmail, normalizeEmail } from "@/lib/demo-access";
+import { sameOriginPath } from "@/lib/http-security";
 import { createSupabaseAdminClient } from "@/lib/supabase/admin";
+import { createSupabaseServerClient } from "@/lib/supabase/server";
 import { sendVendorEmail } from "@/lib/vendor-outreach";
 
 export function safeNextPath(next: string | null | undefined) {
-  const value = String(next || "").trim();
-  if (!value || value === "/") return "/login";
-  return value.startsWith("/") && !value.startsWith("//") ? value : "/login";
+  const path = sameOriginPath(next, "/login");
+  return path === "/" ? "/login" : path;
 }
 
 function missingUser(message: string) {
@@ -82,5 +83,16 @@ export async function createPasswordAccount(input: { email: string; password: st
     }
     return { error: created.error.message, status: 400 as const };
   }
+  return { ok: true as const };
+}
+
+export async function signInWithPasswordAccount(input: { email: string; password: string }) {
+  const email = normalizeEmail(input.email);
+  if (!validEmail(email)) return { error: "Enter a valid email address.", status: 400 as const };
+  if (input.password.length < 8) return { error: "Use a password with at least 8 characters.", status: 400 as const };
+  const supabase = await createSupabaseServerClient();
+  if (!supabase) return { error: "Sign-in is not configured on this server.", status: 503 as const };
+  const { error } = await supabase.auth.signInWithPassword({ email, password: input.password });
+  if (error) return { error: "That email or password is not valid.", status: 401 as const };
   return { ok: true as const };
 }

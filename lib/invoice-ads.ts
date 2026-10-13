@@ -142,8 +142,17 @@ export function normalizeInvoiceAd(audience: InvoiceAdAudience, input: Partial<I
 type Store = Map<InvoiceAdAudience, InvoiceAd>;
 const store: Store = ((globalThis as typeof globalThis & { __homeopsInvoiceAds?: Store }).__homeopsInvoiceAds ??= new Map());
 
+export function presentInvoiceAd(ad: InvoiceAd): InvoiceAd {
+  return {
+    ...ad,
+    html: sanitizeInvoiceAdHtml(ad.html),
+    imageUrl: ad.imageUrl ? safeUrl(ad.imageUrl, true) : null,
+    ctaUrl: safeUrl(ad.ctaUrl, false) || "",
+  };
+}
+
 export function getDemoInvoiceAd(audience: InvoiceAdAudience) {
-  return store.get(audience) || INVOICE_AD_DEFAULTS[audience];
+  return presentInvoiceAd(store.get(audience) || INVOICE_AD_DEFAULTS[audience]);
 }
 
 export function saveDemoInvoiceAd(ad: InvoiceAd) {

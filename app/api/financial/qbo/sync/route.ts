@@ -1,6 +1,7 @@
 import { NextResponse } from "next/server";
 import { loadQboConnection, requireBooksManager } from "@/lib/qbo/connection";
 import { isSyncDue } from "@/lib/qbo/schedule";
+import { publicQboError } from "@/lib/qbo/quickbooks";
 import { runQboSync } from "@/lib/qbo/sync";
 
 export const dynamic = "force-dynamic";
@@ -17,11 +18,11 @@ export async function POST() {
       nextRunAt: connection.nextRunAt,
     }) ? connection.syncMode : "manual";
     const result = await runQboSync(auth.admin, auth.organizationId, trigger);
+    const summary = { pulled: result.pulled, pushed: result.pushed, matched: result.matched, review: result.review };
     if (result.skipped) return NextResponse.json({ error: "A QuickBooks sync is already running." }, { status: 409 });
-    if (!result.ok) return NextResponse.json({ error: result.error || result.errors[0] || "QuickBooks sync failed.", result }, { status: 502 });
-    return NextResponse.json({ ok: true, result });
+    if (!result.ok) return NextResponse.json({ error: publicQboError(result.error || result.errors[0] || "QuickBooks sync failed."), result: summary }, { status: 502 });
+    return NextResponse.json({ ok: true, result: summary });
   } catch (error) {
-    const message = error instanceof Error ? error.message : "QuickBooks sync failed.";
-    return NextResponse.json({ error: message }, { status: 500 });
+    return NextResponse.json({ error: publicQboError(error) }, { status: 500 });
   }
 }

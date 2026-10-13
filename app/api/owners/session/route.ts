@@ -4,9 +4,8 @@ import { getAuthedContext } from "@/lib/backend";
 import { baseCookieOptions, personaActiveCookie } from "@/lib/persona-login";
 import { applyClearedDemoCookies } from "@/lib/demo-access";
 import { personaSignOutPath } from "@/lib/persona-sign-out";
+import { sessionCookieOptions } from "@/lib/http-security";
 import { demoOwnerSessionCookie, ownerPortalAccess } from "@/lib/owner-portal-access";
-
-const cookieOptions = { httpOnly: true, sameSite: "lax" as const, path: "/", maxAge: 60 * 60 * 24 * 14 };
 
 export async function GET(request: Request) {
   const access = await ownerPortalAccess(request);
@@ -22,7 +21,7 @@ export async function POST(request: Request) {
   const owner = demoOwners.find((row) => row.id === String(body.ownerId || ""));
   if (!owner) return NextResponse.json({ error: "Choose an owner." }, { status: 400 });
   const response = NextResponse.json({ mode: "demo", ownerId: owner.id });
-  response.cookies.set(demoOwnerSessionCookie, owner.id, cookieOptions);
+  response.cookies.set(demoOwnerSessionCookie, owner.id, sessionCookieOptions(60 * 60 * 24 * 14));
   return response;
 }
 
@@ -31,7 +30,7 @@ export async function DELETE() {
   if (supabase) await supabase.auth.signOut().catch(() => undefined);
   const response = NextResponse.json({ signedOut: true, redirect: await personaSignOutPath("/owners/login") });
   applyClearedDemoCookies(response);
-  response.cookies.set(demoOwnerSessionCookie, "", { ...cookieOptions, maxAge: 0 });
+  response.cookies.set(demoOwnerSessionCookie, "", sessionCookieOptions(0));
   response.cookies.set(personaActiveCookie, "", baseCookieOptions(0));
   return response;
 }

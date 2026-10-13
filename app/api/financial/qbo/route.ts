@@ -1,6 +1,6 @@
 import { NextResponse } from "next/server";
 import { disconnectQbo, listSyncRuns, loadQboConnection, publicQboStatus, requireBooksManager, updateQboConnection } from "@/lib/qbo/connection";
-import { appOrigin, quickBooksRedirectUri } from "@/lib/qbo/quickbooks";
+import { appOrigin, publicQboError, quickBooksRedirectUri } from "@/lib/qbo/quickbooks";
 import { normalizeSettings } from "@/lib/qbo/schedule";
 
 export const dynamic = "force-dynamic";
@@ -100,7 +100,7 @@ async function openCounts(admin: Parameters<typeof loadQboConnection>[0], organi
 }
 
 function setupMessage(error: unknown) {
-  const message = error instanceof Error ? error.message : "QuickBooks could not be loaded.";
+  const message = publicQboError(error);
   if (/qbo_|accounting_connections|schema cache|column/i.test(message)) {
     return "Apply supabase/migrations/20261012180000_qbo_sync.sql, then refresh Books.";
   }

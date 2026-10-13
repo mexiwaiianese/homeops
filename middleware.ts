@@ -1,5 +1,6 @@
 import { createServerClient, type SetAllCookies } from "@supabase/ssr";
 import { NextResponse, type NextRequest } from "next/server";
+import { applyNoStore, crossSiteMutation, httpsRedirect, rejectedMethod, supabaseCookieOptions } from "@/lib/http-security";
 
 const PUBLIC_MARKETING = new Set([
   "/",
@@ -46,30 +47,38 @@ function expirePeekCookie(response: NextResponse) {
 }
 
 export async function middleware(request: NextRequest) {
+  const blocked = rejectedMethod(request.method);
+  if (blocked) return blocked;
+  const upgraded = httpsRedirect(request);
+  if (upgraded) return upgraded;
+  if (crossSiteMutation(request)) {
+    return applyNoStore(NextResponse.json({ error: "Cross-site request blocked." }, { status: 403 }));
+  }
+
   const { pathname, searchParams } = request.nextUrl;
   const code = searchParams.get("code");
   const tokenHash = searchParams.get("token_hash");
   if ((code || tokenHash) && pathname !== "/auth/callback" && !pathname.startsWith("/api/")) {
     const dest = request.nextUrl.clone();
     dest.pathname = "/auth/callback";
-    return NextResponse.redirect(dest);
+    return applyNoStore(NextResponse.redirect(dest, 302), "/auth/callback");
   }
 
   const dropPeek = peekCookie(request) && leftTheDemo(pathname);
 
   if (PUBLIC_MARKETING.has(pathname) || pathname.startsWith("/vs/")) {
     const response = NextResponse.next();
-    return dropPeek ? expirePeekCookie(response) : response;
+    return applyNoStore(dropPeek ? expirePeekCookie(response) : response, pathname);
   }
 
   // "Peek first - no email" sessions may read, not write, and only while they stay in the demo.
   // Leaving for signup, login, or the marketing site expires the peek cookie and allows the request.
   if (!dropPeek && pathname.startsWith("/api/") && !["GET", "HEAD", "OPTIONS"].includes(request.method) && !PEEK_WRITE_ALLOWED.has(pathname)) {
     if (peekCookie(request)) {
-      return NextResponse.json(
+      return applyNoStore(NextResponse.json(
         { error: "This is a read-only peek. Email yourself a demo link to make changes." },
         { status: 403 },
-      );
+      ), pathname);
     }
   }
 
@@ -77,11 +86,12 @@ export async function middleware(request: NextRequest) {
   const key = process.env.NEXT_PUBLIC_SUPABASE_PUBLISHABLE_KEY || process.env.NEXT_PUBLIC_SUPABASE_ANON_KEY;
   if (!url || !key) {
     const response = NextResponse.next();
-    return dropPeek ? expirePeekCookie(response) : response;
+    return applyNoStore(dropPeek ? expirePeekCookie(response) : response, pathname);
   }
 
   let response = NextResponse.next({ request });
   const supabase = createServerClient(url, key, {
+    cookieOptions: supabaseCookieOptions(),
     cookies: {
       getAll: () => request.cookies.getAll(),
       setAll: (cookiesToSet: Parameters<SetAllCookies>[0]) => {
@@ -92,7 +102,7 @@ export async function middleware(request: NextRequest) {
     },
   });
   await supabase.auth.getUser();
-  return dropPeek ? expirePeekCookie(response) : response;
+  return applyNoStore(dropPeek ? expirePeekCookie(response) : response, pathname);
 }
 
 export const config = { matcher: ["/((?!_next/static|_next/image|favicon.ico|brand/|product/|about/).*)"] };

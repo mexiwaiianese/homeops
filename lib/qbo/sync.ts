@@ -10,7 +10,7 @@ import {
   type QboAlias,
   type QboLookups,
 } from "@/lib/qbo/interpret";
-import { credentialsFromEncrypted, qboQuery, QboAuthError, quickBooksRequest, type QboSession } from "@/lib/qbo/quickbooks";
+import { credentialsFromEncrypted, publicQboError, qboDay, qboQuery, qboQuoted, QboAuthError, quickBooksRequest, type QboSession } from "@/lib/qbo/quickbooks";
 import { AUTOMATIC_INTERVAL_MS, nextRecurringRun, type QboSchedule, type QboSyncMode } from "@/lib/qbo/schedule";
 
 const ENTITIES = ["Purchase", "BillPayment", "Payment", "SalesReceipt", "Deposit", "RefundReceipt", "JournalEntry", "Invoice", "Bill"] as const;
@@ -117,7 +117,7 @@ export async function runQboSync(admin: SupabaseClient, organizationId: string, 
     return result;
   } catch (error) {
     const auth = error instanceof QboAuthError;
-    const message = error instanceof Error ? error.message : "QuickBooks sync failed.";
+    const message = publicQboError(error);
     result.error = message;
     pushError(result, message);
     status = auth ? "error" : "connected";
@@ -131,7 +131,7 @@ export async function runQboSync(admin: SupabaseClient, organizationId: string, 
 function sessionFrom(admin: SupabaseClient, connection: QboConnection): QboSession {
   return {
     realmId: connection.realmId,
-    credentials: credentialsFromEncrypted(connection.encryptedCredentials),
+    credentials: { ...credentialsFromEncrypted(connection.encryptedCredentials), realmId: connection.realmId },
     persist: (next) => persistQboCredentials(admin, connection, next),
   };
 }
@@ -184,10 +184,11 @@ async function pullEntity(input: {
   aliases: QboAlias[];
   started: Date;
 }) {
-  const cursor = input.cursors[input.entity];
+  const cursor = qboDay(shiftDate(input.cursors[input.entity] || "", -2));
+  const history = qboDay(input.historyStart) || monthsAgo(18);
   const where = cursor
-    ? `MetaData.LastUpdatedTime > '${shiftDate(cursor, -2)}'`
-    : `TxnDate >= '${input.historyStart}'`;
+    ? `MetaData.LastUpdatedTime > '${cursor}'`
+    : `TxnDate >= '${history}'`;
   const order = cursor ? "MetaData.LastUpdatedTime" : "TxnDate";
   const fetched = await queryPages(input.session, input.entity, where, order);
   const lines: InterpretedLine[] = [];
@@ -210,6 +211,11 @@ async function pullEntity(input: {
 }
 
 async function queryPages(session: QboSession, entity: string, where: string, order: string) {
+  const allowedOrder = order === "MetaData.LastUpdatedTime" || order === "TxnDate";
+  const allowedWhere = /^MetaData\.LastUpdatedTime > '\d{4}-\d{2}-\d{2}'$/.test(where) || /^TxnDate >= '\d{4}-\d{2}-\d{2}'$/.test(where);
+  if (!(ENTITIES as readonly string[]).includes(entity) || !allowedOrder || !allowedWhere) {
+    throw new Error("QuickBooks query was rejected.");
+  }
   const rows: Record<string, any>[] = [];
   for (let page = 0; page < PAGES; page += 1) {
     const start = page * PAGE + 1;
@@ -344,7 +350,9 @@ async function closeQboRows(admin: SupabaseClient, organizationId: string, exter
 }
 
 async function pullDeletes(admin: SupabaseClient, organizationId: string, session: QboSession, changedSince: string) {
-  const payload = await quickBooksRequest(session, `cdc?entities=${ENTITIES.join(",")}&changedSince=${encodeURIComponent(changedSince)}`);
+  const since = new Date(changedSince);
+  if (Number.isNaN(since.getTime())) return 0;
+  const payload = await quickBooksRequest(session, `cdc?entities=${ENTITIES.join(",")}&changedSince=${encodeURIComponent(since.toISOString())}`);
   let removed = 0;
   const blocks = (payload.CDCResponse as { QueryResponse?: Record<string, unknown>[] }[] | undefined) || [];
   for (const block of blocks) {
@@ -445,7 +453,7 @@ async function pushHomeOps(input: {
       pushed += 1;
     } catch (error) {
       if (error instanceof QboAuthError) throw error;
-      errorMessage = error instanceof Error ? error.message : "A HomeOps entry could not be copied to QuickBooks.";
+      errorMessage = publicQboError(error);
     }
   }
   return { pushed, error: errorMessage };
@@ -542,7 +550,7 @@ async function ensureNamedAccount(session: QboSession, accounts: Map<string, Qbo
     accounts.set(account.Id, account);
     return account.Id;
   } catch (error) {
-    const payload = await qboQuery(session, `select * from Account where Name = '${name.replace(/'/g, "\\'")}'`);
+    const payload = await qboQuery(session, `select Id, Name, AccountType, Active from Account where Name = ${qboQuoted(name)}`);
     const existing = ((payload.QueryResponse as { Account?: QboAccount[] } | undefined)?.Account) || [];
     if (existing[0]?.Id) {
       accounts.set(existing[0].Id, existing[0]);
@@ -625,10 +633,13 @@ function monthsAgo(months: number) {
 }
 
 function shiftDate(iso: string, days: number) {
-  const [year, month, day] = iso.slice(0, 10).split("-").map(Number);
-  return new Date(Date.UTC(year, month - 1, day + days)).toISOString().slice(0, 10);
+  const day = qboDay(iso);
+  if (!day) return "";
+  const [year, month, date] = day.split("-").map(Number);
+  return new Date(Date.UTC(year, month - 1, date + days)).toISOString().slice(0, 10);
 }
 
 function pushError(result: QboSyncResult, message: string) {
-  if (result.errors.length < 8) result.errors.push(message);
+  const safe = publicQboError(message);
+  if (result.errors.length < 8) result.errors.push(safe);
 }

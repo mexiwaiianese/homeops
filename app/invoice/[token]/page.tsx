@@ -4,16 +4,17 @@ import { Suspense, useEffect, useState } from "react";
 import { useParams, useRouter, useSearchParams } from "next/navigation";
 import BrandLockup from "@/components/brand-lockup";
 import PdfSheet from "@/components/pdf-sheet";
-import { INVOICE_AD_DEFAULTS, type InvoiceAd, type InvoiceAdAudience } from "@/lib/invoice-ads";
+import { INVOICE_AD_DEFAULTS, presentInvoiceAd, type InvoiceAd, type InvoiceAdAudience } from "@/lib/invoice-ads";
 
 function InvoiceAdCopy({ ad }: { ad: InvoiceAd }) {
+  const shown = presentInvoiceAd(ad);
   return (
     <>
-      {ad.eyebrow && <p className="eyebrow">{ad.eyebrow}</p>}
-      <h1>{ad.headline}</h1>
-      {ad.imageUrl && <img className="invoiceAdImage" src={ad.imageUrl} alt={ad.imageAlt || ""} />}
-      <div className="invoiceAdBody" dangerouslySetInnerHTML={{ __html: ad.html }} />
-      {ad.ctaLabel && ad.ctaUrl && <a className="invoiceAdMore" href={ad.ctaUrl}>{ad.ctaLabel} →</a>}
+      {shown.eyebrow && <p className="eyebrow">{shown.eyebrow}</p>}
+      <h1>{shown.headline}</h1>
+      {shown.imageUrl && <img className="invoiceAdImage" src={shown.imageUrl} alt={shown.imageAlt || ""} />}
+      <div className="invoiceAdBody" dangerouslySetInnerHTML={{ __html: shown.html }} />
+      {shown.ctaLabel && shown.ctaUrl && <a className="invoiceAdMore" href={shown.ctaUrl}>{shown.ctaLabel} →</a>}
     </>
   );
 }

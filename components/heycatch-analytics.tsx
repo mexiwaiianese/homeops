@@ -9,6 +9,16 @@ analytics.init({
     frameworkVersion: "15",
     agent: "cursor",
   },
+  autocapture: false,
+  maskAllText: true,
+  maskAllElementAttributes: true,
+  persistence: "localStorage",
+  beforeSend(event) {
+    if (!event) return null;
+    const blob = JSON.stringify(event.properties || {});
+    if (/access_token|refresh_token|client_secret|encrypted_credentials|\/financials|\/api\/financial|quickbooks/i.test(blob)) return null;
+    return event;
+  },
 });
 
 export default function HeyCatchAnalytics() {

@@ -7,6 +7,7 @@ import { createVendorCheckoutSession } from "@/lib/vendor-checkout";
 import { provisionVendorAccount } from "@/lib/vendor-provision";
 import { dollars } from "@/lib/vendor-plans";
 import { stripeReady } from "@/lib/stripe";
+import { sessionCookieOptions } from "@/lib/http-security";
 import { demoVendorSessionCookie } from "@/lib/vendor-job-demo";
 
 export async function POST(request: Request) {
@@ -85,6 +86,6 @@ export async function POST(request: Request) {
 
   const response = NextResponse.json({ ...payload, mode: "demo" as const });
   applyClearedDemoCookies(response);
-  response.cookies.set(demoVendorSessionCookie, saved.subscriber.id, { httpOnly: true, sameSite: "lax", path: "/", maxAge: 60 * 60 * 24 * 14 });
+  response.cookies.set(demoVendorSessionCookie, saved.subscriber.id, sessionCookieOptions(60 * 60 * 24 * 14));
   return response;
 }

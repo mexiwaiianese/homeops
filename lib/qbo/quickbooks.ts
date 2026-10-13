@@ -1,5 +1,8 @@
 import { createHmac, timingSafeEqual } from "node:crypto";
+import { appOrigin } from "@/lib/http-security";
 import { decryptSecret, encryptSecret } from "@/lib/qbo/crypto";
+
+export { appOrigin };
 
 const AUTH = "https://appcenter.intuit.com/connect/oauth2";
 const TOKEN = "https://oauth.platform.intuit.com/oauth2/v1/tokens/bearer";
@@ -9,6 +12,7 @@ export type QboCredentials = {
   refreshToken: string;
   expiresAt: string;
   tokenType?: string;
+  realmId?: string;
 };
 
 export type QboSession = {
@@ -38,20 +42,13 @@ function apiBase() {
     : "https://quickbooks.api.intuit.com/v3/company";
 }
 
-export function appOrigin(request: Request) {
-  const requestOrigin = new URL(request.url).origin;
-  const configured = process.env.NEXT_PUBLIC_APP_URL?.trim().replace(/\/$/, "");
-  if (!configured || /localhost|127\.0\.0\.1/.test(requestOrigin)) return requestOrigin;
-  return configured;
-}
-
 export function quickBooksRedirectUri(origin: string) {
   return `${origin}/api/financial/qbo/callback`;
 }
 
 function stateSecret() {
-  const secret = process.env.INTEGRATION_ENCRYPTION_KEY?.trim() || process.env.SUPABASE_SERVICE_ROLE_KEY?.trim();
-  if (!secret) throw new Error("INTEGRATION_ENCRYPTION_KEY is required before QuickBooks can connect.");
+  const secret = process.env.INTEGRATION_ENCRYPTION_KEY?.trim();
+  if (!secret) throw new Error("Set INTEGRATION_ENCRYPTION_KEY before QuickBooks can connect.");
   return secret;
 }
 
@@ -103,6 +100,36 @@ export function encryptCredentials(value: QboCredentials) {
   return encryptSecret(JSON.stringify(value));
 }
 
+/** Quote a value for a QuickBooks query. Dates must already be YYYY-MM-DD. */
+export function qboQuoted(value: string) {
+  const clean = value.replace(/[\u0000-\u001f]/g, "").slice(0, 200);
+  return `'${clean.replace(/\\/g, "\\\\").replace(/'/g, "\\'")}'`;
+}
+
+export function qboDay(value: string) {
+  const match = /^(\d{4})-(\d{2})-(\d{2})/.exec(value.trim());
+  if (!match) return "";
+  const year = Number(match[1]);
+  const month = Number(match[2]);
+  const day = Number(match[3]);
+  const date = new Date(Date.UTC(year, month - 1, day));
+  if (date.getUTCFullYear() !== year || date.getUTCMonth() !== month - 1 || date.getUTCDate() !== day) return "";
+  return `${match[1]}-${match[2]}-${match[3]}`;
+}
+
+export function publicQboError(error: unknown) {
+  const message = typeof error === "string"
+    ? error
+    : error instanceof Error
+      ? error.message
+      : "QuickBooks request failed.";
+  if (/access_token|refresh_token|bearer |client_secret|authorization:/i.test(message)) {
+    return "QuickBooks needs to be connected again.";
+  }
+  const cleaned = message.replace(/\s+/g, " ").trim();
+  return cleaned.slice(0, 180) || "QuickBooks request failed.";
+}
+
 export async function exchangeQuickBooksCode(input: { code: string; redirectUri: string }) {
   return tokenRequest(new URLSearchParams({
     grant_type: "authorization_code",
@@ -117,8 +144,8 @@ export async function quickBooksRequest(session: QboSession, path: string, init?
       grant_type: "refresh_token",
       refresh_token: session.credentials.refreshToken,
     }));
-    session.credentials = refreshed;
-    await session.persist(refreshed);
+    session.credentials = { ...refreshed, realmId: refreshed.realmId || session.credentials.realmId };
+    await session.persist(session.credentials);
   }
   const joiner = path.includes("?") ? "&" : "?";
   const response = await fetch(`${apiBase()}/${encodeURIComponent(session.realmId)}/${path}${joiner}minorversion=75`, {
@@ -132,7 +159,7 @@ export async function quickBooksRequest(session: QboSession, path: string, init?
   });
   const payload = await response.json().catch(() => ({})) as Record<string, unknown>;
   if (response.status === 401) throw new QboAuthError("QuickBooks needs to be connected again.");
-  if (!response.ok) throw new Error(quickBooksError(payload) || `QuickBooks returned ${response.status}.`);
+  if (!response.ok) throw new Error(quickBooksError(payload, response.status));
   return payload;
 }
 
@@ -170,7 +197,9 @@ async function tokenRequest(body: URLSearchParams): Promise<QboCredentials> {
   };
 }
 
-function quickBooksError(payload: Record<string, unknown>) {
-  const fault = payload.Fault as { Error?: { Message?: string; Detail?: string }[] } | undefined;
-  return fault?.Error?.[0]?.Detail || fault?.Error?.[0]?.Message || "";
+function quickBooksError(payload: Record<string, unknown>, status: number) {
+  const fault = payload.Fault as { Error?: { Message?: string }[] } | undefined;
+  const message = fault?.Error?.[0]?.Message?.replace(/\s+/g, " ").trim() || "";
+  if (!message || /token|secret|bearer/i.test(message)) return `QuickBooks returned ${status}.`;
+  return `QuickBooks returned ${status}: ${message.slice(0, 120)}`;
 }

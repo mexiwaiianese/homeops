@@ -1,7 +1,6 @@
 "use client";
 
 import { useEffect, useState } from "react";
-import { createBrowserClient } from "@supabase/ssr";
 import { authErrorMessage } from "@/lib/auth-errors";
 
 const HASH_KEY = "portonos_auth_hash";
@@ -39,16 +38,23 @@ export default function AuthHashNotice() {
     const accessToken = params.get("access_token");
     const refreshToken = params.get("refresh_token");
     const type = (params.get("type") || query.get("type") || "").toLowerCase();
-    if (!accessToken) return;
-
-    const publishableKey = process.env.NEXT_PUBLIC_SUPABASE_PUBLISHABLE_KEY || process.env.NEXT_PUBLIC_SUPABASE_ANON_KEY;
-    const projectUrl = process.env.NEXT_PUBLIC_SUPABASE_PROJECT_URL || process.env.NEXT_PUBLIC_SUPABASE_URL;
-    if (!publishableKey || !projectUrl) return;
-
-    const supabase = createBrowserClient(projectUrl, publishableKey);
-    void supabase.auth.setSession({ access_token: accessToken, refresh_token: refreshToken || "" }).then(() => {
+    if (!accessToken || !refreshToken) {
       sessionStorage.removeItem(HASH_KEY);
       stripHash();
+      return;
+    }
+    void fetch("/api/auth/session", {
+      method: "POST",
+      headers: { "Content-Type": "application/json" },
+      body: JSON.stringify({ accessToken, refreshToken }),
+    }).then(async (response) => {
+      sessionStorage.removeItem(HASH_KEY);
+      stripHash();
+      if (!response.ok) {
+        setTone("error");
+        setMessage("That sign-in link is not valid. Request a new one.");
+        return;
+      }
       const next = type === "signup" || type === "email_change" || type === "email"
         ? "/login?confirmed=1"
         : `/auth/callback${window.location.search}`;

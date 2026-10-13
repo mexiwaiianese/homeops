@@ -1,4 +1,5 @@
 import { NextResponse } from "next/server";
+import { appOrigin, foundRedirect, sessionCookieOptions } from "@/lib/http-security";
 import { draftFromCheckoutSession } from "@/lib/vendor-checkout";
 import { provisionVendorAccount } from "@/lib/vendor-provision";
 import { applyClearedDemoCookies } from "@/lib/demo-access";
@@ -32,7 +33,7 @@ export async function GET(request: Request) {
   });
   if (!("subscriber" in saved)) return signupError(request, saved.error);
 
-  const origin = new URL(request.url).origin;
+  const origin = appOrigin(request);
   const admin = createSupabaseAdminClient();
   if (saved.mode === "live" && admin) {
     const { data } = await admin.auth.admin.generateLink({
@@ -43,7 +44,7 @@ export async function GET(request: Request) {
     const hashed = data?.properties?.hashed_token;
     const verifyType = data?.properties?.verification_type || "magiclink";
     if (hashed) {
-      return NextResponse.redirect(`${origin}/auth/callback?token_hash=${encodeURIComponent(hashed)}&type=${encodeURIComponent(verifyType)}&next=${encodeURIComponent("/vendors/desk")}`);
+      return foundRedirect(`${origin}/auth/callback?token_hash=${encodeURIComponent(hashed)}&type=${encodeURIComponent(verifyType)}&next=${encodeURIComponent("/vendors/desk")}`);
     }
     const dest = new URL("/vendors/login", request.url);
     dest.searchParams.set("email", quoted.draft.email);
@@ -53,6 +54,6 @@ export async function GET(request: Request) {
   const dest = new URL("/vendors/invoices", request.url);
   const response = NextResponse.redirect(dest);
   applyClearedDemoCookies(response);
-  response.cookies.set(demoVendorSessionCookie, saved.subscriber.id, { httpOnly: true, sameSite: "lax", path: "/", maxAge: 60 * 60 * 24 * 14 });
+  response.cookies.set(demoVendorSessionCookie, saved.subscriber.id, sessionCookieOptions(60 * 60 * 24 * 14));
   return response;
 }

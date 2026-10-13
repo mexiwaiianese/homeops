@@ -1,5 +1,5 @@
 import type { SupabaseClient } from "@supabase/supabase-js";
-import { INVOICE_AD_DEFAULTS, type InvoiceAd, type InvoiceAdAudience } from "@/lib/invoice-ads";
+import { INVOICE_AD_DEFAULTS, presentInvoiceAd, type InvoiceAd, type InvoiceAdAudience } from "@/lib/invoice-ads";
 
 function asAd(row: any): InvoiceAd {
   return {
@@ -19,7 +19,7 @@ export async function getLiveInvoiceAd(admin: SupabaseClient, audience: InvoiceA
   const { data, error } = await admin.from("invoice_ads").select("*").eq("audience", audience).maybeSingle();
   // Missing table (migration not run yet) falls back to the built-in copy.
   if (error || !data) return INVOICE_AD_DEFAULTS[audience];
-  return asAd(data);
+  return presentInvoiceAd(asAd(data));
 }
 
 export async function saveLiveInvoiceAd(admin: SupabaseClient, ad: InvoiceAd) {

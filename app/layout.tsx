@@ -1,5 +1,6 @@
 import type { Metadata } from "next";
 import { Cormorant_Garamond, Montserrat } from "next/font/google";
+import Script from "next/script";
 import AuthHashNotice from "@/components/auth-hash-notice";
 import CopyrightFooter from "@/components/copyright-footer";
 import HeyCatchAnalytics from "@/components/heycatch-analytics";
@@ -45,6 +46,9 @@ export default function RootLayout({ children }: Readonly<{ children: React.Reac
   return (
     <html lang="en" className={`${montserrat.variable} ${cormorant.variable}`}>
       <body className={montserrat.className}>
+        <Script id="strip-auth-credentials" strategy="beforeInteractive">
+          {`(function(){try{var h=location.hash.replace(/^#/,"");if(!h||(h.indexOf("access_token=")===-1&&h.indexOf("refresh_token=")===-1))return;sessionStorage.setItem("portonos_auth_hash",h);history.replaceState(null,"",location.pathname+location.search);}catch(e){}})();`}
+        </Script>
         <JsonLd data={organizationLd()} />
         <HeyCatchAnalytics />
         <div className="site">

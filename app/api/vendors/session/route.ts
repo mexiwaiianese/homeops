@@ -6,6 +6,7 @@ import { applyClearedDemoCookies } from "@/lib/demo-access";
 import { createSupabaseAdminClient } from "@/lib/supabase/admin";
 import { linkLiveSignup } from "@/lib/vendor-billing-live";
 import { vendors as demoVendors } from "@/lib/vendor-demo";
+import { sessionCookieOptions } from "@/lib/http-security";
 import { demoVendorSessionCookie } from "@/lib/vendor-job-demo";
 import { demoVendorFromCookies } from "@/lib/vendor-session";
 
@@ -57,7 +58,7 @@ export async function POST(request: Request) {
       mode: "demo",
       vendor: { id: vendor.id, name: vendor.name, trade: vendor.trade, email: vendor.email, city: vendor.city },
     });
-    response.cookies.set(demoVendorSessionCookie, vendor.id, { httpOnly: true, sameSite: "lax", path: "/", maxAge: 60 * 60 * 24 * 14 });
+    response.cookies.set(demoVendorSessionCookie, vendor.id, sessionCookieOptions(60 * 60 * 24 * 14));
     return response;
   }
   return NextResponse.json({ error: "Use the magic-link form to sign in as a vendor." }, { status: 400 });
@@ -68,7 +69,7 @@ export async function DELETE() {
   if (supabase && user) await supabase.auth.signOut().catch(() => undefined);
   const response = NextResponse.json({ signedOut: true, redirect: await personaSignOutPath("/vendors/login") });
   applyClearedDemoCookies(response);
-  response.cookies.set(demoVendorSessionCookie, "", { httpOnly: true, sameSite: "lax", path: "/", maxAge: 0 });
+  response.cookies.set(demoVendorSessionCookie, "", sessionCookieOptions(0));
   response.cookies.set(personaActiveCookie, "", baseCookieOptions(0));
   return response;
 }

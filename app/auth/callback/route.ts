@@ -1,5 +1,5 @@
-import { NextResponse } from "next/server";
 import type { EmailOtpType, User } from "@supabase/supabase-js";
+import { appOrigin, foundRedirect } from "@/lib/http-security";
 import { isOperatorAdmin } from "@/lib/operator-admin";
 import { applyClearedDemoCookies } from "@/lib/demo-access";
 import { createSupabaseAdminClient } from "@/lib/supabase/admin";
@@ -33,7 +33,8 @@ async function consumeTokenHash(supabase: NonNullable<Awaited<ReturnType<typeof 
 }
 
 export async function GET(request: Request) {
-  const { searchParams, origin } = new URL(request.url);
+  const { searchParams } = new URL(request.url);
+  const origin = appOrigin(request);
   const code = searchParams.get("code");
   const tokenHash = searchParams.get("token_hash");
   const type = (searchParams.get("type") || "").toLowerCase();
@@ -52,7 +53,7 @@ export async function GET(request: Request) {
   } else if (tokenHash) {
     dest = "/login?error=otp_expired";
   }
-  const response = NextResponse.redirect(`${origin}${dest}`);
+  const response = foundRedirect(`${origin}${dest}`);
   applyClearedDemoCookies(response);
   return response;
 }

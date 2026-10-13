@@ -2,7 +2,7 @@ import type { SupabaseClient } from "@supabase/supabase-js";
 import { NextResponse } from "next/server";
 import { getAuthedContext } from "@/lib/backend";
 import { createSupabaseAdminClient } from "@/lib/supabase/admin";
-import { credentialsFromEncrypted, encryptCredentials, quickBooksConfigured, quickBooksEnvironment, type QboCredentials, type QboSession } from "@/lib/qbo/quickbooks";
+import { credentialsFromEncrypted, encryptCredentials, publicQboError, quickBooksConfigured, quickBooksEnvironment, type QboCredentials, type QboSession } from "@/lib/qbo/quickbooks";
 import { isSyncDue, type QboSchedule, type QboSyncMode } from "@/lib/qbo/schedule";
 
 const MANAGERS = new Set(["owner", "admin", "manager", "staff"]);
@@ -56,7 +56,9 @@ export async function loadQboConnection(admin: SupabaseClient, organizationId: s
     .eq("connection_id", data.id)
     .maybeSingle();
   if (secretError) throw new Error(secretError.message);
-  return mapConnection(data, String(secret?.encrypted_credentials || ""));
+  const encrypted = String(secret?.encrypted_credentials || "");
+  const realmId = await sealRealm(admin, data, encrypted);
+  return mapConnection({ ...data, realm_id: realmId }, encrypted);
 }
 
 export async function saveQboConnection(admin: SupabaseClient, input: {
@@ -73,7 +75,7 @@ export async function saveQboConnection(admin: SupabaseClient, input: {
     organization_id: input.organizationId,
     provider: "quickbooks_online",
     status: "connected",
-    realm_id: input.realmId,
+    realm_id: null,
     company_name: input.companyName || existing?.companyName || "",
     metadata: input.metadata || existing?.metadata || {},
     last_error: "",
@@ -85,14 +87,36 @@ export async function saveQboConnection(admin: SupabaseClient, input: {
     : admin.from("accounting_connections").insert({ ...payload, sync_mode: "manual", schedule: {} });
   const { data, error } = await query.select("*").single();
   if (error) throw new Error(error.message);
+  const encryptedCredentials = encryptCredentials({ ...input.credentials, realmId: input.realmId });
   const { error: secretError } = await admin.from("qbo_credentials").upsert({
     connection_id: data.id,
     organization_id: input.organizationId,
-    encrypted_credentials: encryptCredentials(input.credentials),
+    encrypted_credentials: encryptedCredentials,
     updated_at: now,
   });
   if (secretError) throw new Error(secretError.message);
-  return mapConnection(data, encryptCredentials(input.credentials));
+  return mapConnection({ ...data, realm_id: input.realmId }, encryptedCredentials);
+}
+
+async function sealRealm(admin: SupabaseClient, row: Record<string, any>, encrypted: string) {
+  const plaintext = String(row.realm_id || "");
+  if (!encrypted) return plaintext;
+  try {
+    const credentials = credentialsFromEncrypted(encrypted);
+    if (credentials.realmId) {
+      if (plaintext) await admin.from("accounting_connections").update({ realm_id: null }).eq("id", row.id);
+      return credentials.realmId;
+    }
+    if (!plaintext) return "";
+    await admin.from("qbo_credentials").update({
+      encrypted_credentials: encryptCredentials({ ...credentials, realmId: plaintext }),
+      updated_at: new Date().toISOString(),
+    }).eq("connection_id", row.id);
+    await admin.from("accounting_connections").update({ realm_id: null }).eq("id", row.id);
+    return plaintext;
+  } catch {
+    return plaintext;
+  }
 }
 
 export async function updateQboConnection(admin: SupabaseClient, organizationId: string, patch: Record<string, unknown>) {
@@ -105,10 +129,11 @@ export async function updateQboConnection(admin: SupabaseClient, organizationId:
 }
 
 export async function persistQboCredentials(admin: SupabaseClient, connection: QboConnection, credentials: QboCredentials) {
+  const next = { ...credentials, realmId: credentials.realmId || connection.realmId };
   const { error } = await admin.from("qbo_credentials").upsert({
     connection_id: connection.id,
     organization_id: connection.organizationId,
-    encrypted_credentials: encryptCredentials(credentials),
+    encrypted_credentials: encryptCredentials(next),
     updated_at: new Date().toISOString(),
   });
   if (error) throw new Error(error.message);
@@ -118,7 +143,7 @@ export function sessionFor(admin: SupabaseClient, connection: QboConnection): Qb
   if (!connection.encryptedCredentials) throw new Error("Connect QuickBooks first.");
   return {
     realmId: connection.realmId,
-    credentials: credentialsFromEncrypted(connection.encryptedCredentials),
+    credentials: { ...credentialsFromEncrypted(connection.encryptedCredentials), realmId: connection.realmId },
     persist: (next) => persistQboCredentials(admin, connection, next),
   };
 }
@@ -173,12 +198,11 @@ export function publicQboStatus(connection: QboConnection | null, extra: {
     redirectUri: extra.redirectUri,
     status,
     companyName: connection?.companyName || "",
-    realmId: connection?.realmId || "",
     syncMode,
     schedule: connection?.schedule || {},
     nextRunAt,
     lastSyncedAt: connection?.lastSyncedAt || null,
-    lastError: connection?.lastError || "",
+    lastError: connection?.lastError ? publicQboError(connection.lastError) : "",
     due: connection ? isSyncDue({ status, syncMode, nextRunAt }) : false,
     needsReview: extra.needsReview || 0,
     openItems: extra.openItems || [],

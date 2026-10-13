@@ -1,12 +1,12 @@
 import { createCipheriv, createDecipheriv, createHash, randomBytes } from "node:crypto";
 
 function key() {
+  // AES-256 key material lives only in INTEGRATION_ENCRYPTION_KEY, outside source control.
   const configured = process.env.INTEGRATION_ENCRYPTION_KEY?.trim();
-  if (!configured && process.env.NODE_ENV === "production") {
-    throw new Error("INTEGRATION_ENCRYPTION_KEY is required before QuickBooks can connect.");
+  if (!configured || configured.length < 32) {
+    throw new Error("Set INTEGRATION_ENCRYPTION_KEY to a secret of at least 32 characters before QuickBooks can connect.");
   }
-  const material = configured || process.env.SUPABASE_SERVICE_ROLE_KEY?.trim() || "homeops-qbo-development-key";
-  return createHash("sha256").update(material).digest();
+  return createHash("sha256").update(configured).digest();
 }
 
 export function encryptSecret(value: string) {

@@ -164,7 +164,7 @@ export default function QboSync({ mode, onSynced, onReview }: { mode: string; on
       {status.lastError && <div className="backendBanner">{status.lastError}</div>}
       <p className="summary">
         {connected
-          ? `${status.status === "error" ? "Connection needs attention." : "Connected."} ${status.realmId ? `Company ${status.realmId}. ` : ""}${status.lastSyncedAt ? `Last sync ${new Date(status.lastSyncedAt).toLocaleString()}.` : "Sync has not run yet."}`
+          ? `${status.status === "error" ? "Connection needs attention." : "Connected."} ${status.lastSyncedAt ? `Last sync ${new Date(status.lastSyncedAt).toLocaleString()}.` : "Sync has not run yet."}`
           : "Not connected."}
         {status.environment ? ` ${status.environment === "sandbox" ? "Sandbox" : "Production"} app.` : ""}
       </p>
@@ -175,8 +175,8 @@ export default function QboSync({ mode, onSynced, onReview }: { mode: string; on
         {connected && <button className="secondaryBtn" type="button" disabled={busy === "sync"} onClick={() => void syncNow()}>{busy === "sync" ? "Syncing…" : "Sync now"}</button>}
         {connected && <button className="textBtn" type="button" disabled={busy === "disconnect"} onClick={() => void disconnect()}>Disconnect</button>}
       </div>
-      {!status.configured && status.redirectUri && (
-        <p className="summary">Register this redirect on the Intuit app, then set QUICKBOOKS_CLIENT_ID and QUICKBOOKS_CLIENT_SECRET: {status.redirectUri}</p>
+      {status.redirectUri && (
+        <p className="summary">Intuit must list this redirect exactly, then Save: {status.redirectUri}</p>
       )}
 
       {connected && (

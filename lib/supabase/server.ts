@@ -1,5 +1,6 @@
 import { createServerClient, type SetAllCookies } from "@supabase/ssr";
 import { cookies } from "next/headers";
+import { supabaseCookieOptions } from "@/lib/http-security";
 import { isSupabaseConfigured } from "./env";
 
 export async function createSupabaseServerClient() {
@@ -9,6 +10,7 @@ export async function createSupabaseServerClient() {
     (process.env.NEXT_PUBLIC_SUPABASE_PROJECT_URL || process.env.NEXT_PUBLIC_SUPABASE_URL)!,
     (process.env.NEXT_PUBLIC_SUPABASE_PUBLISHABLE_KEY || process.env.NEXT_PUBLIC_SUPABASE_ANON_KEY)!,
     {
+      cookieOptions: supabaseCookieOptions(),
       cookies: {
         getAll: () => cookieStore.getAll(),
         setAll: (cookiesToSet: Parameters<SetAllCookies>[0]) => {

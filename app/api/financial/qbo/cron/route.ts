@@ -2,6 +2,7 @@ import { timingSafeEqual } from "node:crypto";
 import { NextResponse } from "next/server";
 import { createSupabaseAdminClient } from "@/lib/supabase/admin";
 import { isSyncDue, type QboSyncMode } from "@/lib/qbo/schedule";
+import { publicQboError } from "@/lib/qbo/quickbooks";
 import { runQboSync } from "@/lib/qbo/sync";
 
 export const dynamic = "force-dynamic";
@@ -50,7 +51,7 @@ async function runCron(request: Request) {
       skipped: Boolean(result.skipped),
       pulled: result.pulled,
       pushed: result.pushed,
-      error: result.error || result.errors[0] || "",
+      error: (result.error || result.errors[0]) ? publicQboError(result.error || result.errors[0]) : "",
     });
   }
   return NextResponse.json({ ran: results.length, results });

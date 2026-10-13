@@ -29,7 +29,8 @@ export async function GET(_request: Request, { params }: { params: Promise<{ tok
     headers: {
       "Content-Type": "application/pdf",
       "Content-Disposition": `inline; filename="${invoice.number}.pdf"`,
-      "Cache-Control": "private, max-age=300",
+      "Cache-Control": "no-cache, no-store",
+      Pragma: "no-cache",
     },
   });
 }
