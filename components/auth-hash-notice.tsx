@@ -20,7 +20,7 @@ export default function AuthHashNotice() {
     const query = new URLSearchParams(window.location.search);
     if (query.get("confirmed")) {
       setTone("info");
-      setMessage("Your email is confirmed. Sign in with a link, Google, Apple, or a password.");
+      setMessage("Your email is confirmed. Sign in with a link or a password.");
     }
 
     const errorCode = params.get("error_code") || params.get("error") || "";

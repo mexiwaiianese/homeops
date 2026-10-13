@@ -1,7 +1,8 @@
 /**
- * Google OAuth is off until the app is served from portonos.com.
- * Supabase rejects it today ("Unsupported provider: provider is not enabled"),
- * and the Google client should be created against the production domain.
- * Flip this on, then enable the Google provider in Supabase, to bring the buttons back.
+ * Social sign-in stays off while Supabase rejects the provider
+ * ("Unsupported provider: provider is not enabled"). A button that is on
+ * sends the browser to that raw error page. Flip a flag only after that
+ * provider is enabled in the Supabase dashboard, with /auth/callback allowed.
  */
 export const googleAuthEnabled = false;
+export const appleAuthEnabled = false;

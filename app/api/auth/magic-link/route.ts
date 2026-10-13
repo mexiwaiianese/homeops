@@ -4,7 +4,7 @@ import { clientKey, unlockAttemptAllowed } from "@/lib/persona-login/gate";
 
 export async function POST(request: Request) {
   if (!unlockAttemptAllowed(`auth-magic:${clientKey(request)}`)) {
-    return NextResponse.json({ error: "Too many attempts. Wait a few minutes, or sign in with a password, Google, or Apple." }, { status: 429 });
+    return NextResponse.json({ error: "Too many attempts. Wait a few minutes, or sign in with a password." }, { status: 429 });
   }
   const body = await request.json().catch(() => ({}));
   const origin = new URL(request.url).origin;

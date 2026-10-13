@@ -18,7 +18,7 @@ export async function GET(request: Request) {
 export async function POST(request: Request) {
   const { supabase } = await getAuthedContext();
   const body = await request.json().catch(() => ({}));
-  if (supabase) return NextResponse.json({ error: "Use email, Google, or Apple sign-in to open your owner portal." }, { status: 400 });
+  if (supabase) return NextResponse.json({ error: "Use the email sign-in link to open your owner portal." }, { status: 400 });
   const owner = demoOwners.find((row) => row.id === String(body.ownerId || ""));
   if (!owner) return NextResponse.json({ error: "Choose an owner." }, { status: 400 });
   const response = NextResponse.json({ mode: "demo", ownerId: owner.id });

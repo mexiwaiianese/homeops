@@ -1339,6 +1339,32 @@ button:disabled {
   gap: 8px;
   margin: 14px 0 4px;
 }
+.authSwitch {
+  margin: 14px 0 0;
+  padding: 0;
+  background: none;
+  text-align: center;
+  color: var(--muted);
+}
+.loginCard .authSwitch {
+  display: block;
+  margin: 14px 0 0;
+  text-align: center;
+  background: none;
+}
+.authFoot {
+  margin: 18px 0 0;
+  text-align: center;
+}
+.authFoot a,
+.loginCard .authFoot a,
+.intakeCard .authFoot a {
+  display: inline;
+  color: var(--teal);
+  font-size: 15px;
+  font-weight: 700;
+  text-decoration: none;
+}
 .invoiceStatus {
   display: flex;
   flex-direction: column;

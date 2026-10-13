@@ -78,7 +78,7 @@ export async function createPasswordAccount(input: { email: string; password: st
   });
   if (created.error) {
     if (/already|registered|exists/i.test(created.error.message || "")) {
-      return { error: "That email already has an account. Sign in with your password, Google, Apple, or a sign-in link.", status: 409 as const };
+      return { error: "That email already has an account. Sign in with your password or a sign-in link.", status: 409 as const };
     }
     return { error: created.error.message, status: 400 as const };
   }

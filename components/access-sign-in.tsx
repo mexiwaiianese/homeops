@@ -3,6 +3,7 @@
 import { FormEvent, useEffect, useState } from "react";
 import { createBrowserClient } from "@supabase/ssr";
 import { authErrorMessage } from "@/lib/auth-errors";
+import { appleAuthEnabled, googleAuthEnabled } from "@/lib/google-auth";
 
 type Mode = "magic" | "password";
 
@@ -27,7 +28,7 @@ export default function AccessSignIn({
   const [createPassword, setCreatePassword] = useState(false);
   const [message, setMessage] = useState("");
   const [devLink, setDevLink] = useState("");
-  const [busy, setBusy] = useState(false);
+  const [busy, setBusy] = useState("");
   const publishableKey = process.env.NEXT_PUBLIC_SUPABASE_PUBLISHABLE_KEY || process.env.NEXT_PUBLIC_SUPABASE_ANON_KEY;
   const projectUrl = process.env.NEXT_PUBLIC_SUPABASE_PROJECT_URL || process.env.NEXT_PUBLIC_SUPABASE_URL;
   const configured = Boolean(projectUrl && publishableKey);
@@ -51,7 +52,7 @@ export default function AccessSignIn({
 
   async function sendMagic(event: FormEvent) {
     event.preventDefault();
-    setBusy(true);
+    setBusy("email");
     setDevLink("");
     try {
       const controller = new AbortController();
@@ -64,7 +65,7 @@ export default function AccessSignIn({
       });
       window.clearTimeout(timer);
       const body = await response.json().catch(() => ({}));
-      setBusy(false);
+      setBusy("");
       if (!response.ok) {
         setMessage(authErrorMessage(body.error || "Could not send the sign-in link."));
         return;
@@ -76,7 +77,7 @@ export default function AccessSignIn({
       }
       setMessage(body.message || "Check your email for a one-time sign-in link. It stops working after you open it.");
     } catch {
-      setBusy(false);
+      setBusy("");
       setMessage("Could not reach the server. Wait a minute and try again.");
     }
   }
@@ -84,7 +85,7 @@ export default function AccessSignIn({
   async function sendPassword(event: FormEvent) {
     event.preventDefault();
     if (!configured) { setMessage("Sign-in is not configured on this server."); return; }
-    setBusy(true);
+    setBusy("password");
     if (createPassword) {
       const response = await fetch("/api/auth/magic-link", {
         method: "PUT",
@@ -93,26 +94,36 @@ export default function AccessSignIn({
       });
       const body = await response.json().catch(() => ({}));
       if (!response.ok) {
-        setBusy(false);
+        setBusy("");
         setMessage(authErrorMessage(body.error || "Could not create the account."));
         return;
       }
     }
-    const { error } = await client().auth.signInWithPassword({ email, password });
-    setBusy(false);
-    if (error) { setMessage(authErrorMessage(error.message)); return; }
+    const signedIn = await fetch("/api/auth/password", {
+      method: "POST",
+      headers: { "Content-Type": "application/json" },
+      body: JSON.stringify({ email, password }),
+    });
+    const signedBody = await signedIn.json().catch(() => ({}));
+    setBusy("");
+    if (!signedIn.ok) { setMessage(authErrorMessage(signedBody.error || "That email or password is not valid.")); return; }
     window.location.assign(`/auth/callback?next=${encodeURIComponent(redirectTo)}`);
   }
 
   async function oauth(provider: "google" | "apple") {
     if (!configured) { setMessage("Sign-in is not configured on this server."); return; }
-    setBusy(true);
+    setBusy(provider);
     const { error } = await client().auth.signInWithOAuth({
       provider,
-      options: { redirectTo: callbackUrl() },
+      options: {
+        redirectTo: callbackUrl(),
+        queryParams: provider === "google" ? { access_type: "online", prompt: "select_account" } : undefined,
+      },
     });
-    setBusy(false);
-    if (error) setMessage(authErrorMessage(error.message));
+    if (error) {
+      setBusy("");
+      setMessage(authErrorMessage(error.message));
+    }
   }
 
   return (
@@ -136,24 +147,55 @@ export default function AccessSignIn({
             </label>
           </>
         )}
-        <button className="primary" type="submit" disabled={busy || !email}>
-          {busy ? "Working…" : mode === "password" ? (createPassword ? "Create password" : "Sign in") : "Email me a sign-in link"}
+        <button className="primary" type="submit" disabled={Boolean(busy) || !email}>
+          {busy === "email" || busy === "password" ? "Working…" : mode === "password" ? (createPassword ? "Create password" : "Sign in") : "Email me a sign-in link"}
         </button>
       </form>
-      <p className="summary">
+      {message && <div className="notice" role="status">{message}</div>}
+      {devLink && <p className="authSwitch">Email is not configured locally. Open <a href={devLink}>your sign-in link</a>.</p>}
+      <p className="authSwitch">
         {mode === "magic" ? (
           <button className="textLink" type="button" onClick={() => setMode("password")}>Use a password instead</button>
         ) : (
           <button className="textLink" type="button" onClick={() => setMode("magic")}>Use a one-time email link instead</button>
         )}
       </p>
-      <div className="authAlt">
-        <button className="secondaryBtn" type="button" disabled={busy} onClick={() => void oauth("google")}>Continue with Google</button>
-        <button className="secondaryBtn" type="button" disabled={busy} onClick={() => void oauth("apple")}>Continue with Apple</button>
-      </div>
-      {message && <div className="notice">{message}</div>}
-      {devLink && <p className="summary">Email is not configured locally. Open <a href={devLink}>your sign-in link</a>.</p>}
-      <p><a href={registerHref}>{registerLabel}</a></p>
+      {(googleAuthEnabled || appleAuthEnabled) && (
+        <div className="authAlt">
+          {googleAuthEnabled && (
+            <button className="opProviderBtn" type="button" disabled={Boolean(busy)} onClick={() => void oauth("google")}>
+              <GoogleMark />
+              {busy === "google" ? "Opening Google…" : "Continue with Google"}
+            </button>
+          )}
+          {appleAuthEnabled && (
+            <button className="opProviderBtn apple" type="button" disabled={Boolean(busy)} onClick={() => void oauth("apple")}>
+              <AppleMark />
+              {busy === "apple" ? "Opening Apple…" : "Continue with Apple"}
+            </button>
+          )}
+        </div>
+      )}
+      <p className="authFoot"><a href={registerHref}>{registerLabel}</a></p>
     </>
+  );
+}
+
+function GoogleMark() {
+  return (
+    <svg width="18" height="18" viewBox="0 0 48 48" aria-hidden="true">
+      <path fill="#EA4335" d="M24 9.5c3.5 0 6.6 1.2 9 3.5l6.7-6.7C35.6 2.6 30.2 0 24 0 14.6 0 6.5 5.4 2.6 13.3l7.8 6C12.3 13.6 17.7 9.5 24 9.5z" />
+      <path fill="#4285F4" d="M46.5 24.5c0-1.6-.1-3.1-.4-4.5H24v9h12.7c-.6 3-2.3 5.5-4.8 7.2l7.5 5.8c4.4-4 7.1-10 7.1-17.5z" />
+      <path fill="#FBBC05" d="M10.4 28.7A14.6 14.6 0 0 1 9.5 24c0-1.6.3-3.2.8-4.7l-7.8-6A24 24 0 0 0 0 24c0 3.9.9 7.5 2.6 10.7l7.8-6z" />
+      <path fill="#34A853" d="M24 48c6.2 0 11.6-2 15.4-5.6l-7.5-5.8c-2.1 1.4-4.8 2.3-7.9 2.3-6.3 0-11.7-4.1-13.6-9.8l-7.8 6C6.5 42.6 14.6 48 24 48z" />
+    </svg>
+  );
+}
+
+function AppleMark() {
+  return (
+    <svg width="18" height="18" viewBox="0 0 24 24" aria-hidden="true">
+      <path fill="currentColor" d="M16.4 12.6c0-2.4 2-3.6 2.1-3.7-1.1-1.7-2.9-1.9-3.5-1.9-1.5-.2-2.9.9-3.7.9-.8 0-1.9-.9-3.2-.8-1.6 0-3.1 1-4 2.4-1.7 3-.4 7.3 1.2 9.7.8 1.2 1.8 2.5 3.1 2.4 1.2 0 1.7-.8 3.2-.8s1.9.8 3.2.8c1.3 0 2.2-1.2 3-2.4.9-1.4 1.3-2.7 1.3-2.8-.1 0-2.7-1-2.7-3.8zM14.1 5.4c.7-.8 1.1-2 1-3.1-1 0-2.2.7-2.9 1.5-.6.7-1.2 1.9-1 3 1.1.1 2.2-.6 2.9-1.4z" />
+    </svg>
   );
 }
