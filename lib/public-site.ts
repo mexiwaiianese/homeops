@@ -567,6 +567,8 @@ export const INDEXABLE_PATHS = [
   "/about",
   "/changelog",
   "/terms",
+  "/eula",
+  "/privacy",
   "/resources",
   CATEGORY_PATH,
   "/register",

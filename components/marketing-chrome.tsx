@@ -91,6 +91,8 @@ export function MarketingFooter() {
         <a href="/changelog">Changelog</a>
         <a href="/resources">Resources</a>
         <a href="/terms">Terms</a>
+        <a href="/eula">EULA</a>
+        <a href="/privacy">Privacy</a>
         <a href="/property-management-software">Small portfolios</a>
         {COMPARISONS.map((row) => (
           <a key={row.slug} href={`/vs/${row.slug}`}>

@@ -10,6 +10,8 @@ const PUBLIC_MARKETING = new Set([
   "/vendors/signup",
   "/property-management-software",
   "/terms",
+  "/eula",
+  "/privacy",
   "/sitemap.xml",
   "/robots.txt",
 ]);

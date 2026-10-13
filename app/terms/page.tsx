@@ -15,7 +15,7 @@ export default function TermsPage() {
         <p className="eyebrow">Terms</p>
         <h1>Terms</h1>
         <p>
-          portonOS is a workspace for your company. {SCOPE_LINE} It is not a public marketplace and not a pay-per-lead board.
+          portonOS is a workspace for your company. {SCOPE_LINE} It is not a public marketplace and not a pay-per-lead board. The license to use the software is the <a href="/eula">end user license agreement</a>. What we store is on the <a href="/privacy">privacy page</a>.
         </p>
 
         <h2>Price</h2>
