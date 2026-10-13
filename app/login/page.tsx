@@ -10,7 +10,16 @@ export default function LoginPage() {
     <main className="loginShell">
       <section className="loginBrand">
         <a className="brandHomeLink" href={home} aria-label="portonOS home">
-          <Image className="loginBrandMark" src="/brand/portonos-mark.png" alt="portonOS" width={62} height={62} />
+          <Image
+            className="loginBrandMark"
+            src="/brand/portonos-mark.png"
+            alt="portonOS"
+            width={1024}
+            height={920}
+            sizes="(max-width: 860px) min(280px, 78vw), 280px"
+            quality={90}
+            priority
+          />
         </a>
         <p className="eyebrow">EVERYTHING BEHIND EVERY DOOR</p>
         <h1>Sign in to your account.</h1>
