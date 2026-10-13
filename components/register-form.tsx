@@ -122,7 +122,7 @@ export default function RegisterForm({ processorOn }: { processorOn: boolean }) 
         <button className="primary" type="submit" disabled={status === "sending"}>
           {status === "sending" ? "Sending…" : chargeCents && stripe ? "Continue to payment" : "Email my workspace link"}
         </button>
-        <p className="marketingTrust">{CANCEL_COMMITMENT_LINE} <a href="/terms">Terms</a>.</p>
+        <p className="marketingTrust">{CANCEL_COMMITMENT_LINE} <a href="/terms">Terms</a>. <a href="/eula">EULA</a>. <a href="/privacy">Privacy</a>.</p>
         {stripe ? <PaymentTrustMark /> : null}
         <p className="marketingTrust"><a href="/pricing">See pricing</a>. {stripe ? "The card is taken on the next step." : "No card is charged on this server."}</p>
         {message && <div className={status === "error" ? "notice error" : "notice"}>{message}</div>}

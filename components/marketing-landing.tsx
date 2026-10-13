@@ -98,7 +98,7 @@ export default function MarketingLanding() {
             <a className="primary" href="#demo" onClick={(event) => onSectionLink(event, "demo")}>See it as your role</a>
             <a className="secondaryBtn" href="/register">Start your workspace</a>
             <a className="textLink" href="/pricing">See pricing</a>
-            <p className="marketingTrust">{CANCEL_COMMITMENT_LINE} <a href="/terms">Terms</a>.</p>
+            <p className="marketingTrust">{CANCEL_COMMITMENT_LINE} <a href="/terms">Terms</a>. <a href="/eula">EULA</a>. <a href="/privacy">Privacy</a>.</p>
           </div>
         </div>
         <div className="marketingHeroVisual">
@@ -200,7 +200,7 @@ export default function MarketingLanding() {
             {ACH_LINE} {OVERAGE_FRAME} {OVERAGE_LINE} {FLAT_PRICE_LINE}
           </p>
           <a className="primary" href="/register">Create your workspace</a>
-          <p className="marketingTrust">{CANCEL_COMMITMENT_LINE} <a href="/pricing">See pricing</a>. <a href="/terms">Terms</a>. Paid workspaces are billed through the payment processor.</p>
+          <p className="marketingTrust">{CANCEL_COMMITMENT_LINE} <a href="/pricing">See pricing</a>. <a href="/terms">Terms</a>. <a href="/eula">EULA</a>. <a href="/privacy">Privacy</a>. Paid workspaces are billed through the payment processor.</p>
           {role === "vendor" && <a className="secondaryBtn" href="/vendors/signup">Register a New Vendor</a>}
           <p><a href="/login">Already have access? Sign in</a></p>
         </div>

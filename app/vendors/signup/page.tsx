@@ -168,6 +168,7 @@ export default function VendorSignupPage() {
           <button className="secondaryBtn" type="button" disabled={busy} onClick={(event) => void submit(event, true)}>Proceed</button>
         )}
         <a href="/vendors/login">Already registered? Sign in</a>
+        <p className="marketingTrust">Creating an account accepts the <a href="/eula">end user license agreement</a>. <a href="/privacy">Privacy</a>.</p>
       </section>
     </main>
   );

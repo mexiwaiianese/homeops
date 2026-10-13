@@ -42,6 +42,7 @@ export default function AboutPage() {
               {item.answer}
               {item.question === "What does it cost?" ? <> Full list on the <a href="/pricing">pricing page</a>.</> : null}
               {item.question === "Can I cancel?" ? <> Full terms on the <a href="/terms">terms page</a>.</> : null}
+              {item.question === "Is my data private?" ? <> Full notice on the <a href="/privacy">privacy page</a>.</> : null}
             </p>
           </details>
         ))}

@@ -63,7 +63,7 @@ export default function WorkspaceBilling() {
         Billed once a year. Cancel within 30 days of the invoice and that invoice is refunded.
         After 30 days, you keep the workspace until the renewal date and you are not billed again.
         Applicant screening and card processing are the partner&apos;s charges and are not part of the refund.
-        {" "}<a href="/terms">Terms</a>.
+        {" "}<a href="/terms">Terms</a>. <a href="/eula">EULA</a>. <a href="/privacy">Privacy</a>.
       </p>
       {error && <div className="notice error">{error}</div>}
       {done && (

@@ -80,7 +80,7 @@ export default function PricingBoard() {
             {pkg.devTime && <p>{pkg.devTime}</p>}
             </div>
             <a className="primary" href={`/register?package=${pkg.id}`}>Start {pkg.name}</a>
-            <p className="marketingTrust">{CANCEL_COMMITMENT_LINE} <a href="/terms">Terms</a>.</p>
+            <p className="marketingTrust">{CANCEL_COMMITMENT_LINE} <a href="/terms">Terms</a>. <a href="/eula">EULA</a>. <a href="/privacy">Privacy</a>.</p>
           </article>
         ))}
       </div>
