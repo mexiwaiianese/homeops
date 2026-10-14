@@ -7,7 +7,17 @@ import VendorPortalFrame from "@/components/vendor-portal-frame";
 type Line = { description: string; amount: string };
 type Project = { key: string; kind: "bid" | "job"; label: string; detail: string; billToName: string | null; billToEmail: string | null; amountCents: number | null; description: string | null };
 type Match = { id: string; name: string; matchedBy: "name" | "email" | "account" };
-type Client = { name: string; email: string; projectLabel: string; details: string; amount: number; description: string };
+type Client = {
+  name: string;
+  email: string;
+  projectLabel: string;
+  details: string;
+  amount: number;
+  description: string;
+  platformProvider?: string | null;
+  discoveryStatus?: string;
+  platformSearchedAt?: string | null;
+};
 type Sent = {
   id: string;
   number: string;
@@ -47,6 +57,9 @@ export default function VendorInvoicesPage() {
   const [historyOpen, setHistoryOpen] = useState(false);
   const [message, setMessage] = useState("");
   const [busy, setBusy] = useState(false);
+  const [discovery, setDiscovery] = useState<{ key: string; status: "idle" | "checking" | "ready"; provider: string | null; note: string }>({
+    key: "", status: "idle", provider: null, note: "",
+  });
 
   function load() {
     return fetch("/api/vendors/invoices").then(async (r) => {
@@ -63,6 +76,50 @@ export default function VendorInvoicesPage() {
   }
 
   useEffect(() => { void load(); }, [router]); // eslint-disable-line react-hooks/exhaustive-deps
+
+  useEffect(() => {
+    const name = billToName.trim();
+    const email = billToEmail.trim().toLowerCase();
+    const key = `${name}|${email}`;
+    if (!name || !/^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(email)) {
+      setDiscovery({ key, status: "idle", provider: null, note: "" });
+      return;
+    }
+    const controller = new AbortController();
+    const timer = window.setTimeout(async () => {
+      setDiscovery({ key, status: "checking", provider: null, note: "Checking public sources for the client's current property-management platform…" });
+      try {
+        const response = await fetch("/api/vendors/clients/discover", {
+          method: "POST",
+          headers: { "Content-Type": "application/json" },
+          body: JSON.stringify({ name, email }),
+          signal: controller.signal,
+        });
+        const body = await response.json().catch(() => ({}));
+        if (!response.ok) {
+          setDiscovery({ key, status: "ready", provider: null, note: body.error || "The platform check could not run; the standard invoice message will be used." });
+          return;
+        }
+        const provider = body.profile?.provider || null;
+        setDiscovery({
+          key,
+          status: "ready",
+          provider,
+          note: provider
+            ? `${provider} found from reliable public evidence. This client's invoice will use the saved personalized portonOS offer.`
+            : body.note || "No reliable current provider was found. The standard invoice message will be used.",
+        });
+      } catch (error) {
+        if ((error as Error).name !== "AbortError") {
+          setDiscovery({ key, status: "ready", provider: null, note: "The platform check could not run; the standard invoice message will be used." });
+        }
+      }
+    }, 700);
+    return () => {
+      window.clearTimeout(timer);
+      controller.abort();
+    };
+  }, [billToEmail, billToName]);
 
   function setLine(index: number, patch: Partial<Line>) {
     setLines((rows) => rows.map((row, i) => i === index ? { ...row, ...patch } : row));
@@ -254,6 +311,7 @@ export default function VendorInvoicesPage() {
           </label>
           <label>Due<input type="date" value={dueOn} onChange={(e) => setDueOn(e.target.value)} /></label>
         </div>
+        {discovery.note && <p className="summary" aria-live="polite">{discovery.note}</p>}
         {projectKey === OTHER && (
           <label>Project name<input value={projectLabel} onChange={(e) => setProjectLabel(e.target.value)} placeholder="Furnace repair · 100 Main St" /></label>
         )}
@@ -266,7 +324,13 @@ export default function VendorInvoicesPage() {
         ))}
         <button className="secondaryBtn" type="button" onClick={() => setLines((rows) => [...rows, { description: "", amount: "" }])}>Add a cost</button>
         <label>Additional details<textarea rows={3} value={details} onChange={(e) => setDetails(e.target.value)} placeholder="What was done, parts used, or what the property manager should know." /></label>
-        <button className="primary" type="submit" disabled={busy}>{busy ? "Sending…" : `Email invoice · ${money(total)}`}</button>
+        <button
+          className="primary"
+          type="submit"
+          disabled={busy || discovery.status !== "ready" || discovery.key !== `${billToName.trim()}|${billToEmail.trim().toLowerCase()}`}
+        >
+          {busy ? "Sending…" : discovery.status === "checking" ? "Checking client platform…" : `Email invoice · ${money(total)}`}
+        </button>
       </form>
       {sent.length > 0 && (
         <>

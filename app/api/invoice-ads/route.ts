@@ -6,6 +6,9 @@ import { getLiveInvoiceAd, saveLiveInvoiceAd } from "@/lib/invoice-ads-live";
 import { getOperatorAdmin } from "@/lib/operator-admin";
 import { resolvePersonaLoginAccess } from "@/lib/persona-login/gate";
 import { createSupabaseAdminClient } from "@/lib/supabase/admin";
+import { getVendorInvoiceByToken } from "@/lib/vendor-billing-demo";
+import { getLiveInvoiceByToken } from "@/lib/vendor-billing-live";
+import { profileForInvoiceToken } from "@/lib/invoice-recipient-platform";
 
 async function readAd(audience: InvoiceAdAudience) {
   const admin = createSupabaseAdminClient();
@@ -14,9 +17,27 @@ async function readAd(audience: InvoiceAdAudience) {
 
 /** Public: the invoice page reads the note for its audience. */
 export async function GET(request: Request) {
-  const raw = new URL(request.url).searchParams.get("audience");
+  const url = new URL(request.url);
+  const raw = url.searchParams.get("audience");
   if (raw) {
     if (!isInvoiceAdAudience(raw)) return NextResponse.json({ error: "Unknown audience." }, { status: 400 });
+    const token = url.searchParams.get("token");
+    if (raw === "manager" && token) {
+      const admin = createSupabaseAdminClient();
+      const invoice = getVendorInvoiceByToken(token) || (admin ? await getLiveInvoiceByToken(admin, token) : null);
+      if (invoice) {
+        const profile = await profileForInvoiceToken(admin, invoice);
+        if (profile?.ad && profile.provider) {
+          return NextResponse.json({
+            ad: {
+              ...profile.ad,
+              ctaUrl: `${profile.ad.ctaUrl}?invoice=${encodeURIComponent(token)}&placement=invoice_page`,
+            },
+            personalized: true,
+          });
+        }
+      }
+    }
     return NextResponse.json({ ad: await readAd(raw) });
   }
   if (!(await operatorAllowed())) return NextResponse.json({ error: "Unlock the operator tools first." }, { status: 403 });

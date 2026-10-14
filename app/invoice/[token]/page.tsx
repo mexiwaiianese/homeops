@@ -31,11 +31,11 @@ function InvoiceView() {
   const pdfUrl = `/api/invoice/${params.token}/pdf`;
 
   useEffect(() => {
-    fetch(`/api/invoice-ads?audience=${audience}`)
+    fetch(`/api/invoice-ads?audience=${audience}&token=${encodeURIComponent(params.token)}`)
       .then((r) => r.json())
       .then((body) => { if (body?.ad) setAd(body.ad); })
       .catch(() => {});
-  }, [audience]);
+  }, [audience, params.token]);
 
   function back() {
     if (vendorPreview) { router.push("/vendors/invoices"); return; }

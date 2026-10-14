@@ -14,7 +14,7 @@ export default function PrivacyPage() {
       <article className="marketingArticle">
         <p className="eyebrow">Privacy</p>
         <h1>Privacy</h1>
-        <p>Effective October 13, 2026.</p>
+        <p>Effective October 14, 2026.</p>
         <p>
           This notice is from DBX DEV, for the portonOS software. Price, the 30-day refund, and how to cancel are on the <a href="/terms">terms page</a>. The license is the <a href="/eula">end user license agreement</a>.
         </p>
@@ -54,6 +54,10 @@ export default function PrivacyPage() {
         <h2>Pages on this site</h2>
         <p>
           We record which public pages are opened, so we can see what people use. We do not sell that record.
+        </p>
+        <h2>Invoice recipient research and offers</h2>
+        <p>
+          When a vendor adds an invoice client, we may use the client company name and work-email domain to search public sources for the property-management platform that company uses. We store the provider, supporting public-source links, research date, and invoice offer copy. We do not treat an unsupported search result as a match. Personalized invoice offer links record the invoice marketing source, placement, click, registration, and checkout start so the offer can be attributed.
         </p>
 
         <h2>How long</h2>

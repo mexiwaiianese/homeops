@@ -13,6 +13,8 @@ export type InvoicePdfInput = {
   details: string;
   lines: Array<{ description: string; amountCents: number }>;
   totalCents: number;
+  offerSummary?: string;
+  offerUrl?: string;
 };
 
 function money(cents: number) {
@@ -47,6 +49,7 @@ function wrap(value: string, width: number) {
  */
 export function renderInvoicePdf(input: InvoicePdfInput): Uint8Array {
   const commands: string[] = [];
+  let offerLinkY: number | null = null;
   let y = 740;
   const text = (size: number, value: string, x = 54) => {
     commands.push(`BT /F1 ${size} Tf ${x} ${y} Td (${pdfEscape(value)}) Tj ET`);
@@ -104,6 +107,19 @@ export function renderInvoicePdf(input: InvoicePdfInput): Uint8Array {
       y -= 14;
     }
   }
+  if (input.offerSummary && input.offerUrl) {
+    y = Math.min(y - 20, 230);
+    rule();
+    y -= 18;
+    text(10, "PRIVATE PORTONOS PLATFORM OFFER");
+    y -= 14;
+    for (const line of wrap(input.offerSummary, 105).slice(0, 4)) {
+      text(9, line);
+      y -= 12;
+    }
+    text(9, input.offerUrl);
+    offerLinkY = y;
+  }
   y = Math.min(y - 20, 140);
   rule();
   y -= 20;
@@ -121,10 +137,13 @@ export function renderInvoicePdf(input: InvoicePdfInput): Uint8Array {
   const objects = [
     "<< /Type /Catalog /Pages 2 0 R >>",
     "<< /Type /Pages /Kids [3 0 R] /Count 1 >>",
-    "<< /Type /Page /Parent 2 0 R /MediaBox [0 0 612 792] /Contents 4 0 R /Resources << /Font << /F1 5 0 R >> >> >>",
+    `<< /Type /Page /Parent 2 0 R /MediaBox [0 0 612 792] /Contents 4 0 R /Resources << /Font << /F1 5 0 R >> >>${offerLinkY != null ? " /Annots [6 0 R]" : ""} >>`,
     `<< /Length ${stream.length} >>\nstream\n${stream}\nendstream`,
     "<< /Type /Font /Subtype /Type1 /BaseFont /Helvetica >>",
   ];
+  if (offerLinkY != null && input.offerUrl) {
+    objects.push(`<< /Type /Annot /Subtype /Link /Rect [54 ${offerLinkY - 2} 558 ${offerLinkY + 11}] /Border [0 0 0] /A << /S /URI /URI (${pdfEscape(input.offerUrl)}) >> >>`);
+  }
   let body = "%PDF-1.4\n";
   const offsets: number[] = [0];
   objects.forEach((object, index) => {

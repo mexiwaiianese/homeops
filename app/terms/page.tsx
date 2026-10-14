@@ -23,6 +23,9 @@ export default function TermsPage() {
           The workspace is billed once a year. There is no onboarding fee. The price, the properties included, and the $18 a year for each property past that are on the <a href="/pricing">pricing page</a>.
           Core&apos;s first year is 3 months at $25 and 9 months at $99. After that, Core is the regular annual price.
         </p>
+        <p>
+          A valid recipient-only invoice offer replaces the standard first-year promotion with a one-time credit equal to 25% of the selected platform package&apos;s regular annual charge — the equivalent of 3 months of platform access. It does not discount payment processing, screening, property overages, or other usage fees and cannot be combined with another first-year discount.
+        </p>
 
         <h2>{MONEY_BACK_DAYS}-day refund</h2>
         <p>

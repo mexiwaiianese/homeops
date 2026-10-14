@@ -3,12 +3,18 @@ import { getVendorInvoiceByToken } from "@/lib/vendor-billing-demo";
 import { getLiveInvoiceByToken } from "@/lib/vendor-billing-live";
 import { renderInvoicePdf } from "@/lib/vendor-invoice-pdf";
 import { createSupabaseAdminClient } from "@/lib/supabase/admin";
+import { profileForInvoiceToken } from "@/lib/invoice-recipient-platform";
+import { appOrigin } from "@/lib/http-security";
 
-export async function GET(_request: Request, { params }: { params: Promise<{ token: string }> }) {
+export async function GET(request: Request, { params }: { params: Promise<{ token: string }> }) {
   const { token } = await params;
   const admin = createSupabaseAdminClient();
   const invoice = getVendorInvoiceByToken(token) || (admin ? await getLiveInvoiceByToken(admin, token) : null);
   if (!invoice) return NextResponse.json({ error: "This invoice link is not valid." }, { status: 404 });
+  const profile = await profileForInvoiceToken(admin, invoice);
+  const offerUrl = profile?.ad
+    ? `${appOrigin(request)}${profile.ad.ctaUrl}?invoice=${encodeURIComponent(token)}&placement=pdf`
+    : undefined;
   const pdf = renderInvoicePdf({
     companyName: invoice.companyName,
     contactName: invoice.contactName,
@@ -24,6 +30,8 @@ export async function GET(_request: Request, { params }: { params: Promise<{ tok
     details: invoice.details,
     lines: invoice.lines,
     totalCents: invoice.totalCents,
+    offerSummary: profile?.ad?.pdfSummary,
+    offerUrl,
   });
   return new NextResponse(Buffer.from(pdf), {
     headers: {

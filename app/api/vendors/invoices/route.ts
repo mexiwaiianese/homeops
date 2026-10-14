@@ -7,6 +7,7 @@ import { demoInvoiceProjects, liveInvoiceProjects } from "@/lib/vendor-invoice-p
 import { dollars } from "@/lib/vendor-plans";
 import { createSupabaseAdminClient } from "@/lib/supabase/admin";
 import { requireVendorActor } from "@/lib/vendor-session";
+import { discoverRecipientPlatform, getRecipientPlatformProfile, saveRecipientPlatformProfile } from "@/lib/invoice-recipient-platform";
 
 async function actorOrLinked() {
   let actor = await requireVendorActor();
@@ -69,7 +70,16 @@ export async function GET(request: Request) {
     description: row.lines?.[0]?.description || row.projectLabel,
   }));
   const saved = actor.mode === "live" && admin ? await listLiveClients(admin, actor.vendorId, company.email) : [];
-  const clients = [...new Map([...saved, ...fromInvoices].map((row) => [row.email.toLowerCase(), row])).values()];
+  const clientRows = [...new Map([...saved, ...fromInvoices].map((row) => [row.email.toLowerCase(), row])).values()];
+  const clients = await Promise.all(clientRows.map(async (row) => {
+    const profile = await getRecipientPlatformProfile(actor.mode === "live" ? admin : null, actor.vendorId, row.email);
+    return {
+      ...row,
+      platformProvider: profile?.provider || null,
+      discoveryStatus: profile?.status || "pending",
+      platformSearchedAt: profile?.searchedAt || null,
+    };
+  }));
   return NextResponse.json({
     mode: actor.mode,
     platform: {
@@ -113,6 +123,22 @@ export async function POST(request: Request) {
   };
   const admin = actor.mode === "live" ? createSupabaseAdminClient() : null;
   const company = actor.mode === "live" && admin ? await liveCompany(admin, actor.vendorId) : null;
+  const discoveryCompany = company || getVendorSubscriber(actor.vendorId) || subscriberForVendor(actor.vendorId);
+  if (!discoveryCompany) return NextResponse.json({ error: "Sign up before sending an invoice." }, { status: 401 });
+  const existingProfile = await getRecipientPlatformProfile(admin, actor.vendorId, invoiceInput.billToEmail);
+  const profileFresh = existingProfile?.nextSearchAt && new Date(existingProfile.nextSearchAt).getTime() > Date.now();
+  if (!profileFresh) {
+    const discovery = await discoverRecipientPlatform(invoiceInput.billToName, invoiceInput.billToEmail);
+    await saveRecipientPlatformProfile(admin, {
+      vendorId: actor.vendorId,
+      signupEmail: discoveryCompany.email,
+      name: invoiceInput.billToName,
+      email: invoiceInput.billToEmail,
+      status: discovery.status,
+      answer: discovery.answer,
+      existingOfferToken: existingProfile?.offerToken,
+    });
+  }
   const created = company ? composeVendorInvoice(company, invoiceInput) : createVendorInvoice(actor.vendorId, invoiceInput);
   if ("error" in created) return NextResponse.json({ error: created.error }, { status: created.status });
   const previousEmail = String(body.previousEmail || invoiceInput.billToEmail);

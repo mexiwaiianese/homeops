@@ -1,7 +1,7 @@
 import { NextResponse, type NextRequest } from "next/server";
 
 const MUTATING = new Set(["POST", "PUT", "PATCH", "DELETE"]);
-const CSRF_EXEMPT = new Set(["/api/rent/webhooks/stripe", "/api/financial/qbo/cron"]);
+const CSRF_EXEMPT = new Set(["/api/rent/webhooks/stripe", "/api/financial/qbo/cron", "/api/invoice-platform-discovery/cron"]);
 
 export function sessionCookieOptions(maxAge: number) {
   return {

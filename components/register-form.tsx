@@ -17,17 +17,23 @@ export default function RegisterForm({ processorOn }: { processorOn: boolean }) 
   const [devLink, setDevLink] = useState("");
   const [stripe, setStripe] = useState(processorOn);
   const [overlap, setOverlap] = useState<{ blocked: boolean; message: string } | null>(null);
+  const [offerToken, setOfferToken] = useState("");
+  const [offerProvider, setOfferProvider] = useState("");
 
   useEffect(() => {
     const params = new URLSearchParams(window.location.search);
     if (params.get("canceled")) setMessage("Checkout was canceled. You can try again.");
     if (params.get("error")) setMessage(params.get("error") || "");
-    fetch("/api/register")
+    const requestedOffer = params.get("offer") || "";
+    setOfferToken(requestedOffer);
+    fetch(`/api/register${requestedOffer ? `?offer=${encodeURIComponent(requestedOffer)}` : ""}`)
       .then((r) => r.json())
       .then((body) => {
         const rows = (body.packages || []) as SubscriptionPackage[];
         setPackages(rows);
         setStripe(Boolean(body.stripe));
+        if (body.offer?.valid) setOfferProvider(String(body.offer.provider || ""));
+        else if (requestedOffer) setMessage("This invoice offer is no longer available.");
         const requested = params.get("package");
         const initial = rows.find((row) => row.id === requested)?.id
           || rows.find((row) => row.id === "operations")?.id
@@ -54,7 +60,7 @@ export default function RegisterForm({ processorOn }: { processorOn: boolean }) 
       const response = await fetch("/api/register", {
         method: "POST",
         headers: { "Content-Type": "application/json" },
-        body: JSON.stringify({ email, fullName, organizationName, packageId, proceed }),
+        body: JSON.stringify({ email, fullName, organizationName, packageId, proceed, offerToken }),
         signal: controller.signal,
       });
       window.clearTimeout(timer);
@@ -92,6 +98,11 @@ export default function RegisterForm({ processorOn }: { processorOn: boolean }) 
         <p className="eyebrow">NEW WORKSPACE</p>
         <h1>Create your workspace.</h1>
         <p>We email you a link. After you confirm, you start empty — your company, your people, your jobs. No sample data is copied in. {stripe ? "Paid plans take a card on the next step. The workspace is billed once a year." : "The payment processor is not turned on for this server, so this form emails a link and does not charge a card. The prices below are the published annual prices."}</p>
+        {offerProvider && (
+          <div className="notice">
+            Exclusive invoice offer for a verified {offerProvider} recipient: your first-year platform subscription includes a credit equal to 3 months of access. Processing, screening, overages, and other usage fees are not discounted.
+          </div>
+        )}
         <label>Your name<input required value={fullName} onChange={(e) => setFullName(e.target.value)} /></label>
         <label>Work email<input type="email" required value={email} onChange={(e) => setEmail(e.target.value)} /></label>
         <label>Company name<input required value={organizationName} onChange={(e) => setOrganizationName(e.target.value)} placeholder="Summit Property Group" /></label>

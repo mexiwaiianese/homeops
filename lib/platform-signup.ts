@@ -14,6 +14,7 @@ export type PlatformSignup = {
   tokenHash: string;
   organizationId: string | null;
   stripeSessionId: string | null;
+  invoiceOfferToken: string | null;
   status: "pending" | "paid" | "provisioned" | "canceled";
 };
 
@@ -37,6 +38,7 @@ export async function createPlatformSignup(input: {
   stripeSessionId?: string | null;
   status?: PlatformSignup["status"];
   tokenHash?: string;
+  invoiceOfferToken?: string | null;
 }) {
   const email = normalizeEmail(input.email);
   if (!validEmail(email)) throw new Error("Enter a valid email address.");
@@ -52,6 +54,7 @@ export async function createPlatformSignup(input: {
     tokenHash: token.hash,
     organizationId: null,
     stripeSessionId: input.stripeSessionId || null,
+    invoiceOfferToken: input.invoiceOfferToken || null,
     status: input.status || "pending",
   };
   memorySignups.set(row.tokenHash, row);
@@ -64,6 +67,7 @@ export async function createPlatformSignup(input: {
       package_id: row.packageId,
       token_hash: row.tokenHash,
       stripe_session_id: row.stripeSessionId,
+      invoice_offer_token: row.invoiceOfferToken,
       status: row.status,
     }).select("id").single();
     if (error) throw new Error(error.message);
@@ -103,6 +107,7 @@ function fromRow(data: Record<string, unknown>): PlatformSignup {
     tokenHash: String(data.token_hash || ""),
     organizationId: data.organization_id ? String(data.organization_id) : null,
     stripeSessionId: data.stripe_session_id ? String(data.stripe_session_id) : null,
+    invoiceOfferToken: data.invoice_offer_token ? String(data.invoice_offer_token) : null,
     status: data.status as PlatformSignup["status"],
   };
 }
