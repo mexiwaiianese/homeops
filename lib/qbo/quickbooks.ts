@@ -1,6 +1,17 @@
 import { createHmac, timingSafeEqual } from "node:crypto";
 import { appOrigin } from "@/lib/http-security";
 import { decryptSecret, encryptSecret } from "@/lib/qbo/crypto";
+import {
+  QboApiError,
+  intuitTidFrom,
+  qboEndpointLabel,
+  qboLogOf,
+  qboMethod,
+  redactQboText,
+  reportQboFailure,
+  tidInText,
+  type QboErrorLog,
+} from "@/lib/qbo/log";
 
 export { appOrigin };
 
@@ -19,12 +30,17 @@ export type QboSession = {
   realmId: string;
   credentials: QboCredentials;
   persist: (next: QboCredentials) => Promise<void>;
+  recordError?: (log: QboErrorLog) => Promise<void> | void;
 };
 
 export class QboAuthError extends Error {
-  constructor(message: string) {
-    super(message);
+  readonly log?: QboErrorLog;
+
+  constructor(message: string, log?: QboErrorLog) {
+    const tid = log?.intuitTid && !message.includes(log.intuitTid) ? ` intuit_tid ${log.intuitTid}` : "";
+    super(`${message}${tid}`.trim());
     this.name = "QboAuthError";
+    this.log = log;
   }
 }
 
@@ -118,24 +134,27 @@ export function qboDay(value: string) {
 }
 
 export function publicQboError(error: unknown) {
+  const log = qboLogOf(error);
   const message = typeof error === "string"
     ? error
     : error instanceof Error
       ? error.message
       : "QuickBooks request failed.";
+  const tid = log?.intuitTid || tidInText(message);
   if (/access_token|refresh_token|bearer |client_secret|authorization:/i.test(message)) {
-    return "QuickBooks needs to be connected again.";
+    return tid ? `QuickBooks needs to be connected again. intuit_tid ${tid}` : "QuickBooks needs to be connected again.";
   }
-  const cleaned = message.replace(/\s+/g, " ").trim();
-  return cleaned.slice(0, 180) || "QuickBooks request failed.";
+  const cleaned = redactQboText(message).replace(/\s*intuit_tid[:\s]+\S+/gi, "").replace(/\s+/g, " ").trim();
+  const body = (cleaned || "QuickBooks request failed.").slice(0, 180);
+  return tid ? `${body} intuit_tid ${tid}` : body;
 }
 
-export async function exchangeQuickBooksCode(input: { code: string; redirectUri: string }) {
+export async function exchangeQuickBooksCode(input: { code: string; redirectUri: string; realmId?: string }) {
   return tokenRequest(new URLSearchParams({
     grant_type: "authorization_code",
     code: input.code,
     redirect_uri: input.redirectUri,
-  }));
+  }), { realmId: input.realmId });
 }
 
 export async function quickBooksRequest(session: QboSession, path: string, init?: RequestInit) {
@@ -143,63 +162,126 @@ export async function quickBooksRequest(session: QboSession, path: string, init?
     const refreshed = await tokenRequest(new URLSearchParams({
       grant_type: "refresh_token",
       refresh_token: session.credentials.refreshToken,
-    }));
+    }), { realmId: session.realmId, recordError: session.recordError });
     session.credentials = { ...refreshed, realmId: refreshed.realmId || session.credentials.realmId };
     await session.persist(session.credentials);
   }
+  const method = qboMethod(init?.method);
+  const endpoint = qboEndpointLabel(path);
   const joiner = path.includes("?") ? "&" : "?";
-  const response = await fetch(`${apiBase()}/${encodeURIComponent(session.realmId)}/${path}${joiner}minorversion=75`, {
-    ...init,
-    headers: {
-      Authorization: `Bearer ${session.credentials.accessToken}`,
-      Accept: "application/json",
-      ...(init?.body ? { "Content-Type": "application/json" } : {}),
-      ...init?.headers,
-    },
-  });
-  const payload = await response.json().catch(() => ({})) as Record<string, unknown>;
-  if (response.status === 401) throw new QboAuthError("QuickBooks needs to be connected again.");
-  if (!response.ok) throw new Error(quickBooksError(payload, response.status));
-  return payload;
+  let response: Response;
+  try {
+    response = await fetch(`${apiBase()}/${encodeURIComponent(session.realmId)}/${path}${joiner}minorversion=75`, {
+      ...init,
+      headers: {
+        Authorization: `Bearer ${session.credentials.accessToken}`,
+        Accept: "application/json",
+        ...(init?.body ? { "Content-Type": "application/json" } : {}),
+        ...init?.headers,
+      },
+    });
+  } catch (error) {
+    const log = await reportQboFailure({
+      status: 0,
+      intuitTid: "",
+      method,
+      endpoint,
+      realmId: session.realmId,
+      payload: { error: "network", error_description: networkMessage(error) },
+      recordError: session.recordError,
+    });
+    throw new QboApiError(log);
+  }
+  const payload = await readBody(response);
+  if (!response.ok) {
+    const log = await reportQboFailure({
+      status: response.status,
+      intuitTid: intuitTidFrom(response.headers, payload),
+      method,
+      endpoint,
+      realmId: session.realmId,
+      payload,
+      recordError: session.recordError,
+    });
+    if (response.status === 401) throw new QboAuthError("QuickBooks needs to be connected again.", log);
+    throw new QboApiError(log);
+  }
+  return payload as Record<string, unknown>;
 }
 
 export async function qboQuery(session: QboSession, sql: string) {
   return quickBooksRequest(session, `query?query=${encodeURIComponent(sql)}`);
 }
 
-async function tokenRequest(body: URLSearchParams): Promise<QboCredentials> {
+async function tokenRequest(body: URLSearchParams, context?: { realmId?: string; recordError?: QboSession["recordError"] }): Promise<QboCredentials> {
   const clientId = process.env.QUICKBOOKS_CLIENT_ID?.trim();
   const secret = process.env.QUICKBOOKS_CLIENT_SECRET?.trim();
   if (!clientId || !secret) throw new Error("QuickBooks OAuth is not configured.");
-  const response = await fetch(TOKEN, {
-    method: "POST",
-    headers: {
-      Authorization: `Basic ${Buffer.from(`${clientId}:${secret}`).toString("base64")}`,
-      "Content-Type": "application/x-www-form-urlencoded",
-      Accept: "application/json",
-    },
-    body,
-  });
-  const payload = await response.json().catch(() => ({})) as {
-    access_token?: string;
-    refresh_token?: string;
-    expires_in?: number;
-    error_description?: string;
-  };
-  if (!response.ok || !payload.access_token || !payload.refresh_token) {
-    throw new QboAuthError(payload.error_description || "QuickBooks authorization failed.");
+  let response: Response;
+  try {
+    response = await fetch(TOKEN, {
+      method: "POST",
+      headers: {
+        Authorization: `Basic ${Buffer.from(`${clientId}:${secret}`).toString("base64")}`,
+        "Content-Type": "application/x-www-form-urlencoded",
+        Accept: "application/json",
+      },
+      body,
+    });
+  } catch (error) {
+    const log = await reportQboFailure({
+      status: 0,
+      intuitTid: "",
+      method: "POST",
+      endpoint: "oauth/token",
+      realmId: context?.realmId,
+      payload: { error: "network", error_description: networkMessage(error) },
+      recordError: context?.recordError,
+    });
+    throw new QboAuthError("QuickBooks authorization failed.", log);
+  }
+  const payload = await readBody(response);
+  const token = tokenFields(payload);
+  if (!response.ok || !token.accessToken || !token.refreshToken) {
+    const log = await reportQboFailure({
+      status: response.status,
+      intuitTid: intuitTidFrom(response.headers, payload),
+      method: "POST",
+      endpoint: "oauth/token",
+      realmId: context?.realmId,
+      payload,
+      recordError: context?.recordError,
+    });
+    throw new QboAuthError("QuickBooks authorization failed.", log);
   }
   return {
-    accessToken: payload.access_token,
-    refreshToken: payload.refresh_token,
-    expiresAt: new Date(Date.now() + (payload.expires_in || 3600) * 1000).toISOString(),
+    accessToken: token.accessToken,
+    refreshToken: token.refreshToken,
+    expiresAt: new Date(Date.now() + (token.expiresIn || 3600) * 1000).toISOString(),
     tokenType: "Bearer",
   };
 }
 
-function quickBooksError(payload: Record<string, unknown>, status: number) {
-  const fault = payload.Fault as { Error?: { Message?: string }[] } | undefined;
-  const message = fault?.Error?.[0]?.Message?.replace(/\s+/g, " ").trim() || "";
-  if (!message || /token|secret|bearer/i.test(message)) return `QuickBooks returned ${status}.`;
-  return `QuickBooks returned ${status}: ${message.slice(0, 120)}`;
+async function readBody(response: Response) {
+  const text = await response.text();
+  if (!text) return {};
+  try {
+    return JSON.parse(text) as unknown;
+  } catch {
+    return { raw: text.slice(0, 1500) };
+  }
+}
+
+function tokenFields(payload: unknown) {
+  const record = payload && typeof payload === "object" ? payload as Record<string, unknown> : {};
+  return {
+    accessToken: typeof record.access_token === "string" ? record.access_token : "",
+    refreshToken: typeof record.refresh_token === "string" ? record.refresh_token : "",
+    expiresIn: typeof record.expires_in === "number" ? record.expires_in : 0,
+  };
+}
+
+function networkMessage(error: unknown) {
+  const message = error instanceof Error ? error.message : "QuickBooks could not be reached.";
+  return redactQboText(message).replace(/https?:\/\/\S+/g, "[url]").slice(0, 500);
 }
