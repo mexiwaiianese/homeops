@@ -1,5 +1,5 @@
 import { NextResponse } from "next/server";
-import { disconnectQbo, listSyncRuns, loadQboConnection, publicQboStatus, requireBooksManager, updateQboConnection } from "@/lib/qbo/connection";
+import { disconnectQbo, listQboErrorLogs, listSyncRuns, loadQboConnection, publicQboStatus, requireBooksManager, updateQboConnection } from "@/lib/qbo/connection";
 import { appOrigin, publicQboError, quickBooksRedirectUri } from "@/lib/qbo/quickbooks";
 import { normalizeSettings } from "@/lib/qbo/schedule";
 
@@ -10,13 +10,15 @@ export async function GET(request: Request) {
   if (!auth.ok) return auth.response;
   try {
     const connection = await loadQboConnection(auth.admin, auth.organizationId);
-    const [runs, counts] = await Promise.all([
+    const [runs, counts, logs] = await Promise.all([
       listSyncRuns(auth.admin, auth.organizationId),
       openCounts(auth.admin, auth.organizationId),
+      listQboErrorLogs(auth.admin, auth.organizationId),
     ]);
     return NextResponse.json(publicQboStatus(connection, {
       redirectUri: quickBooksRedirectUri(appOrigin(request)),
       runs,
+      logs,
       ...counts,
     }));
   } catch (error) {
@@ -42,13 +44,15 @@ export async function POST(request: Request) {
       last_error: "",
     });
     const saved = await loadQboConnection(auth.admin, auth.organizationId);
-    const [runs, counts] = await Promise.all([
+    const [runs, counts, logs] = await Promise.all([
       listSyncRuns(auth.admin, auth.organizationId),
       openCounts(auth.admin, auth.organizationId),
+      listQboErrorLogs(auth.admin, auth.organizationId),
     ]);
     return NextResponse.json(publicQboStatus(saved, {
       redirectUri: quickBooksRedirectUri(appOrigin(request)),
       runs,
+      logs,
       ...counts,
     }));
   } catch (error) {

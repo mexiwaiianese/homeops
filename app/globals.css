@@ -1028,6 +1028,29 @@ button:disabled {
   display: inline-block;
   text-decoration: none;
 }
+.qboLogBlock {
+  display: grid;
+  gap: 6px;
+  margin: 0 0 14px;
+}
+.qboLogBlock small {
+  display: block;
+  color: #59625c;
+  font-size: 14px;
+}
+.qboLog {
+  margin: 0;
+  padding: 10px 12px;
+  border: 1px solid var(--line);
+  border-radius: 8px;
+  background: #f7f8f6;
+  color: var(--ink);
+  font: 12px/1.45 ui-monospace, SFMono-Regular, Menlo, Consolas, monospace;
+  white-space: pre-wrap;
+  word-break: break-word;
+  max-height: 220px;
+  overflow: auto;
+}
 .qboModes {
   display: grid;
   gap: 8px;

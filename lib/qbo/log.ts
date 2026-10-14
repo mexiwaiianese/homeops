@@ -29,7 +29,7 @@ export class QboApiError extends Error {
   }
 }
 
-const SECRET = /(?:bearer\s+)[a-z0-9\-._~+/]+=*|eyJ[a-zA-Z0-9_-]{8,}\.[a-zA-Z0-9_-]{8,}\.[a-zA-Z0-9_-]{8,}|(?:access_token|refresh_token|client_secret|id_token|authorization)["']?\s*[:=]\s*["']?[^"',\s}]+/gi;
+const SECRET = /(?:authorization\s*:\s*)?bearer\s+[a-z0-9\-._~+/]+=*|eyJ[a-zA-Z0-9_-]{8,}\.[a-zA-Z0-9_-]{8,}\.[a-zA-Z0-9_-]{8,}|(?:access_token|refresh_token|client_secret|id_token|authorization)["']?\s*[:=]\s*["']?[^"',\s}]+/gi;
 
 export function redactQboText(value: string) {
   return value.replace(SECRET, "[redacted]").replace(/[\u0000-\u0008\u000b\u000c\u000e-\u001f]/g, "");
@@ -173,16 +173,16 @@ function errorsFromPayload(payload: unknown) {
     };
   }
   const oauthError = asText(record.error, 80);
-  const oauthDetail = asText(record.error_description, 2000);
+  const oauthDetail = asText(record.error_description, 2000, true);
   if (oauthError || oauthDetail) {
     return {
-      faultType: "oauth",
+      faultType: oauthError === "network" ? "network" : "oauth",
       intuitTime,
       bodyTid,
       errors: [{ code: oauthError === "network" ? "" : oauthError, message: oauthDetail || oauthError, detail: "", element: "" }].filter(hasContent),
     };
   }
-  const raw = asText(record.raw, 1500);
+  const raw = asText(record.raw, 1500, true);
   if (raw) {
     return {
       faultType: "",
@@ -198,8 +198,8 @@ function faultDetail(value: unknown): QboFaultDetail {
   const item = value && typeof value === "object" ? value as Record<string, unknown> : {};
   return {
     code: asText(item.code ?? item.Code, 40),
-    message: asText(item.Message ?? item.message, 2000),
-    detail: asText(item.Detail ?? item.detail, 2000),
+    message: asText(item.Message ?? item.message, 2000, true),
+    detail: asText(item.Detail ?? item.detail, 2000, true),
     element: asText(item.element ?? item.Element, 200),
   };
 }
@@ -208,11 +208,13 @@ function hasContent(error: QboFaultDetail) {
   return Boolean(error.code || error.message || error.detail || error.element);
 }
 
-function asText(value: unknown, max: number) {
+function asText(value: unknown, max: number, scrubLong = false) {
   const text = typeof value === "number" && Number.isFinite(value)
     ? String(value)
     : typeof value === "string"
       ? value
       : "";
-  return redactQboText(text).replace(/\s+/g, " ").trim().slice(0, max);
+  const redacted = redactQboText(text);
+  const scrubbed = scrubLong ? redacted.replace(/\b[A-Za-z0-9+/=_-]{100,}\b/g, "[redacted]") : redacted;
+  return scrubbed.replace(/\s+/g, " ").trim().slice(0, max);
 }

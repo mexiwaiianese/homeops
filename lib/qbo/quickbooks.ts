@@ -9,6 +9,7 @@ import {
   qboMethod,
   redactQboText,
   reportQboFailure,
+  summarizeQboError,
   tidInText,
   type QboErrorLog,
 } from "@/lib/qbo/log";
@@ -238,7 +239,7 @@ async function tokenRequest(body: URLSearchParams, context?: { realmId?: string;
       payload: { error: "network", error_description: networkMessage(error) },
       recordError: context?.recordError,
     });
-    throw new QboAuthError("QuickBooks authorization failed.", log);
+    throw new QboAuthError(summarizeQboError(log), log);
   }
   const payload = await readBody(response);
   const token = tokenFields(payload);
@@ -252,7 +253,7 @@ async function tokenRequest(body: URLSearchParams, context?: { realmId?: string;
       payload,
       recordError: context?.recordError,
     });
-    throw new QboAuthError("QuickBooks authorization failed.", log);
+    throw new QboAuthError(summarizeQboError(log), log);
   }
   return {
     accessToken: token.accessToken,

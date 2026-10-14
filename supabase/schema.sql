@@ -500,6 +500,28 @@ alter table qbo_sync_runs enable row level security;
 drop policy if exists "members read qbo sync runs" on qbo_sync_runs;
 create policy "members read qbo sync runs" on qbo_sync_runs for select to authenticated using ((select private.is_org_member(organization_id)));
 
+create table if not exists qbo_api_logs (
+  id uuid primary key default gen_random_uuid(),
+  organization_id uuid not null references organizations(id) on delete cascade,
+  connection_id uuid references accounting_connections(id) on delete set null,
+  sync_run_id uuid references qbo_sync_runs(id) on delete set null,
+  occurred_at timestamptz not null default now(),
+  intuit_tid text not null default '',
+  http_status integer not null default 0,
+  method text not null default '',
+  endpoint text not null default '',
+  realm_id text not null default '',
+  fault_type text not null default '',
+  errors jsonb not null default '[]'::jsonb,
+  intuit_time text not null default '',
+  shareable text not null default ''
+);
+create index if not exists idx_qbo_api_logs_org on qbo_api_logs(organization_id, occurred_at desc);
+alter table qbo_api_logs enable row level security;
+revoke insert, update, delete on table qbo_api_logs from anon, authenticated;
+drop policy if exists "members read qbo api logs" on qbo_api_logs;
+create policy "members read qbo api logs" on qbo_api_logs for select to authenticated using ((select private.is_org_member(organization_id)));
+
 alter table financial_transactions add column if not exists qbo_cash boolean not null default true;
 create unique index if not exists idx_fin_tx_qbo_external on financial_transactions(organization_id, external_id) where external_id like 'qbo:%';
 

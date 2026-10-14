@@ -1,5 +1,5 @@
 import { foundRedirect, sameOriginPath } from "@/lib/http-security";
-import { saveQboConnection, sessionFor, updateQboConnection } from "@/lib/qbo/connection";
+import { saveQboConnection, sessionFor, storeQboError, updateQboConnection } from "@/lib/qbo/connection";
 import { createSupabaseAdminClient } from "@/lib/supabase/admin";
 import { appOrigin, exchangeQuickBooksCode, quickBooksRedirectUri, quickBooksRequest, verifyOauthState } from "@/lib/qbo/quickbooks";
 
@@ -15,7 +15,7 @@ export async function GET(request: Request) {
   const admin = createSupabaseAdminClient();
   if (!admin) return foundRedirect(new URL("/financials?qbo=setup", origin));
   try {
-    const credentials = await exchangeQuickBooksCode({ code, redirectUri: quickBooksRedirectUri(origin) });
+    const credentials = await exchangeQuickBooksCode({ code, redirectUri: quickBooksRedirectUri(origin), realmId });
     const connection = await saveQboConnection(admin, {
       organizationId: state.organizationId!,
       userId: state.userId,
@@ -31,7 +31,8 @@ export async function GET(request: Request) {
     }
     const next = sameOriginPath(state.returnTo, "/financials?qbo=connected");
     return foundRedirect(new URL(next, origin));
-  } catch {
+  } catch (error) {
+    await storeQboError(admin, state.organizationId!, error).catch(() => undefined);
     return foundRedirect(new URL("/financials?qbo=failed", origin));
   }
 }

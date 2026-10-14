@@ -26,6 +26,16 @@ type Run = {
   error: string;
 };
 type OpenItem = { id: string; txDate: string; name: string; amountCents: number; flowType: string; accountName: string };
+type ErrorLog = {
+  id: string;
+  occurredAt: string;
+  intuitTid: string;
+  httpStatus: number;
+  method: string;
+  endpoint: string;
+  faultType: string;
+  shareable: string;
+};
 type Status = {
   configured?: boolean;
   environment?: string;
@@ -42,6 +52,7 @@ type Status = {
   needsReview?: number;
   openItems?: OpenItem[];
   runs?: Run[];
+  logs?: ErrorLog[];
   error?: string;
 };
 
@@ -130,6 +141,15 @@ export default function QboSync({ mode, onSynced, onReview }: { mode: string; on
     }
     setStatus(payload);
     setNotice(syncMode === "manual" ? "Sync runs when you click Sync now." : "Schedule saved.");
+  }
+
+  async function copyLog(value: string) {
+    try {
+      await navigator.clipboard.writeText(value);
+      setNotice("Troubleshooting log copied. Send that text with a support request.");
+    } catch {
+      setNotice("Select the log text below and copy it.");
+    }
   }
 
   async function disconnect() {
@@ -247,6 +267,28 @@ export default function QboSync({ mode, onSynced, onReview }: { mode: string; on
               </div>
             ))}
           </div>
+        </>
+      )}
+
+      {(connected || !!status.logs?.length) && (
+        <>
+          <div className="panelHead"><div><p className="eyebrow">TROUBLESHOOTING LOG</p><h2>QuickBooks errors</h2></div></div>
+          <p className="summary">Each failed Intuit request is saved with its intuit_tid and the full error. Copy the log when you contact support.</p>
+          {(status.logs?.length || 0) > 1 && (
+            <div className="qboActions">
+              <button className="textBtn" type="button" onClick={() => void copyLog((status.logs || []).map((entry) => entry.shareable).join("\n\n"))}>Copy all logs</button>
+            </div>
+          )}
+          {status.logs?.length ? status.logs.map((entry) => (
+            <div key={entry.id} className="qboLogBlock">
+              <span>
+                <strong>{entry.httpStatus || "Network"} {entry.method} {entry.endpoint}</strong>
+                <small>{entry.occurredAt ? new Date(entry.occurredAt).toLocaleString() : ""}{entry.faultType ? ` · ${entry.faultType}` : ""} · intuit_tid {entry.intuitTid || "(not returned)"}</small>
+              </span>
+              <button className="textBtn" type="button" onClick={() => void copyLog(entry.shareable)}>Copy log</button>
+              <pre className="qboLog">{entry.shareable}</pre>
+            </div>
+          )) : <p className="summary">No QuickBooks errors have been logged yet.</p>}
         </>
       )}
 

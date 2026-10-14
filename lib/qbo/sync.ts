@@ -1,6 +1,6 @@
 import type { SupabaseClient } from "@supabase/supabase-js";
 import { BOOK_KINDS, isBookKind, type BookKind } from "@/lib/books";
-import { loadQboConnection, persistQboCredentials, updateQboConnection, type QboConnection } from "@/lib/qbo/connection";
+import { loadQboConnection, sessionFor, updateQboConnection, type QboConnection } from "@/lib/qbo/connection";
 import {
   dollarsToCentsExact,
   HOMEOPS_NOTE_PREFIX,
@@ -10,7 +10,7 @@ import {
   type QboAlias,
   type QboLookups,
 } from "@/lib/qbo/interpret";
-import { credentialsFromEncrypted, publicQboError, qboDay, qboQuery, qboQuoted, QboAuthError, quickBooksRequest, type QboSession } from "@/lib/qbo/quickbooks";
+import { publicQboError, qboDay, qboQuery, qboQuoted, QboAuthError, quickBooksRequest, type QboSession } from "@/lib/qbo/quickbooks";
 import { AUTOMATIC_INTERVAL_MS, nextRecurringRun, type QboSchedule, type QboSyncMode } from "@/lib/qbo/schedule";
 
 const ENTITIES = ["Purchase", "BillPayment", "Payment", "SalesReceipt", "Deposit", "RefundReceipt", "JournalEntry", "Invoice", "Bill"] as const;
@@ -68,7 +68,7 @@ export async function runQboSync(admin: SupabaseClient, organizationId: string, 
   let nextRunAt = connection.nextRunAt;
   let status: QboConnection["status"] = "connected";
   try {
-    const session = sessionFrom(admin, connection);
+    const session = sessionFor(admin, connection, { syncRunId: String(run.id) });
     let accounts = new Map<string, QboAccount>();
     try {
       accounts = await loadAccounts(session);
@@ -126,14 +126,6 @@ export async function runQboSync(admin: SupabaseClient, organizationId: string, 
     await finish(admin, organizationId, run.id, connection, metadata, cursors, result, status, nextRunAt, schedule, started);
     return result;
   }
-}
-
-function sessionFrom(admin: SupabaseClient, connection: QboConnection): QboSession {
-  return {
-    realmId: connection.realmId,
-    credentials: { ...credentialsFromEncrypted(connection.encryptedCredentials), realmId: connection.realmId },
-    persist: (next) => persistQboCredentials(admin, connection, next),
-  };
 }
 
 async function finish(

@@ -2,6 +2,7 @@ import type { SupabaseClient } from "@supabase/supabase-js";
 import { NextResponse } from "next/server";
 import { getAuthedContext } from "@/lib/backend";
 import { createSupabaseAdminClient } from "@/lib/supabase/admin";
+import { qboLogOf, type QboErrorLog } from "@/lib/qbo/log";
 import { credentialsFromEncrypted, encryptCredentials, publicQboError, quickBooksConfigured, quickBooksEnvironment, type QboCredentials, type QboSession } from "@/lib/qbo/quickbooks";
 import { isSyncDue, type QboSchedule, type QboSyncMode } from "@/lib/qbo/schedule";
 
@@ -139,13 +140,75 @@ export async function persistQboCredentials(admin: SupabaseClient, connection: Q
   if (error) throw new Error(error.message);
 }
 
-export function sessionFor(admin: SupabaseClient, connection: QboConnection): QboSession {
+export function sessionFor(admin: SupabaseClient, connection: QboConnection, context?: { syncRunId?: string }): QboSession {
   if (!connection.encryptedCredentials) throw new Error("Connect QuickBooks first.");
   return {
     realmId: connection.realmId,
     credentials: { ...credentialsFromEncrypted(connection.encryptedCredentials), realmId: connection.realmId },
     persist: (next) => persistQboCredentials(admin, connection, next),
+    recordError: (log) => storeQboErrorLog(admin, {
+      organizationId: connection.organizationId,
+      connectionId: connection.id,
+      syncRunId: context?.syncRunId,
+      log,
+    }),
   };
+}
+
+export async function storeQboErrorLog(admin: SupabaseClient, input: {
+  organizationId: string;
+  connectionId?: string;
+  syncRunId?: string;
+  log: QboErrorLog;
+}) {
+  const { error } = await admin.from("qbo_api_logs").insert({
+    organization_id: input.organizationId,
+    connection_id: input.connectionId || null,
+    sync_run_id: input.syncRunId || null,
+    occurred_at: input.log.occurredAt,
+    intuit_tid: input.log.intuitTid,
+    http_status: input.log.httpStatus,
+    method: input.log.method,
+    endpoint: input.log.endpoint,
+    realm_id: input.log.realmId,
+    fault_type: input.log.faultType,
+    errors: input.log.errors,
+    intuit_time: input.log.intuitTime,
+    shareable: input.log.shareable,
+  });
+  if (error) console.error("[qbo] error log was not stored", error.message);
+}
+
+export async function listQboErrorLogs(admin: SupabaseClient, organizationId: string) {
+  const { data, error } = await admin
+    .from("qbo_api_logs")
+    .select("id, occurred_at, intuit_tid, http_status, method, endpoint, fault_type, shareable")
+    .eq("organization_id", organizationId)
+    .order("occurred_at", { ascending: false })
+    .limit(15);
+  if (error) {
+    if (/qbo_api_logs|schema cache|does not exist|relation/i.test(error.message)) {
+      console.warn("[qbo] Apply supabase/migrations/20261013200000_qbo_api_logs.sql to store shareable Intuit error logs.");
+      return [];
+    }
+    throw new Error(error.message);
+  }
+  return (data || []).map((row) => ({
+    id: String(row.id),
+    occurredAt: String(row.occurred_at || ""),
+    intuitTid: String(row.intuit_tid || ""),
+    httpStatus: Number(row.http_status || 0),
+    method: String(row.method || ""),
+    endpoint: String(row.endpoint || ""),
+    faultType: String(row.fault_type || ""),
+    shareable: String(row.shareable || ""),
+  }));
+}
+
+export async function storeQboError(admin: SupabaseClient, organizationId: string, error: unknown, connectionId?: string) {
+  const log = qboLogOf(error);
+  if (!log) return;
+  await storeQboErrorLog(admin, { organizationId, connectionId, log });
 }
 
 export async function disconnectQbo(admin: SupabaseClient, organizationId: string) {
@@ -188,6 +251,7 @@ export function publicQboStatus(connection: QboConnection | null, extra: {
   needsReview?: number;
   openItems?: unknown[];
   runs?: unknown[];
+  logs?: unknown[];
 }) {
   const status = connection?.status || "disconnected";
   const syncMode = connection?.syncMode || "manual";
@@ -207,6 +271,7 @@ export function publicQboStatus(connection: QboConnection | null, extra: {
     needsReview: extra.needsReview || 0,
     openItems: extra.openItems || [],
     runs: extra.runs || [],
+    logs: extra.logs || [],
   };
 }
 
