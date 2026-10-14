@@ -1174,7 +1174,11 @@ button:disabled {
 .adEditorGrid textarea { min-height: 220px; font-family: ui-monospace, SFMono-Regular, Menlo, Consolas, monospace; font-size: 14px; }
 .adPreview { border: 1px solid var(--line); border-radius: 20px; padding: 30px; background: #fff; position: sticky; top: 20px; }
 .devMenu { display: grid; gap: 10px; margin-top: 8px; }
-.devMenu a.primary { display: block; text-align: center; text-decoration: none; }
+.devMenu a.primary, .devMenu button.primary { display: block; width: 100%; text-align: center; text-decoration: none; cursor: pointer; }
+.devMenu button.primary:disabled { opacity: 0.7; cursor: default; }
+.allAccessError { color: #8a3b24; font-size: 13px; font-weight: 700; }
+.finSide .allAccessError { display: block; color: #f0c7b0; padding: 0 10px 8px; }
+.orgRowActions { display: flex; gap: 12px; justify-content: flex-end; flex-wrap: wrap; align-items: center; }
 .adTabs { display: flex; gap: 8px; margin: 0 0 16px; }
 .adTabs button { border: 1px solid var(--line); background: #fff; padding: 8px 14px; border-radius: 999px; font-weight: 700; cursor: pointer; }
 .adTabs button.on { background: var(--ink); color: #fff; border-color: var(--ink); }
@@ -1568,6 +1572,17 @@ button:disabled {
   background: #16352a;
   color: #fff;
 }
+button.finNav {
+  border: 0;
+  background: transparent;
+  cursor: pointer;
+  width: 100%;
+  text-align: left;
+  font-family: inherit;
+  font-size: 15px;
+  font-weight: 700;
+}
+button.finNav:disabled { opacity: 0.6; cursor: default; }
 .finNav.active .navIcon {
   color: var(--teal);
 }

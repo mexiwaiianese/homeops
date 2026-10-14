@@ -3,6 +3,7 @@
 import { useEffect, useState } from "react";
 import { useRouter } from "next/navigation";
 import AdminChrome from "@/components/admin-chrome";
+import OpenAllAccessButton from "@/components/open-all-access-button";
 
 type OrgRow = {
   id: string;
@@ -14,6 +15,7 @@ type OrgRow = {
   packageName: string;
   status: string;
   ownerEmail?: string;
+  allAccess?: boolean;
 };
 
 type PackageOption = { id: string; name: string };
@@ -24,6 +26,7 @@ export default function AdminOrganizationsPage() {
   const [packages, setPackages] = useState<PackageOption[]>([]);
   const [packageId, setPackageId] = useState("all");
   const [error, setError] = useState("");
+  const [allAccessEmail, setAllAccessEmail] = useState("");
 
   useEffect(() => {
     fetch("/api/admin/organizations")
@@ -33,6 +36,8 @@ export default function AdminOrganizationsPage() {
         if (!ok) { setError(body.error || "Could not load organizations."); return; }
         setRows(body.organizations || []);
         setPackages((body.packages || []).map((row: PackageOption) => ({ id: row.id, name: row.name })));
+        setAllAccessEmail(body.allAccessEmail || "");
+        if (body.allAccessError) setError(body.allAccessError);
       })
       .catch(() => setError("Could not load organizations."));
   }, [router]);
@@ -51,7 +56,10 @@ export default function AdminOrganizationsPage() {
           <h1>Users and organizations</h1>
         </div>
       </header>
-      <p className="summary">Open an organization to override features independently of its subscription package.</p>
+      <p className="summary">
+        Open an organization to override features independently of its subscription package.
+        {allAccessEmail ? ` ${allAccessEmail} is the all-access workspace, separate from the platform admin login.` : ""}
+      </p>
       {error && <div className="notice">{error}</div>}
       <div className="orgTypeFilter">
         <label>
@@ -83,7 +91,10 @@ export default function AdminOrganizationsPage() {
               <span>{row.memberCount}</span>
               <span>{row.packageName}</span>
               <span>{row.status}</span>
-              <span><a className="textBtn" href={`/admin/organizations/${row.id}`}>Feature flags</a></span>
+              <span className="orgRowActions">
+                <a className="textBtn" href={`/admin/organizations/${row.id}`}>Feature flags</a>
+                {row.allAccess ? <OpenAllAccessButton className="textBtn" label="Open account" /> : null}
+              </span>
             </div>
           ))}
           {!visible.length && <div className="empty">{rows.length ? `No organizations on ${selected?.name || "this type"}.` : "No organizations yet."}</div>}

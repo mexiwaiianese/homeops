@@ -1,4 +1,5 @@
 import BrandLockup from "@/components/brand-lockup";
+import OpenAllAccessButton from "@/components/open-all-access-button";
 
 export default function AdminChrome({
   title,
@@ -18,6 +19,7 @@ export default function AdminChrome({
           <a className={active === "organizations" ? "finNav active" : "finNav"} href="/admin/organizations">Organizations</a>
           <a className={active === "invoice-ads" ? "finNav active" : "finNav"} href="/admin/invoice-ads">Invoice ads</a>
           <a className={active === "personas" ? "finNav active" : "finNav"} href="/admin/personas">Personas</a>
+          <OpenAllAccessButton className="finNav" label="All-access account" />
           <a className="finNav" href="/vendors">Vendor board</a>
           <a className="finNav" href="/admin/login">Admin home</a>
         </nav>

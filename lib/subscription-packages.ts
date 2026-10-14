@@ -169,6 +169,10 @@ export async function featuresForOrganization(organizationId: string | null | un
   return sub.features;
 }
 
+export function hasStoredOrgSubscription(organizationId: string) {
+  return memoryOrgSubs.has(organizationId);
+}
+
 export function moneyCents(cents: number) {
   return new Intl.NumberFormat("en-US", { style: "currency", currency: "USD", maximumFractionDigits: 0 }).format(cents / 100);
 }

@@ -38,6 +38,18 @@ export function memoryWorkspaceByEmail(email: string) {
   return [...memoryWorkspaces.values()].find((row) => row.ownerEmail === needle) || null;
 }
 
+/** In-memory workspace used when Supabase is not configured. */
+export function rememberMemoryWorkspace(input: BlankWorkspace & { fullName?: string }) {
+  const workspace: MemoryWorkspace = {
+    ...input,
+    ownerEmail: input.ownerEmail.trim().toLowerCase(),
+    userId: null,
+    fullName: input.fullName?.trim() || input.ownerEmail,
+  };
+  memoryWorkspaces.set(workspace.organizationId, workspace);
+  return workspace;
+}
+
 export async function provisionBlankOrganization(input: {
   email: string;
   fullName: string;

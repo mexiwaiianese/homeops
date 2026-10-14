@@ -2,7 +2,9 @@ import type { Metadata } from "next";
 import BrandLockup from "@/components/brand-lockup";
 import AdminLoginForm from "@/components/admin-login-form";
 import EmailDeliverabilityTest from "@/components/email-deliverability-test";
-import { getOperatorAdmin } from "@/lib/operator-admin";
+import OpenAllAccessButton from "@/components/open-all-access-button";
+import { allAccessEmail } from "@/lib/all-access-account";
+import { getOperatorAdmin, OPERATOR_ADMIN_EMAIL } from "@/lib/operator-admin";
 
 export const dynamic = "force-dynamic";
 
@@ -10,6 +12,10 @@ export const metadata: Metadata = {
   title: "Platform admin · portonOS",
   robots: { index: false, follow: false },
 };
+
+function allAccessAccountLabel() {
+  try { return allAccessEmail(); } catch { return "the address in ALL_ACCESS_EMAIL"; }
+}
 
 export default async function AdminLoginPage({ searchParams }: { searchParams: Promise<{ error?: string }> }) {
   const { error } = await searchParams;
@@ -30,7 +36,9 @@ export default async function AdminLoginPage({ searchParams }: { searchParams: P
               <a className="secondaryBtn" href="/admin/organizations">Organizations</a>
               <a className="secondaryBtn" href="/admin/invoice-ads">Invoice ads</a>
               <a className="secondaryBtn" href="/admin/personas">Persona login</a>
+              <OpenAllAccessButton />
             </div>
+            <p>All-access is {allAccessAccountLabel()}, separate from the platform admin at {OPERATOR_ADMIN_EMAIL}. It opens a Portfolio workspace with every feature on. This admin login stays here.</p>
             <EmailDeliverabilityTest />
           </>
         ) : (

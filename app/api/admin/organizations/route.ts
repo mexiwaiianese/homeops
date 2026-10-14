@@ -1,4 +1,5 @@
 import { NextResponse } from "next/server";
+import { allAccessEmail, ensureAllAccessAccount, isAllAccessOrganization } from "@/lib/all-access-account";
 import { isDemoOrganizationSlug } from "@/lib/demo-ledger";
 import { requirePlatformAdmin } from "@/lib/operator-admin";
 import { listMemoryWorkspaces } from "@/lib/provision-org";
@@ -14,6 +15,15 @@ export async function GET() {
     const repaired = await repairSelfSignupOrganizations(admin);
     if ("error" in repaired) return NextResponse.json({ error: repaired.error }, { status: 500 });
   }
+  let allAccessError = "";
+  try {
+    await ensureAllAccessAccount(admin);
+  } catch (error) {
+    allAccessError = error instanceof Error ? error.message : "Could not prepare the all-access account.";
+  }
+  const accessEmail = (() => {
+    try { return allAccessEmail(); } catch { return ""; }
+  })();
   const packages = await listPackages(admin);
   if (!admin) {
     const rows = await Promise.all(listMemoryWorkspaces().map(async (row) => {
@@ -30,9 +40,10 @@ export async function GET() {
         packageName: sub.package.name,
         status: sub.status,
         features: sub.features,
+        allAccess: isAllAccessOrganization(row),
       };
     }));
-    return NextResponse.json({ organizations: rows, packages });
+    return NextResponse.json({ organizations: rows, packages, allAccessError, allAccessEmail: accessEmail });
   }
 
   const { data: orgs, error } = await admin.from("organizations").select("id, name, slug, created_at").order("name");
@@ -61,7 +72,9 @@ export async function GET() {
       packageName: packages.find((row) => row.id === stored?.package_id)?.name || sub.package.name,
       status: sub.status,
       features: sub.features,
+      ownerEmail: org.slug === "portonos-all-access" ? accessEmail : undefined,
+      allAccess: isAllAccessOrganization({ slug: org.slug }),
     };
   }));
-  return NextResponse.json({ organizations, packages });
+  return NextResponse.json({ organizations, packages, allAccessError, allAccessEmail: accessEmail });
 }
