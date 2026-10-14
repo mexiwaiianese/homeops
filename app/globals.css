@@ -1473,6 +1473,7 @@ button:disabled {
   margin-top: 8px;
 }
 .checkRow {
+  display: flex;
   flex-direction: row !important;
   align-items: flex-start;
   gap: 10px !important;
@@ -4440,7 +4441,10 @@ a.statLink:hover {
   text-transform: uppercase;
 }
 .tourOptOut {
+  display: flex;
+  width: 100%;
   margin: 4px 0 16px;
+  box-sizing: border-box;
 }
 .tourActions {
   display: flex;
