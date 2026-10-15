@@ -1,8 +1,12 @@
 import type { MetadataRoute } from "next";
+import { NON_INDEXABLE_ROBOTS_PATHS } from "@/lib/indexing";
 import { SITE_ORIGIN } from "@/lib/public-site";
 
 export default function robots(): MetadataRoute.Robots {
-  const allow = { allow: "/", disallow: ["/admin", "/api", "/app", "/billing", "/dev", "/login", "/vendors/login"] };
+  const allow = {
+    allow: "/",
+    disallow: ["/api", "/app", "/billing", "/login", "/vendors/login", ...NON_INDEXABLE_ROBOTS_PATHS],
+  };
   return {
     rules: [
       { userAgent: "*", ...allow },

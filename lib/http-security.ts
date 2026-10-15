@@ -1,4 +1,5 @@
 import { NextResponse, type NextRequest } from "next/server";
+import { nonIndexablePath } from "@/lib/indexing";
 
 const MUTATING = new Set(["POST", "PUT", "PATCH", "DELETE"]);
 const CSRF_EXEMPT = new Set(["/api/rent/webhooks/stripe", "/api/financial/qbo/cron", "/api/invoice-platform-discovery/cron"]);
@@ -29,6 +30,7 @@ export function applyNoStore(response: NextResponse, pathname = "") {
     || pathname === "/api/financial/qbo/callback"
     || pathname === "/api/vendors/signup/return";
   response.headers.set("Referrer-Policy", tokenInUrl ? "no-referrer" : "strict-origin-when-cross-origin");
+  if (nonIndexablePath(pathname)) response.headers.set("X-Robots-Tag", "noindex, nofollow");
   return response;
 }
 
